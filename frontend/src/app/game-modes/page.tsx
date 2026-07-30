@@ -146,10 +146,10 @@ const RANKED_MODES: ModeDefinition[] = [
     id: "bots",
     title: "Battle vs Bots",
     subtitle: "Sharpen your tactics",
-    details: ["Adaptive AI rivals", "Practice combos", "Perfect for learning"],
-    badge: "Coming soon",
-    enabled: false,
-    accent: "",
+    details: ["Adaptive AI rivals with 3 difficulty levels", "Earn bot trophies", "Perfect for learning"],
+    badge: "Bot Trophies",
+    enabled: true,
+    accent: "from-rose-500/70 to-orange-500/40",
     impact: "Low Trophy Impact",
     category: "ranked",
   },
@@ -242,6 +242,8 @@ const PVP_LANGUAGE_OPTIONS = [
 
 const PVP_MATCH_TYPE_OPTIONS = ["1v1", "2v2", "Free-for-all (1v1v1v1)"];
 
+const BOT_DIFFICULTY_OPTIONS = ["Easy (~15 min)", "Medium (~10 min)", "Hard (~5 min)"];
+
 const MODE_CONFIG_PRESETS: Record<string, ModeConfigPreset> = {
   ranked: {
     timers: PVP_TIMER_OPTIONS,
@@ -254,6 +256,12 @@ const MODE_CONFIG_PRESETS: Record<string, ModeConfigPreset> = {
     languages: PVP_LANGUAGE_OPTIONS,
     playerOptions: PVP_MATCH_TYPE_OPTIONS,
     note: "Same battle flow without ladder pressure.",
+  },
+  bots: {
+    timers: ["No timer (elapsed)"],
+    languages: PVP_LANGUAGE_OPTIONS,
+    playerOptions: BOT_DIFFICULTY_OPTIONS,
+    note: "Pick a language and difficulty, then start your bot battle.",
   },
   "rapid-fire": {
     timers: ["3 minutes", "5 minutes", "7 minutes"],
@@ -491,7 +499,25 @@ export default function GameModesPage() {
     return 8 * 60;
   };
 
+  const resolveBotDifficulty = (selection: string | undefined): "easy" | "medium" | "hard" => {
+    const raw = selection ?? "";
+    if (raw.toLowerCase().includes("medium")) return "medium";
+    if (raw.toLowerCase().includes("hard")) return "hard";
+    return "easy";
+  };
+
+  const startBotBattle = (modeId: string, selection: ModeConfigSelection | null) => {
+    const difficulty = resolveBotDifficulty(selection?.players);
+    const lang = resolveLanguageCode(selection?.language ?? "") ?? "node";
+    router.push(`/bot-battle?difficulty=${difficulty}&language=${lang}`);
+  };
+
   const startMatchmaking = async (modeId: string, selection: ModeConfigSelection | null) => {
+    if (modeId === "bots") {
+      startBotBattle(modeId, selection);
+      return;
+    }
+
     setErrorMessage(null);
     setMatchId(null);
     setSearchSecondsRemaining(60);
@@ -647,7 +673,9 @@ export default function GameModesPage() {
         ? () => handleRankedClick(mode)
         : mode.enabled && mode.id === "friend"
           ? () => void openFriendPicker()
-          : undefined,
+          : mode.enabled && mode.id === "bots"
+            ? () => handleRankedClick(mode)
+            : undefined,
   }));
 
   const nonRankedCards = NON_RANKED_MODES.map((mode) => ({

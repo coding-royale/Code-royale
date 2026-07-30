@@ -129,3 +129,156 @@ a {
   background: rgba(var(--cr-accent-rgb), 0.3);
   color: var(--cr-fg);
 }
+
+/* ─── Tetrio Battle Theme ─── */
+
+@keyframes emberFloat {
+  0% {
+    transform: translateY(0) translateX(0) scale(1);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 0.6;
+  }
+  100% {
+    transform: translateY(-100vh) translateX(30px) scale(0.3);
+    opacity: 0;
+  }
+}
+
+@keyframes fogDrift {
+  0% {
+    transform: translateX(-10%);
+    opacity: 0.03;
+  }
+  50% {
+    transform: translateX(5%);
+    opacity: 0.06;
+  }
+  100% {
+    transform: translateX(-10%);
+    opacity: 0.03;
+  }
+}
+
+@keyframes blockSlideIn {
+  0% {
+    transform: translateY(20px) scale(0.8);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes blockPulse {
+  0%, 100% {
+    box-shadow: 0 0 6px rgba(var(--cr-accent-rgb), 0.15);
+  }
+  50% {
+    box-shadow: 0 0 14px rgba(var(--cr-accent-rgb), 0.3);
+  }
+}
+
+@keyframes battleGlow {
+  0%, 100% {
+    box-shadow: 0 0 30px rgba(56, 189, 248, 0.15), inset 0 0 30px rgba(56, 189, 248, 0.03);
+  }
+  50% {
+    box-shadow: 0 0 50px rgba(56, 189, 248, 0.25), inset 0 0 40px rgba(56, 189, 248, 0.05);
+  }
+}
+
+@keyframes dungeonPulse {
+  0%, 100% {
+    opacity: 0.04;
+  }
+  50% {
+    opacity: 0.08;
+  }
+}
+
+@keyframes vsPulse {
+  0%, 100% {
+    text-shadow: 0 0 20px rgba(251, 146, 60, 0.6);
+    transform: scale(1);
+  }
+  50% {
+    text-shadow: 0 0 40px rgba(251, 146, 60, 0.9);
+    transform: scale(1.05);
+  }
+}
+
+.battle-bg {
+  position: relative;
+  background:
+    radial-gradient(ellipse at 20% 100%, rgba(180, 60, 20, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 100%, rgba(180, 60, 20, 0.06) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 0%, rgba(56, 189, 248, 0.03) 0%, transparent 40%),
+    linear-gradient(180deg, #030815 0%, #071024 40%, #0a162b 100%);
+}
+
+.battle-bg::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(1px 1px at 15% 80%, rgba(251, 146, 60, 0.4), transparent),
+    radial-gradient(1px 1px at 35% 90%, rgba(251, 146, 60, 0.3), transparent),
+    radial-gradient(1.5px 1.5px at 55% 85%, rgba(251, 146, 60, 0.5), transparent),
+    radial-gradient(1px 1px at 75% 95%, rgba(251, 146, 60, 0.3), transparent),
+    radial-gradient(1px 1px at 90% 75%, rgba(251, 146, 60, 0.4), transparent);
+  animation: dungeonPulse 4s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.battle-ember {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: rgba(251, 146, 60, 0.7);
+  box-shadow: 0 0 6px rgba(251, 146, 60, 0.5);
+  animation: emberFloat linear infinite;
+  pointer-events: none;
+}
+
+.battle-fog {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(56, 189, 248, 0.02) 20%,
+    rgba(167, 139, 250, 0.02) 50%,
+    rgba(56, 189, 248, 0.02) 80%,
+    transparent 100%
+  );
+  animation: fogDrift 12s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.opponent-block {
+  animation: blockSlideIn 0.3s ease-out forwards;
+  border-radius: 4px;
+  transition: opacity 0.3s ease;
+}
+
+.battle-editor-glow {
+  animation: battleGlow 4s ease-in-out infinite;
+}
+
+.vs-text {
+  animation: vsPulse 2s ease-in-out infinite;
+}
+
+.battle-stone-pattern {
+  background-image:
+    radial-gradient(ellipse at 10% 50%, rgba(56, 189, 248, 0.015) 0%, transparent 50%),
+    radial-gradient(ellipse at 90% 50%, rgba(56, 189, 248, 0.015) 0%, transparent 50%),
+    linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.2) 100%);
+}

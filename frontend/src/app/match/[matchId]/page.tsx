@@ -22,6 +22,14 @@ function parseTimerFromMetadata(metadata: unknown) {
   };
 }
 
+function parseMatchMode(metadata: unknown, mode: string | null): string {
+  const record = metadata && typeof metadata === "object" ? (metadata as Record<string, unknown>) : null;
+  const metadataMode = record?.match_type ?? record?.mode;
+  if (typeof metadataMode === "string" && metadataMode) return metadataMode;
+  if (typeof mode === "string" && mode) return mode;
+  return "ranked";
+}
+
 export default async function MatchPage({ params }: PageProps) {
   const matchId = params.matchId;
   const supabase = await createSupabaseServerClient();
@@ -55,6 +63,7 @@ export default async function MatchPage({ params }: PageProps) {
   }
 
   const { questionId, timeLimitSeconds, startedAt, language } = parseTimerFromMetadata(matchRow.metadata);
+  const matchMode = parseMatchMode(matchRow.metadata, matchRow.mode);
 
   if (!questionId) {
     notFound();
@@ -138,6 +147,7 @@ export default async function MatchPage({ params }: PageProps) {
         initialTimer={initialTimer}
         initialLanguage={initialLanguage}
         exitHref="/game-modes"
+        matchMode={matchMode}
       />
     </PracticeScaffold>
   );
