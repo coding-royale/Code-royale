@@ -620,6 +620,16 @@ export function MatchArenaShell({
             <p className="mt-3 text-sm text-sky-200/70">
               You will forfeit this battle. Are you sure you want to surrender?
             </p>
+            {matchMode === "ranked" && (
+              <div className="mt-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3">
+                <p className="text-xs font-semibold uppercase tracking-wider text-amber-300">
+                  Ranked Match Warning
+                </p>
+                <p className="mt-1 text-[11px] text-amber-200/70">
+                  Surrendering a ranked match will cost you ELO points. Quit at your own risk.
+                </p>
+              </div>
+            )}
             <div className="mt-6 flex justify-end gap-3">
               <button
                 type="button"

@@ -2,16 +2,18 @@ import { NextResponse } from "next/server";
 import { createSupabaseServiceClient } from "@/lib/supabase-service";
 import { createSupabaseServerClient } from "@/lib/supabase";
 
-const languageMap: Record<string, { language: string; version: string }> = {
-  node: { language: "javascript", version: "18.15.0" },
-  javascript: { language: "javascript", version: "18.15.0" },
-  python: { language: "python", version: "3.10.0" },
-  cpp: { language: "c++", version: "10.2.0" },
-  java: { language: "java", version: "15.0.2" },
-  c: { language: "c", version: "10.2.0" },
+const languageMap: Record<string, { language: string; version: string; judge0Id: number }> = {
+  node: { language: "javascript", version: "18.15.0", judge0Id: 78 },
+  javascript: { language: "javascript", version: "18.15.0", judge0Id: 78 },
+  python: { language: "python", version: "3.10.0", judge0Id: 71 },
+  cpp: { language: "c++", version: "10.2.0", judge0Id: 76 },
+  java: { language: "java", version: "15.0.2", judge0Id: 62 },
+  c: { language: "c", version: "10.2.0", judge0Id: 75 },
 };
 
-const pistonBaseUrl = "https://emkc.org/api/v2/piston";
+const judge0BaseUrl = process.env.JUDGE0_BASE_URL?.replace(/\/+$/, "") ?? "https://judge0-ce.p.rapidapi.com";
+const judge0ApiKey = process.env.JUDGE0_API_KEY ?? "";
+const judge0ApiHost = process.env.JUDGE0_API_HOST ?? "judge0-ce.p.rapidapi.com";
 
 export async function POST(request: Request) {
   let payload: unknown;
@@ -115,26 +117,34 @@ export async function POST(request: Request) {
   for (const testcase of normalizedTestcases) {
     try {
       const runConfig = languageMap[language];
-      const response = await fetch(`${pistonBaseUrl}/execute`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+
+      if (!judge0ApiKey) {
+        return NextResponse.json(
+          { error: "Code execution is not configured. Set JUDGE0_API_KEY in .env.local (get a free key at https://judge0-ce.p.rapidapi.com)." },
+          { status: 500 },
+        );
+      }
+
+      const response = await fetch(
+        `${judge0BaseUrl}/submissions?base64_encoded=false&wait=true`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-RapidAPI-Key": judge0ApiKey,
+            "X-RapidAPI-Host": judge0ApiHost,
+          },
+          body: JSON.stringify({
+            language_id: runConfig.judge0Id,
+            source_code: code,
+            stdin: testcase.input,
+          }),
         },
-        body: JSON.stringify({
-          language: runConfig.language,
-          version: runConfig.version,
-          files: [
-            {
-              content: code,
-            },
-          ],
-          stdin: testcase.input,
-        }),
-      });
+      );
 
       if (!response.ok) {
         const message = await response.text();
-        console.error("Piston submission error", message, "Status:", response.status);
+        console.error("Judge0 submission error", message, "Status:", response.status);
         
         let errorMessage = "Code execution failed";
         try {
@@ -152,53 +162,52 @@ export async function POST(request: Request) {
       }
 
       const submission = (await response.json()) as {
-        run?: {
-          stdout?: string;
-          stderr?: string;
-          output?: string;
-          code?: number;
-          signal?: string;
-        };
-        compile?: {
-          stdout?: string;
-          stderr?: string;
-          output?: string;
-          code?: number;
-        };
+        stdout?: string;
+        stderr?: string;
+        compile_stderr?: string;
+        status?: { id?: number; description?: string };
+        time?: string;
+        memory?: number;
       };
 
-      const stdout = submission.run?.stdout ?? "";
-      const stderr = submission.run?.stderr ?? submission.compile?.stderr ?? null;
+      const stdout = submission.stdout ?? "";
+      const stderr = submission.stderr ?? submission.compile_stderr ?? null;
       
-      // Clean expected and actual to ignore trailing newlines and whitespace differences
       const cleanExpected = testcase.expected.trim().replace(/\r\n/g, "\n");
       const cleanActual = stdout.trim().replace(/\r\n/g, "\n");
-      
-      const passed = submission.run?.code === 0 && cleanActual === cleanExpected;
-      const status = submission.compile?.code !== 0 && submission.compile?.code !== undefined 
-          ? "Compilation Error" 
-          : submission.run?.code !== 0 
-            ? "Runtime Error" 
-            : passed ? "Accepted" : "Wrong Answer";
+
+      const statusCode = submission.status?.id ?? 0;
+      const isCompileError = statusCode === 6;
+      const isRuntimeError = statusCode >= 11 && statusCode <= 12;
+      const isTimeLimitExceeded = statusCode === 5;
+      const isAccepted = statusCode === 3;
+
+      const passed = isAccepted && cleanActual === cleanExpected;
+      const status = isCompileError
+        ? "Compilation Error"
+        : isRuntimeError || isTimeLimitExceeded
+          ? "Runtime Error"
+          : passed
+            ? "Accepted"
+            : "Wrong Answer";
 
       results.push({
         index: testcase.index,
         status,
         actual: stdout,
         stderr,
-        time: null, // Piston free doesn't reliably return execution time
-        memory: null, // Piston free doesn't reliably return memory usage
+        time: submission.time ?? null,
+        memory: submission.memory ?? null,
         passed,
         expected: testcase.expected,
         input: testcase.input,
       });
 
       if (!passed) {
-        // Stop early on first failure to provide faster feedback.
         break;
       }
     } catch (error) {
-      console.error("Piston request error", error);
+      console.error("Judge0 request error", error);
       return NextResponse.json({ error: "Code execution request failed" }, { status: 502 });
     }
   }

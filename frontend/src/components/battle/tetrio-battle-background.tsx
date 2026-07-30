@@ -42,21 +42,23 @@ export function TetrioBattleBackground() {
         }}
       />
 
-      {embers.map((ember) => (
-        <div
-          key={ember.id}
-          className="battle-ember"
-          style={{
-            left: ember.left,
-            width: `${ember.size}px`,
-            height: `${ember.size}px`,
-            bottom: `${ember.bottom}%`,
-            opacity: ember.opacity,
-            animationDuration: `${ember.duration}s`,
-            animationDelay: `${ember.delay}s`,
-          }}
-        />
-      ))}
+      <div suppressHydrationWarning>
+        {embers.map((ember) => (
+          <div
+            key={ember.id}
+            className="battle-ember"
+            style={{
+              left: ember.left,
+              width: `${ember.size}px`,
+              height: `${ember.size}px`,
+              bottom: `${ember.bottom}%`,
+              opacity: ember.opacity,
+              animationDuration: `${ember.duration}s`,
+              animationDelay: `${ember.delay}s`,
+            }}
+          />
+        ))}
+      </div>
 
       <div
         className="absolute inset-0"

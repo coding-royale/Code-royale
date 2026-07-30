@@ -121,6 +121,7 @@ export function BotBattleArenaClient({
   const [elapsedTime, setElapsedTime] = useState(0);
   const [matchResult, setMatchResult] = useState<"playing" | "won" | "lost" | "bot_won" | "draw">("playing");
   const [pointsAwarded, setPointsAwarded] = useState<number | null>(null);
+  const [showForfeitConfirm, setShowForfeitConfirm] = useState(false);
 
   const [botProgress, setBotProgress] = useState<BotProgress>({
     overallProgress: 0,
@@ -266,7 +267,18 @@ export function BotBattleArenaClient({
     }
   };
 
-  const handleExit = () => router.push("/game-modes");
+  const handleExit = () => {
+    if (isMatchOver) {
+      router.push("/game-modes");
+    } else {
+      setShowForfeitConfirm(true);
+    }
+  };
+
+  const handleConfirmForfeit = () => {
+    setShowForfeitConfirm(false);
+    router.push("/game-modes");
+  };
 
   const timeComplexity = question.meta?.timeComplexity ?? "TBD";
   const spaceComplexity = question.meta?.spaceComplexity ?? "TBD";
@@ -661,6 +673,35 @@ export function BotBattleArenaClient({
                 className="rounded-full border border-sky-400/60 px-8 py-3 text-sm font-semibold uppercase tracking-[0.35em] text-sky-100 transition hover:border-sky-200 hover:bg-sky-500/30"
               >
                 Back to Modes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showForfeitConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-3xl border border-red-500/25 bg-[#0c1425] p-8 text-sky-100 shadow-[0_0_60px_rgba(248,113,113,0.2)]">
+            <h3 className="text-2xl font-bold uppercase tracking-wider text-red-200">
+              Forfeit Match?
+            </h3>
+            <p className="mt-3 text-sm text-sky-200/70">
+              You will lose this bot battle. Are you sure you want to forfeit?
+            </p>
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setShowForfeitConfirm(false)}
+                className="rounded-lg border border-sky-500/30 px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.25em] text-sky-200 transition hover:border-sky-300"
+              >
+                Keep Going
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmForfeit}
+                className="rounded-lg border border-red-500/60 bg-red-500/20 px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.25em] text-red-200 transition hover:border-red-400"
+              >
+                Forfeit
               </button>
             </div>
           </div>
