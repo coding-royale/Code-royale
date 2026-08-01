@@ -98,9 +98,8 @@ export async function POST(request: Request) {
     });
   }
 
-  await supabase.from("users").update({
-    rating: totalPoints,
-  }).eq("id", userId);
+  // Do NOT overwrite users.rating here — that field tracks PVP ELO.
+  // Bot trophies live in player_stats.bot_trophies.
 
   return NextResponse.json({
     pointsAwarded: totalPoints,

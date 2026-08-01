@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase";
 import { createSupabaseServiceClient } from "@/lib/supabase-service";
 
-type CompletePayload = {
+type ForfeitPayload = {
   matchId?: string;
 };
 
@@ -14,9 +14,9 @@ function asRecord(value: unknown): Record<string, unknown> {
 }
 
 export async function POST(request: Request) {
-  let payload: CompletePayload;
+  let payload: ForfeitPayload;
   try {
-    payload = (await request.json()) as CompletePayload;
+    payload = (await request.json()) as ForfeitPayload;
   } catch {
     return NextResponse.json({ error: "Invalid JSON payload" }, { status: 400 });
   }
@@ -43,6 +43,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Server configuration error" }, { status: 500 });
   }
 
+  // Verify membership
   const { data: membership } = await supabase
     .from("match_players")
     .select("match_id")
@@ -109,92 +110,61 @@ export async function POST(request: Request) {
     ]),
   );
 
-  const winnerData = userById.get(userId);
-  const loserData = userById.get(opponentId);
+  const forfeiterData = userById.get(userId);
+  const winnerData = userById.get(opponentId);
 
-  if (!winnerData || !loserData) {
+  if (!forfeiterData || !winnerData) {
     return NextResponse.json({ error: "Unable to resolve player state" }, { status: 500 });
   }
 
-  // ELO calculation
-  const K = 32; // K-factor
-  const winnerOldRating = winnerData.rating;
-  const loserOldRating = loserData.rating;
+  // ELO calculation — forfeiter loses
+  const K = 32;
+  const expectedWinner = 1 / (1 + Math.pow(10, (forfeiterData.rating - winnerData.rating) / 400));
+  const expectedLoser = 1 / (1 + Math.pow(10, (winnerData.rating - forfeiterData.rating) / 400));
 
-  let winnerDelta = 0;
-  let loserDelta = 0;
+  let winnerDelta = Math.round(K * (1 - expectedWinner));
+  let loserDelta = Math.round(K * (0 - expectedLoser));
+  winnerDelta = Math.max(winnerDelta, 8);
+  loserDelta = Math.min(loserDelta, -8);
 
-  if (mode === "ranked") {
-    const expectedWinner = 1 / (1 + Math.pow(10, (loserOldRating - winnerOldRating) / 400));
-    const expectedLoser = 1 / (1 + Math.pow(10, (winnerOldRating - loserOldRating) / 400));
-
-    winnerDelta = Math.round(K * (1 - expectedWinner));
-    loserDelta = Math.round(K * (0 - expectedLoser));
-
-    // Minimum delta of 8 for winning, maximum loss capped
-    winnerDelta = Math.max(winnerDelta, 8);
-    loserDelta = Math.min(loserDelta, -8);
+  if (mode !== "ranked") {
+    winnerDelta = 0;
+    loserDelta = 0;
   }
 
-  const winnerRating = Math.max(0, winnerOldRating + winnerDelta);
-  const loserRating = Math.max(0, loserOldRating + loserDelta);
+  const newWinnerRating = Math.max(0, winnerData.rating + winnerDelta);
+  const newLoserRating = Math.max(0, forfeiterData.rating + loserDelta);
 
-  const { error: winnerUpdateError } = await supabase
+  await supabase
     .from("users")
-    .update({
-      rating: winnerRating,
-      wins: winnerData.wins + 1,
-    })
-    .eq("id", userId);
-
-  if (winnerUpdateError) {
-    return NextResponse.json({ error: winnerUpdateError.message }, { status: 500 });
-  }
-
-  const { error: loserUpdateError } = await supabase
-    .from("users")
-    .update({
-      rating: loserRating,
-      losses: loserData.losses + 1,
-    })
+    .update({ rating: newWinnerRating, wins: winnerData.wins + 1 })
     .eq("id", opponentId);
 
-  if (loserUpdateError) {
-    return NextResponse.json({ error: loserUpdateError.message }, { status: 500 });
-  }
+  await supabase
+    .from("users")
+    .update({ rating: newLoserRating, losses: forfeiterData.losses + 1 })
+    .eq("id", userId);
 
   const nextMetadata: Record<string, unknown> = {
     ...metadata,
-    winner_id: userId,
-    loser_id: opponentId,
+    winner_id: opponentId,
+    loser_id: userId,
     completed_at: new Date().toISOString(),
-    rating_delta: mode === "ranked" ? { winner: winnerDelta, loser: loserDelta } : { winner: 0, loser: 0 },
+    forfeit: true,
+    rating_delta: { winner: winnerDelta, loser: loserDelta },
   };
 
-  const { error: completeError } = await supabase
+  await supabase
     .from("matches")
     .update({ metadata: nextMetadata })
     .eq("id", matchId);
 
-  if (completeError) {
-    return NextResponse.json({ error: completeError.message }, { status: 500 });
-  }
-
-  return NextResponse.json(
-    {
-      ok: true,
-      winnerId: userId,
-      loserId: opponentId,
-      mode,
-      rating: {
-        winner: winnerRating,
-        loser: loserRating,
-      },
-      ratingDelta: {
-        winner: winnerDelta,
-        loser: loserDelta,
-      },
-    },
-    { status: 200 },
-  );
+  return NextResponse.json({
+    ok: true,
+    winnerId: opponentId,
+    loserId: userId,
+    mode,
+    rating: { winner: newWinnerRating, loser: newLoserRating },
+    ratingDelta: { winner: winnerDelta, loser: loserDelta },
+  }, { status: 200 });
 }

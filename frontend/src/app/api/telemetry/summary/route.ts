@@ -1,6 +1,7 @@
 export const runtime = "nodejs";
 
 import { NextResponse, type NextRequest } from "next/server";
+import { createClient } from "@supabase/supabase-js";
 
 type TelemetryState = {
   activeByClient: Map<string, number>;
@@ -40,15 +41,50 @@ export async function GET(request: NextRequest) {
     if (now - lastSeen > ttlMs) state.activeByClient.delete(key);
   }
 
-  // TODO: replace with real matchmaking/online player count once available
-  const activePlayers = 0;
   const currentVisits = state.activeByClient.size;
+
+  // Query real data from Supabase
+  let activePlayers = 0;
+  let matchesToday = 0;
+
+  try {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (supabaseUrl && supabaseKey) {
+      const supabase = createClient(supabaseUrl, supabaseKey, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      });
+
+      // Count players with rating > 0 (have played at least one match)
+      const { count: ratedPlayers } = await supabase
+        .from("users")
+        .select("id", { count: "exact", head: true })
+        .gt("wins", 0);
+
+      activePlayers = ratedPlayers ?? 0;
+
+      // Count matches completed today
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      const todayIso = todayStart.toISOString();
+
+      const { count: todayMatches } = await supabase
+        .from("matches")
+        .select("id", { count: "exact", head: true })
+        .gte("created_at", todayIso);
+
+      matchesToday = todayMatches ?? 0;
+    }
+  } catch {
+    // Fall back to 0s if Supabase is unavailable
+  }
 
   const response = NextResponse.json(
     {
       activePlayers,
       currentVisits,
-      matchesToday: 0,
+      matchesToday,
       serverTime: new Date(now).toISOString(),
     },
     {

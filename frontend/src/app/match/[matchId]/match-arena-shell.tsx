@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { TetrioBattleBackground } from "@/components/battle/tetrio-battle-background";
 import { OpponentActivityPanel } from "@/components/battle/opponent-activity-panel";
 
@@ -100,6 +100,12 @@ const modeLabels: Record<string, string> = {
   "rapid-fire": "Rapid Fire",
 };
 
+type MatchOutcome = {
+  status: "won" | "lost" | "draw" | "timeout";
+  winnerId?: string;
+  ratingDelta?: { winner: number; loser: number };
+};
+
 export function MatchArenaShell({
   question,
   testcases,
@@ -135,17 +141,115 @@ export function MatchArenaShell({
   const [activeTestcaseIndex, setActiveTestcaseIndex] = useState(0);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [showQuestion, setShowQuestion] = useState(true);
+  const [matchOutcome, setMatchOutcome] = useState<MatchOutcome | null>(null);
+  const [showForfeitConfirm, setShowForfeitConfirm] = useState(false);
+  const [myUserId, setMyUserId] = useState<string | null>(null);
+  const hasAutoCompletedRef = useRef(false);
 
+  const matchId = useMemo(() => {
+    const found = pathname?.match(/^\/match\/([^/?#]+)/);
+    return found?.[1] ?? null;
+  }, [pathname]);
+
+  // Poll for match completion via Supabase browser client
   useEffect(() => {
-    const interval = setInterval(() => {
-      setTimerSeconds((prev) => {
-        if (!isTimerActive) return prev;
-        if (prev <= 0) return 0;
-        return prev - 1;
-      });
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [isTimerActive]);
+    if (!matchId || matchOutcome) return;
+
+    let alive = true;
+
+    const checkMatchStatus = async () => {
+      if (!alive || !matchId) return;
+      try {
+        // Use the Supabase browser client to check match metadata
+        const { supabase } = await import("@/lib/supabase-browser");
+        const { data: matchRow } = await supabase
+          .from("matches")
+          .select("metadata")
+          .eq("id", matchId)
+          .single();
+
+        if (!alive || !matchRow) return;
+
+        const meta = matchRow.metadata && typeof matchRow.metadata === "object"
+          ? matchRow.metadata as Record<string, unknown>
+          : null;
+
+        const winnerId = meta?.winner_id;
+        if (typeof winnerId === "string" && winnerId) {
+          const ratingDelta = meta?.rating_delta as { winner: number; loser: number } | undefined;
+          const isTimeout = meta?.timed_out === true;
+          const isForfeit = meta?.forfeit === true;
+
+          // Determine if current user won or lost
+          const { data: { user } } = await supabase.auth.getUser();
+          const currentUserId = user?.id;
+
+          let status: "won" | "lost" | "draw" = "draw";
+          if (winnerId === currentUserId) {
+            status = "won";
+          } else if (winnerId !== currentUserId) {
+            status = "lost";
+          }
+
+          setMatchOutcome({
+            status: isTimeout && !winnerId ? "draw" : status,
+            winnerId,
+            ratingDelta,
+          });
+        }
+      } catch {
+        // ignore transient errors
+      }
+    };
+
+    const interval = setInterval(checkMatchStatus, 3000);
+    // Also check immediately
+    void checkMatchStatus();
+
+    return () => {
+      alive = false;
+      clearInterval(interval);
+    };
+  }, [matchId, matchOutcome]);
+
+  // Auto-complete on timeout
+  useEffect(() => {
+    if (timerSeconds > 0 || matchOutcome || hasAutoCompletedRef.current || !matchId) return;
+
+    hasAutoCompletedRef.current = true;
+    setIsTimerActive(false);
+
+    const completeOnTimeout = async () => {
+      try {
+        const res = await fetch("/api/match/timeout", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ matchId }),
+        });
+        const data = await res.json() as {
+          winnerId?: string | null;
+          draw?: boolean;
+          ratingDelta?: { winner: number; loser: number };
+        };
+
+        const { supabase } = await import("@/lib/supabase-browser");
+        const { data: { user } } = await supabase.auth.getUser();
+        const currentUserId = user?.id;
+
+        if (data.draw) {
+          setMatchOutcome({ status: "draw" });
+        } else if (data.winnerId === currentUserId) {
+          setMatchOutcome({ status: "won", winnerId: data.winnerId, ratingDelta: data.ratingDelta });
+        } else {
+          setMatchOutcome({ status: "lost", winnerId: data.winnerId ?? undefined, ratingDelta: data.ratingDelta });
+        }
+      } catch {
+        setMatchOutcome({ status: "timeout" });
+      }
+    };
+
+    void completeOnTimeout();
+  }, [timerSeconds, matchOutcome, matchId]);
 
   useEffect(() => {
     setResults(null);
@@ -178,11 +282,6 @@ export function MatchArenaShell({
   const activeResult = resultsMap.get(activeTestcaseIndex);
   const activeTestcase = safeTestcases[activeTestcaseIndex];
 
-  const matchId = useMemo(() => {
-    const found = pathname?.match(/^\/match\/([^/?#]+)/);
-    return found?.[1] ?? null;
-  }, [pathname]);
-
   const statusForIndex = (index: number) => {
     const resolved = resultsMap.get(index);
     if (resolved) return resolved.passed ? "passed" : "failed";
@@ -197,12 +296,32 @@ export function MatchArenaShell({
     router.push(exitHref);
   };
 
+  const handleForfeit = async () => {
+    setShowForfeitConfirm(false);
+    if (!matchId) {
+      router.push(exitHref);
+      return;
+    }
+    try {
+      await fetch("/api/match/forfeit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ matchId }),
+      });
+    } catch {
+      // ignore
+    }
+    setMatchOutcome({ status: "lost" });
+  };
+
   const handleSubmit = async (intent: SubmissionIntent) => {
     if (!code.trim()) {
       setFeedback("Write some code before running your solution.");
       setFeedbackTone("info");
       return;
     }
+
+    if (matchOutcome) return; // Match already over
 
     setIsSubmitting(true);
     setFeedback(null);
@@ -238,11 +357,29 @@ export function MatchArenaShell({
 
       if (payload.passed) {
         if (intent === "submit" && matchId) {
-          void fetch("/api/match/complete", {
+          const completeRes = await fetch("/api/match/complete", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ matchId }),
           });
+          const completeData = await completeRes.json() as {
+            ok?: boolean;
+            winnerId?: string;
+            alreadyCompleted?: boolean;
+            ratingDelta?: { winner: number; loser: number };
+          };
+
+          const { supabase } = await import("@/lib/supabase-browser");
+          const { data: { user } } = await supabase.auth.getUser();
+          const currentUserId = user?.id;
+
+          if (completeData.winnerId === currentUserId) {
+            setMatchOutcome({ status: "won", winnerId: completeData.winnerId, ratingDelta: completeData.ratingDelta });
+          } else if (completeData.alreadyCompleted) {
+            setMatchOutcome({ status: "lost", winnerId: completeData.winnerId, ratingDelta: completeData.ratingDelta });
+          } else {
+            setMatchOutcome({ status: "won", winnerId: completeData.winnerId, ratingDelta: completeData.ratingDelta });
+          }
         }
         setFeedback(
           intent === "submit"
@@ -322,10 +459,10 @@ export function MatchArenaShell({
 
               <button
                 type="button"
-                onClick={handleExitRequest}
+                onClick={matchOutcome ? () => router.push(exitHref) : handleExitRequest}
                 className="rounded-lg border border-red-500/50 bg-red-500/15 px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.28em] text-red-300 transition hover:border-red-400 hover:text-red-200"
               >
-                Surrender
+                {matchOutcome ? "Leave Match" : "Surrender"}
               </button>
             </div>
           </header>
@@ -611,7 +748,7 @@ export function MatchArenaShell({
         </div>
       </div>
 
-      {showExitConfirm && (
+      {showExitConfirm && !matchOutcome && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm">
           <div className="w-full max-w-md rounded-3xl border border-red-500/25 bg-[#0c1425] p-8 text-sky-100 shadow-[0_0_60px_rgba(248,113,113,0.2)]">
             <h3 className="text-2xl font-bold uppercase tracking-wider text-red-200">
@@ -640,10 +777,130 @@ export function MatchArenaShell({
               </button>
               <button
                 type="button"
-                onClick={handleConfirmExit}
+                onClick={() => {
+                  setShowExitConfirm(false);
+                  setShowForfeitConfirm(true);
+                }}
                 className="rounded-lg border border-red-500/60 bg-red-500/20 px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.25em] text-red-200 transition hover:border-red-400"
               >
                 Surrender
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showForfeitConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-3xl border border-red-500/25 bg-[#0c1425] p-8 text-sky-100 shadow-[0_0_60px_rgba(248,113,113,0.2)]">
+            <h3 className="text-2xl font-bold uppercase tracking-wider text-red-200">
+              Confirm Surrender
+            </h3>
+            <p className="mt-3 text-sm text-sky-200/70">
+              Your opponent will be declared the winner. This cannot be undone.
+            </p>
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setShowForfeitConfirm(false)}
+                className="rounded-lg border border-sky-500/30 px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.25em] text-sky-200 transition hover:border-sky-300"
+              >
+                Go Back
+              </button>
+              <button
+                type="button"
+                onClick={handleForfeit}
+                className="rounded-lg border border-red-500/60 bg-red-500/20 px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.25em] text-red-200 transition hover:border-red-400"
+              >
+                Surrender Match
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {matchOutcome && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm">
+          <div className={`w-full max-w-lg rounded-3xl border ${
+            matchOutcome.status === "won"
+              ? "border-emerald-500/25"
+              : matchOutcome.status === "lost"
+                ? "border-red-500/25"
+                : "border-amber-500/25"
+          } bg-[#0c1425] p-8 text-sky-100 shadow-[0_0_60px_rgba(${
+            matchOutcome.status === "won"
+              ? "16,185,129"
+              : matchOutcome.status === "lost"
+                ? "248,113,113"
+                : "245,158,11"
+          },0.2)]`}>
+            <div className="text-center">
+              <div className="text-5xl mb-4">
+                {matchOutcome.status === "won" ? "🏆" : matchOutcome.status === "lost" ? "💀" : "🤝"}
+              </div>
+              <h3 className={`text-3xl font-bold uppercase tracking-wider ${
+                matchOutcome.status === "won"
+                  ? "text-emerald-200"
+                  : matchOutcome.status === "lost"
+                    ? "text-red-200"
+                    : "text-amber-200"
+              }`}>
+                {matchOutcome.status === "won"
+                  ? "Victory!"
+                  : matchOutcome.status === "lost"
+                    ? "Defeated"
+                    : matchOutcome.status === "timeout"
+                      ? "Time's Up!"
+                      : "Draw"}
+              </h3>
+              <p className="mt-3 text-sm text-sky-200/70">
+                {matchOutcome.status === "won"
+                  ? "You solved the problem before your opponent!"
+                  : matchOutcome.status === "lost"
+                    ? "Your opponent solved the problem first. Better luck next time."
+                    : matchOutcome.status === "timeout"
+                      ? "Time ran out. No one solved the problem."
+                      : "Neither player solved the problem in time."}
+              </p>
+
+              {matchOutcome.ratingDelta && matchMode === "ranked" && (
+                <div className="mt-6 flex justify-center gap-6">
+                  <div className={`rounded-2xl border px-6 py-4 ${
+                    matchOutcome.status === "won"
+                      ? "border-emerald-400/30 bg-emerald-500/10"
+                      : "border-red-400/30 bg-red-500/10"
+                  }`}>
+                    <p className="text-[10px] uppercase tracking-[0.35em] text-sky-300/70">Rating Change</p>
+                    <p className={`mt-1 text-2xl font-bold ${
+                      matchOutcome.status === "won" ? "text-emerald-300" : "text-red-300"
+                    }`}>
+                      {matchOutcome.status === "won" ? `+${matchOutcome.ratingDelta.winner}` : matchOutcome.ratingDelta.loser}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {matchOutcome.status === "draw" && matchMode === "ranked" && (
+                <div className="mt-6 inline-flex items-center gap-3 rounded-2xl border border-sky-400/30 bg-sky-500/10 px-6 py-4">
+                  <p className="text-sm text-sky-200/70">No rating change</p>
+                </div>
+              )}
+            </div>
+
+            <div className="mt-8 flex justify-center gap-4">
+              <button
+                type="button"
+                onClick={() => router.push("/game-modes")}
+                className="rounded-full border border-sky-400/60 px-8 py-3 text-sm font-semibold uppercase tracking-[0.35em] text-sky-100 transition hover:border-sky-200 hover:bg-sky-500/30"
+              >
+                Back to Modes
+              </button>
+              <button
+                type="button"
+                onClick={() => router.push("/leaderboard")}
+                className="rounded-full border border-amber-400/60 bg-amber-500/15 px-8 py-3 text-sm font-semibold uppercase tracking-[0.35em] text-amber-100 transition hover:border-amber-200 hover:bg-amber-500/30"
+              >
+                Leaderboard
               </button>
             </div>
           </div>

@@ -610,7 +610,7 @@ export default function GameModesPage() {
         // Cancel the queue entry since we timed out
         await fetch("/api/matchmaking/cancel", { method: "POST" }).catch(() => {});
 
-        setErrorMessage("Failed to find a match in 1 minute. Try again.");
+        setErrorMessage("No opponent found after 1 minute. Try again later.");
         setState("error");
         return;
       }
@@ -1394,7 +1394,7 @@ function NoMatchPanel({ mode, message, onBack, onTryAgain }: NoMatchPanelProps) 
     <section className={`relative flex flex-1 flex-col items-center justify-center gap-10 overflow-hidden rounded-3xl ${accentBorder} ${gradientClass} p-12 text-center ${accentGlow}`}>
       <div className="space-y-3">
         <p className={`text-xs font-semibold uppercase tracking-[0.45em] ${headlineAccent}`}>Matchmaking</p>
-        <h2 className={`text-4xl font-semibold ${titleColor}`}>No match found</h2>
+        <h2 className={`text-4xl font-semibold ${titleColor}`}>No opponent found</h2>
         <p className={`max-w-lg text-sm ${bodyColor}`}>{message}</p>
       </div>
       <div className="flex flex-wrap justify-center gap-4">

@@ -78,25 +78,46 @@ export async function POST(request: Request) {
 
   if (enqueueError) {
     console.error("Failed to enqueue", enqueueError);
-    return NextResponse.json({ error: "Failed to join matchmaking" }, { status: 500 });
+    const msg = enqueueError.message?.includes("relation")
+      ? "Matchmaking is not set up yet. Run the database migrations first."
+      : `Failed to join matchmaking: ${enqueueError.message ?? "unknown error"}`;
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 
-  const { data: opponentRow, error: opponentError } = await supabase
-    .from("matchmaking_queue")
-    .select("user_id,mode")
-    .eq("mode", mode)
-    .neq("user_id", userId)
-    .order("created_at", { ascending: true })
-    .limit(1)
-    .maybeSingle();
+  // Server-side polling: wait up to 60 seconds for an opponent.
+  const searchStart = Date.now();
+  const searchTimeoutMs = 60_000;
+  const pollIntervalMs = 2_000;
+  const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-  if (opponentError) {
-    console.error("Failed to query matchmaking queue", opponentError);
-    return NextResponse.json({ status: "queued" }, { status: 200 });
+  let opponentRow: { user_id: string; mode: string } | null = null;
+
+  while (Date.now() - searchStart < searchTimeoutMs) {
+    const { data: found, error: pollError } = await supabase
+      .from("matchmaking_queue")
+      .select("user_id,mode")
+      .eq("mode", mode)
+      .neq("user_id", userId)
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    if (pollError) {
+      console.error("Failed to query matchmaking queue", pollError);
+      break;
+    }
+
+    if (found?.user_id) {
+      opponentRow = found;
+      break;
+    }
+
+    await sleep(pollIntervalMs);
   }
 
   if (!opponentRow?.user_id) {
-    // Nobody to match with right now.
+    // Timed out — remove ourselves from the queue.
+    await supabase.from("matchmaking_queue").delete().eq("user_id", userId);
     return NextResponse.json({ status: "queued" }, { status: 200 });
   }
 
@@ -148,7 +169,10 @@ export async function POST(request: Request) {
 
   if (questionsError || !availableQuestions || availableQuestions.length === 0) {
     console.error("No PvP questions available", questionsError);
-    return NextResponse.json({ error: "PvP questions are not seeded yet" }, { status: 500 });
+    const msg = questionsError?.message?.includes("relation")
+      ? "Questions are not seeded yet. Run the database migrations first."
+      : "PvP questions are not seeded yet. Run the database migrations first.";
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 
   const chosen = availableQuestions[Math.floor(Math.random() * availableQuestions.length)];
