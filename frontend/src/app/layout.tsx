@@ -17,6 +17,9 @@ export const metadata: Metadata = {
   title: "Code Royale",
   description:
     "Code Royale – a real-time competitive coding arena. Battle rivals, practice algorithms, and climb the leaderboard.",
+  icons: {
+    icon: "/images/logo-icon.svg",
+  },
 };
 
 export default function RootLayout({

@@ -322,10 +322,10 @@ export function AppShell({ children, showSidebar = true }: AppShellProps) {
             <Link href="/home" className="flex items-center gap-3">
               <div className="relative flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[rgba(var(--cr-accent-rgb),0.15)]">
                 <Image
-                  src="/images/crimage.png"
+                  src="/images/logo-icon.svg"
                   alt="Code Royale"
                   fill
-                  className="object-cover"
+                  className="object-contain p-0.5"
                   sizes="32px"
                   priority
                 />

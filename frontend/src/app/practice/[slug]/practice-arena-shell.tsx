@@ -252,7 +252,7 @@ export function PracticeArenaShell({ question, testcases, initialTimer, initialL
           });
         }
 
-        setFeedback(intent === "submit" ? "✅ Correct! All test cases passed." : "All test cases passed.");
+        setFeedback(intent === "submit" ? "✓ Correct! All test cases passed." : "All test cases passed.");
         setFeedbackTone("success");
       } else {
         setFeedback(intent === "submit" ? "Not yet. Try again!" : "Some test cases failed.");
@@ -507,7 +507,7 @@ export function PracticeArenaShell({ question, testcases, initialTimer, initialL
                         <p className="text-[10px] uppercase tracking-[0.35em] text-sky-400/60">Status</p>
                         <p className="mt-1 text-sm">
                           {activeResult
-                            ? `${activeResult.status} ${activeResult.passed ? "✅" : ""}`
+                            ? `${activeResult.status} ${activeResult.passed ? "✓" : ""}`
                             : results
                               ? "Pending"
                               : "Run the tests to view output."}

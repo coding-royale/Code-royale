@@ -332,7 +332,7 @@ export default function HomePage() {
               <div>
                 <div className="mb-2 flex items-center justify-between text-sm">
                   <span className="text-[var(--cr-fg-muted)]">Current Streak</span>
-                  <span className="text-[var(--cr-fg)]">{streakLabel} 🔥</span>
+                  <span className="text-[var(--cr-fg)]">{streakLabel} <svg className="inline h-4 w-4 text-orange-400" fill="currentColor" viewBox="0 0 24 24"><path d="M12 23c-4.97 0-8-3.58-8-8 0-4.42 4-8.28 6-10 .55.77 1.39 2 2 3 .61-1.17 1.45-2.66 2-3.5C16.13 3.16 20 7.03 20 11c0 3.31-1.69 5.25-3 6.5.93.83 1.73 2.02 2 3.5.24 1.17-.12 1.76-1 2C17.91 23.67 15.11 23 12 23z"/></svg></span>
                 </div>
                 <div className="h-2 rounded-full bg-[var(--cr-bg-tertiary)]">
                   <div className="h-full rounded-full bg-amber-500" style={{ width: `${streakPercent}%` }} />

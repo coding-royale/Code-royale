@@ -563,7 +563,7 @@ export function BotBattleArenaClient({
               <div className={`flex flex-col items-center justify-center border-b border-${accentColor}-500/20 bg-[#060d1f]/60 px-6 py-4`}>
                 <div className="flex items-center gap-3">
                   <div className={`flex h-12 w-12 items-center justify-center rounded-full border-2 border-${accentColor}-400/40 bg-${accentColor}-500/15 text-lg font-bold text-${accentColor}-200`}>
-                    🤖
+                    <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23.693L5 14.5m14.8.8l1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0112 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5"/></svg>
                   </div>
                   <div>
                     <h3 className="text-lg font-bold text-sky-50">{botName}</h3>
@@ -626,7 +626,7 @@ export function BotBattleArenaClient({
           <div className={`w-full max-w-lg rounded-3xl border ${matchResult === "won" ? "border-emerald-500/25" : matchResult === "bot_won" ? "border-red-500/25" : "border-amber-500/25"} bg-[#0c1425] p-8 text-sky-100 shadow-[0_0_60px_rgba(16,185,129,0.2)]`}>
             <div className="text-center">
               <div className="text-5xl mb-4">
-                {matchResult === "won" ? "🏆" : matchResult === "bot_won" ? "💻" : "🤝"}
+                {matchResult === "won" ? <svg className="mx-auto h-16 w-16 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M16.5 18.75h-9m9 0a3 3 0 013 3h-15a3 3 0 013-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 01-.982-3.172M9.497 14.25a7.454 7.454 0 00.981-3.172M5.25 4.236c-.982.143-1.954.317-2.916.52A6.003 6.003 0 007.73 9.728M5.25 4.236V4.5c0 2.108.966 3.99 2.48 5.228M5.25 4.236V2.721C7.456 2.41 9.71 2.25 12 2.25c2.291 0 4.545.16 6.75.47v1.516M18.75 4.236c.982.143 1.954.317 2.916.52A6.003 6.003 0 0016.27 9.728M18.75 4.236V4.5c0 2.108-.966 3.99-2.48 5.228m0 0a6.015 6.015 0 01-2.52.52m0 0a6.015 6.015 0 01-2.52-.52"/></svg> : matchResult === "bot_won" ? <svg className="mx-auto h-16 w-16 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23.693L5 14.5m14.8.8l1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0112 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5"/></svg> : <svg className="mx-auto h-16 w-16 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z"/></svg>}
               </div>
               <h3 className={`text-3xl font-bold uppercase tracking-wider ${
                 matchResult === "won" ? "text-emerald-200" : matchResult === "bot_won" ? "text-red-200" : "text-amber-200"
@@ -642,7 +642,7 @@ export function BotBattleArenaClient({
               </p>
               {pointsAwarded !== null && (
                 <div className="mt-6 inline-flex items-center gap-3 rounded-2xl border border-amber-400/30 bg-amber-500/10 px-8 py-4">
-                  <span className="text-3xl">⭐</span>
+                  <svg className="h-8 w-8 text-amber-400" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
                   <div>
                     <p className="text-[10px] uppercase tracking-[0.35em] text-amber-300/70">Points Earned</p>
                     <p className="text-3xl font-bold text-amber-200">{pointsAwarded}</p>

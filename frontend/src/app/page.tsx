@@ -93,17 +93,29 @@ export default function Home() {
           <div className="mt-16 grid gap-8 md:grid-cols-3">
             {[
               {
-                icon: "⚡",
+                icon: (
+                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
+                  </svg>
+                ),
                 title: "Lightning Modes",
                 description: "60-second bullet rounds, league ladders with ELO-calibrated rivals, and smart bots for practice.",
               },
               {
-                icon: "📊",
+                icon: (
+                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+                  </svg>
+                ),
                 title: "Live Telemetry",
                 description: "Track your streaks, solve velocity, and performance metrics in real-time.",
               },
               {
-                icon: "🔒",
+                icon: (
+                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+                  </svg>
+                ),
                 title: "Secure Sandbox",
                 description: "Instant verdicts in a hardened environment. TypeScript, Python, and C++ supported.",
               },
@@ -112,7 +124,7 @@ export default function Home() {
                 key={feature.title}
                 className="group rounded-xl border border-cr-border bg-cr-bg p-8 transition-all hover:border-cr-accent/50"
               >
-                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-cr-accent/10 text-2xl">
+                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-cr-accent/10 text-cr-accent">
                   {feature.icon}
                 </div>
                 <h3 className="text-xl font-semibold text-cr-fg">{feature.title}</h3>

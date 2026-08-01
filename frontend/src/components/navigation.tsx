@@ -116,10 +116,10 @@ export function Navigation() {
             <Link href="/" className="group inline-flex items-center gap-3">
               <span className="relative flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border border-sky-500/50 bg-slate-900/80 shadow-[0_0_24px_rgba(56,189,248,0.3)] transition group-hover:border-sky-300 group-hover:shadow-[0_0_32px_rgba(56,189,248,0.45)]">
                 <Image
-                  src="/images/crimage.png"
+                  src="/images/logo-icon.svg"
                   alt="Code Royale logo"
                   fill
-                  className="object-cover"
+                  className="object-contain p-0.5"
                   sizes="40px"
                   priority
                 />

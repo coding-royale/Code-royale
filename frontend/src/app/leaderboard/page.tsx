@@ -13,14 +13,14 @@ const leagueTiers: {
   color: string;
   bg: string;
   border: string;
-  icon: string;
+  icon: React.ReactNode;
   minTrophies: number;
 }[] = [
-  { id: "bronze",   label: "Bronze",   color: "text-amber-700",   bg: "bg-amber-900/30",   border: "border-amber-700/40",   icon: "🥉", minTrophies: 0 },
-  { id: "silver",   label: "Silver",   color: "text-slate-300",   bg: "bg-slate-600/20",   border: "border-slate-400/40",   icon: "🥈", minTrophies: 1000 },
-  { id: "gold",     label: "Gold",     color: "text-amber-400",   bg: "bg-amber-500/20",   border: "border-amber-400/40",   icon: "🥇", minTrophies: 2500 },
-  { id: "platinum", label: "Platinum", color: "text-cyan-300",    bg: "bg-cyan-500/15",    border: "border-cyan-400/40",    icon: "💎", minTrophies: 5000 },
-  { id: "diamond",  label: "Diamond",  color: "text-violet-300",  bg: "bg-violet-500/15",  border: "border-violet-400/40",  icon: "👑", minTrophies: 10000 },
+  { id: "bronze",   label: "Bronze",   color: "text-amber-700",   bg: "bg-amber-900/30",   border: "border-amber-700/40",   icon: <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="2"/><circle cx="12" cy="12" r="4"/></svg>, minTrophies: 0 },
+  { id: "silver",   label: "Silver",   color: "text-slate-300",   bg: "bg-slate-600/20",   border: "border-slate-400/40",   icon: <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2l3 7h7l-5.5 4 2 7L12 16l-6.5 4 2-7L2 9h7z"/></svg>, minTrophies: 1000 },
+  { id: "gold",     label: "Gold",     color: "text-amber-400",   bg: "bg-amber-500/20",   border: "border-amber-400/40",   icon: <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2l3 7h7l-5.5 4 2 7L12 16l-6.5 4 2-7L2 9h7z"/></svg>, minTrophies: 2500 },
+  { id: "platinum", label: "Platinum", color: "text-cyan-300",    bg: "bg-cyan-500/15",    border: "border-cyan-400/40",    icon: <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L2 9l10 13L22 9z"/></svg>, minTrophies: 5000 },
+  { id: "diamond",  label: "Diamond",  color: "text-violet-300",  bg: "bg-violet-500/15",  border: "border-violet-400/40",  icon: <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L2 9l10 13L22 9z"/></svg>, minTrophies: 10000 },
 ];
 
 function getLeague(trophies: number): League {

@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <filter id="g" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="2" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <linearGradient id="sg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0ea5e9"/>
+      <stop offset="100%" stop-color="#38bdf8"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <circle cx="32" cy="32" r="30" fill="#030915" stroke="#0ea5e9" stroke-width="1.5"/>
+
+  <!-- Shield -->
+  <g filter="url(#g)">
+    <path d="M32 10 L50 18 L50 34 Q50 46 32 54 Q14 46 14 34 L14 18 Z" fill="none" stroke="url(#sg)" stroke-width="2"/>
+    <path d="M32 13 L47 20 L47 33 Q47 44 32 51 Q17 44 17 33 L17 20 Z" fill="#030915" opacity="0.9"/>
+  </g>
+
+  <!-- Code brackets -->
+  <text x="22" y="36" font-family="monospace" font-size="14" font-weight="bold" fill="#38bdf8" opacity="0.9">&lt;</text>
+  <text x="32" y="34" font-family="monospace" font-size="12" font-weight="bold" fill="#7dd3fc" opacity="0.7">/</text>
+  <text x="40" y="36" font-family="monospace" font-size="14" font-weight="bold" fill="#38bdf8" opacity="0.9">&gt;</text>
+
+  <!-- Crown -->
+  <g transform="translate(32, 10)">
+    <rect x="-10" y="2" width="20" height="4" rx="1" fill="#38bdf8" opacity="0.9"/>
+    <polygon points="-10,2 -7,-5 -4,2" fill="#38bdf8" opacity="0.8"/>
+    <polygon points="-3,2 0,-8 3,2" fill="#7dd3fc" opacity="0.9"/>
+    <polygon points="4,2 7,-5 10,2" fill="#38bdf8" opacity="0.8"/>
+    <circle cx="0" cy="-5" r="1.5" fill="#e0f2fe" opacity="0.9"/>
+  </g>
+</svg>
