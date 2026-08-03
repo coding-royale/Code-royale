@@ -50,12 +50,12 @@ const languageLabels: Record<string, string> = {
 };
 
 const codeTemplates: Record<string, string> = {
-  node: `// Problem: \${title}\n// Return your answer as a string\nfunction solve(raw) {\n  // Write your code here!\n\n  return raw;\n}\n\n// --- DO NOT MODIFY BELOW THIS LINE ---\nconst fs = require('fs');\nconst input = fs.readFileSync(0, 'utf8').trim();\nprocess.stdout.write(String(solve(input)));\n`,
-  javascript: `// Problem: \${title}\n// Return your answer as a string\nfunction solve(raw) {\n  // Write your code here!\n\n  return raw;\n}\n\n// --- DO NOT MODIFY BELOW THIS LINE ---\nconst fs = require('fs');\nconst input = fs.readFileSync(0, 'utf8').trim();\nprocess.stdout.write(String(solve(input)));\n`,
-  python: `# Problem: \${title}\n# Return your answer as a string\ndef solve(raw: str) -> str:\n    # Write your code here!\n\n    return raw\n\n# --- DO NOT MODIFY BELOW THIS LINE ---\nimport sys\ninput_data = sys.stdin.read().strip()\nprint(solve(input_data))\n`,
-  cpp: `// Problem: \${title}\n// Return your answer as a string\n#include <bits/stdc++.h>\nusing namespace std;\n\nstring solve(const string& raw) {\n    // Write your code here!\n\n    return raw;\n}\n\n// --- DO NOT MODIFY BELOW THIS LINE ---\nint main() {\n    ios::sync_with_stdio(false);\n    cin.tie(nullptr);\n    stringstream buffer;\n    buffer << cin.rdbuf();\n    string input = buffer.str();\n    cout << solve(input);\n    return 0;\n}\n`,
-  java: `// Problem: \${title}\n// Return your answer as a string\nimport java.io.*;\nimport java.util.*;\n\npublic class Main {\n  private static String solve(String raw) {\n    // Write your code here!\n\n    return raw;\n  }\n\n  // --- DO NOT MODIFY BELOW THIS LINE ---\n  public static void main(String[] args) throws Exception {\n    StringBuilder sb = new StringBuilder();\n    try (BufferedReader br = new BufferedReader(new InputStreamReader(System.in))) {\n      String line;\n      while ((line = br.readLine()) != null) {\n        if (sb.length() > 0) sb.append("\\n");\n        sb.append(line);\n      }\n    }\n    System.out.print(solve(sb.toString()));\n  }\n}\n`,
-  c: `// Problem: \${title}\n// Return your answer to stdout\n#include <stdio.h>\n#include <string.h>\n\nvoid solve(const char *raw) {\n  // Write your code here!\n\n  printf("%s", raw);\n}\n\n// --- DO NOT MODIFY BELOW THIS LINE ---\nint main(void) {\n  char buffer[1 << 16];\n  size_t length = fread(buffer, 1, sizeof(buffer) - 1, stdin);\n  buffer[length] = '\\0';\n  solve(buffer);\n  return 0;\n}\n`,
+  node: `function solve(raw) {\n  // enter your code here\n\n  return raw;\n}\n\nconst fs = require('fs');\nconst input = fs.readFileSync(0, 'utf8').trim();\nprocess.stdout.write(String(solve(input)));\n`,
+  javascript: `function solve(raw) {\n  // enter your code here\n\n  return raw;\n}\n\nconst fs = require('fs');\nconst input = fs.readFileSync(0, 'utf8').trim();\nprocess.stdout.write(String(solve(input)));\n`,
+  python: `def solve(raw: str) -> str:\n    # enter your code here\n\n    return raw\n\nimport sys\ninput_data = sys.stdin.read().strip()\nprint(solve(input_data))\n`,
+  cpp: `#include <bits/stdc++.h>\nusing namespace std;\n\nstring solve(const string& raw) {\n    // enter your code here\n\n    return raw;\n}\n\nint main() {\n    ios::sync_with_stdio(false);\n    cin.tie(nullptr);\n    stringstream buffer;\n    buffer << cin.rdbuf();\n    string input = buffer.str();\n    cout << solve(input);\n    return 0;\n}\n`,
+  java: `import java.io.*;\nimport java.util.*;\n\npublic class Main {\n  private static String solve(String raw) {\n    // enter your code here\n\n    return raw;\n  }\n\n  public static void main(String[] args) throws Exception {\n    StringBuilder sb = new StringBuilder();\n    try (BufferedReader br = new BufferedReader(new InputStreamReader(System.in))) {\n      String line;\n      while ((line = br.readLine()) != null) {\n        if (sb.length() > 0) sb.append("\\n");\n        sb.append(line);\n      }\n    }\n    System.out.print(solve(sb.toString()));\n  }\n}\n`,
+  c: `#include <stdio.h>\n#include <string.h>\n\nvoid solve(const char *raw) {\n  // enter your code here\n\n  printf("%s", raw);\n}\n\nint main(void) {\n  char buffer[1 << 16];\n  size_t length = fread(buffer, 1, sizeof(buffer) - 1, stdin);\n  buffer[length] = '\\0';\n  solve(buffer);\n  return 0;\n}\n`,
 };
 
 const formatDuration = (seconds: number) => {
@@ -69,8 +69,21 @@ const normalizeLanguage = (value: string) => (value === "javascript" ? "node" : 
 const buildTemplate = (language: string, title: string) => {
   const key = normalizeLanguage(language);
   const template = codeTemplates[key];
-  if (!template) return `// ${title}\n// Write your solution here\n`;
+  if (!template) return `// ${title}\n// enter your code here\n`;
   return template.replaceAll("${title}", title);
+};
+
+const editorPlaceholder = (language: string) =>
+  normalizeLanguage(language) === "python" ? "# enter your code here" : "// enter your code here";
+
+const summarizeError = (stderr: string | null) => {
+  if (!stderr) return null;
+  const line = stderr
+    .split("\n")
+    .map((l) => l.trim())
+    .find((l) => l.length > 0 && !l.includes("node:internal") && !l.startsWith("at "));
+  if (!line) return null;
+  return line.length > 90 ? `${line.slice(0, 87)}...` : line;
 };
 
 const difficultyColors: Record<string, { bg: string; text: string }> = {
@@ -222,8 +235,8 @@ export function PracticeArenaLeetcode({
       });
 
       if (!response.ok) {
-        const data = await response.json().catch(() => ({ error: "Submission failed." }));
-        setFeedback(data.error ?? "Submission failed.");
+        const data = await response.json().catch(() => ({ error: "Something went wrong. Please try again." }));
+        setFeedback(data.error ?? "Something went wrong. Please try again.");
         setFeedbackTone("error");
         return;
       }
@@ -235,11 +248,22 @@ export function PracticeArenaLeetcode({
         setFeedback(intent === "submit" ? "Accepted" : "All test cases passed");
         setFeedbackTone("success");
       } else {
-        setFeedback(intent === "submit" ? "Wrong Answer" : "Some test cases failed");
+        const failed = payload.results.find((r) => !r.passed);
+        const errorLine = failed ? summarizeError(failed.stderr) : null;
+        setFeedback(
+          errorLine ??
+            (failed?.status === "Compilation Error"
+              ? "Compilation error"
+              : failed?.status === "Runtime Error"
+                ? "Runtime error"
+                : intent === "submit"
+                  ? "Wrong answer"
+                  : "Some tests failed"),
+        );
         setFeedbackTone("error");
       }
     } catch {
-      setFeedback("Unable to reach the judge. Check your connection.");
+      setFeedback("Couldn't run your code. Please try again.");
       setFeedbackTone("error");
     } finally {
       setIsSubmitting(false);
@@ -445,8 +469,8 @@ export function PracticeArenaLeetcode({
               value={code}
               onChange={(e) => setCode(e.target.value)}
               spellCheck={false}
-              className="code-editor h-full w-full resize-none border-0 bg-[var(--cr-bg)] p-4 text-[var(--cr-fg)] focus:outline-none"
-              placeholder="Write your solution here..."
+              placeholder={editorPlaceholder(language)}
+              className="code-editor h-full w-full resize-none border-0 bg-[var(--cr-bg)] p-4 text-[var(--cr-fg)] placeholder:text-[var(--cr-fg-muted)] focus:outline-none"
             />
           </div>
 

@@ -2,18 +2,99 @@ import { NextResponse } from "next/server";
 import { createSupabaseServiceClient } from "@/lib/supabase-service";
 import { createSupabaseServerClient } from "@/lib/supabase";
 
-const languageMap: Record<string, { language: string; version: string; judge0Id: number }> = {
-  node: { language: "javascript", version: "18.15.0", judge0Id: 78 },
-  javascript: { language: "javascript", version: "18.15.0", judge0Id: 78 },
-  python: { language: "python", version: "3.10.0", judge0Id: 71 },
-  cpp: { language: "c++", version: "10.2.0", judge0Id: 76 },
-  java: { language: "java", version: "15.0.2", judge0Id: 62 },
-  c: { language: "c", version: "10.2.0", judge0Id: 75 },
+/*
+ * Code execution uses Judge0.
+ * - By default it points at https://ce.judge0.com (free public instance, no API key).
+ * - If JUDGE0_API_KEY is set, it switches to the RapidAPI Judge0 instance using
+ *   JUDGE0_BASE_URL / JUDGE0_API_HOST from the environment.
+ * Language IDs are resolved by name so it works on either instance.
+ */
+
+const languageNamePatterns: Record<string, string[]> = {
+  node: ["JavaScript (Node.js 18.15.0)", "JavaScript (Node.js"],
+  javascript: ["JavaScript (Node.js 18.15.0)", "JavaScript (Node.js"],
+  python: ["Python (3.10.0)", "Python (3.", "Python 3"],
+  cpp: ["C++ (GCC", "C++"],
+  java: ["Java (OpenJDK"],
+  c: ["C (GCC", "C (Clang"],
 };
 
-const judge0BaseUrl = process.env.JUDGE0_BASE_URL?.replace(/\/+$/, "") ?? "https://judge0-ce.p.rapidapi.com";
+const fallbackLanguageIds: Record<string, number> = {
+  node: 93,
+  javascript: 93,
+  python: 71,
+  cpp: 52,
+  java: 62,
+  c: 48,
+};
+
+const judge0BaseUrl = (process.env.JUDGE0_BASE_URL ?? "https://ce.judge0.com").replace(/\/+$/, "");
 const judge0ApiKey = process.env.JUDGE0_API_KEY ?? "";
 const judge0ApiHost = process.env.JUDGE0_API_HOST ?? "judge0-ce.p.rapidapi.com";
+
+let cachedLanguages: { baseUrl: string; fetchedAt: number; items: Array<{ id: number; name: string }> } | null = null;
+const LANGUAGE_CACHE_TTL_MS = 60 * 60 * 1000;
+
+function buildHeaders(): Record<string, string> {
+  if (judge0ApiKey) {
+    return {
+      "Content-Type": "application/json",
+      "X-RapidAPI-Key": judge0ApiKey,
+      "X-RapidAPI-Host": judge0ApiHost,
+    };
+  }
+  return { "Content-Type": "application/json" };
+}
+
+async function fetchLanguages(): Promise<Array<{ id: number; name: string }>> {
+  if (
+    cachedLanguages &&
+    cachedLanguages.baseUrl === judge0BaseUrl &&
+    Date.now() - cachedLanguages.fetchedAt < LANGUAGE_CACHE_TTL_MS
+  ) {
+    return cachedLanguages.items;
+  }
+
+  try {
+    const response = await fetch(`${judge0BaseUrl}/languages`, {
+      headers: buildHeaders(),
+      cache: "no-store",
+    });
+    if (response.ok) {
+      const items = (await response.json()) as Array<{ id: number; name: string }>;
+      cachedLanguages = { baseUrl: judge0BaseUrl, fetchedAt: Date.now(), items };
+      return items;
+    }
+  } catch {
+    // fall through to fallback IDs
+  }
+
+  return [];
+}
+
+async function resolveLanguageId(language: string): Promise<number> {
+  const patterns = languageNamePatterns[language];
+  if (patterns) {
+    const languages = await fetchLanguages();
+    for (const pattern of patterns) {
+      const match = languages.find((entry) => entry.name.startsWith(pattern));
+      if (match) return match.id;
+    }
+  }
+  return fallbackLanguageIds[language] ?? 93;
+}
+
+type SubmissionStatus = {
+  index: number;
+  status: string;
+  actual: string;
+  stderr: string | null;
+  time: string | null;
+  memory: number | null;
+  passed: boolean;
+  expected: string;
+  input: string;
+};
 
 export async function POST(request: Request) {
   let payload: unknown;
@@ -39,7 +120,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
 
-  if (!languageMap[language]) {
+  if (!languageNamePatterns[language]) {
     return NextResponse.json({ error: "Unsupported language" }, { status: 400 });
   }
 
@@ -102,113 +183,103 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "No testcases configured" }, { status: 500 });
   }
 
-  const results = [] as Array<{
-    index: number;
-    status: string;
-    actual: string;
-    stderr: string | null;
-    time: string | null;
-    memory: number | null;
-    passed: boolean;
-    expected: string;
-    input: string;
-  }>;
+  let languageId: number;
+  try {
+    languageId = await resolveLanguageId(language);
+  } catch (error) {
+    console.error("Failed to resolve language id", error);
+    return NextResponse.json(
+      { error: "Unable to run code right now. Please try again in a moment." },
+      { status: 502 },
+    );
+  }
+
+  const results: SubmissionStatus[] = [];
 
   for (const testcase of normalizedTestcases) {
-    try {
-      const runConfig = languageMap[language];
+    let submission: {
+      stdout?: string;
+      stderr?: string;
+      compile_output?: string;
+      status?: { id?: number; description?: string };
+      time?: string;
+      memory?: number;
+    };
 
-      if (!judge0ApiKey) {
-        return NextResponse.json(
-          { error: "Code execution is not configured. Set JUDGE0_API_KEY in .env.local (get a free key at https://judge0-ce.p.rapidapi.com)." },
-          { status: 500 },
-        );
-      }
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 20000);
 
       const response = await fetch(
         `${judge0BaseUrl}/submissions?base64_encoded=false&wait=true`,
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-RapidAPI-Key": judge0ApiKey,
-            "X-RapidAPI-Host": judge0ApiHost,
-          },
+          headers: buildHeaders(),
           body: JSON.stringify({
-            language_id: runConfig.judge0Id,
+            language_id: languageId,
             source_code: code,
             stdin: testcase.input,
           }),
+          signal: controller.signal,
         },
       );
 
+      clearTimeout(timeout);
+
       if (!response.ok) {
-        const message = await response.text();
-        console.error("Judge0 submission error", message, "Status:", response.status);
-        
-        let errorMessage = "Code execution failed";
-        try {
-          const parsed = JSON.parse(message);
-          if (parsed.message) {
-            errorMessage = parsed.message;
-          } else if (parsed.error) {
-            errorMessage = parsed.error;
-          }
-        } catch (_) {
-          if (message) errorMessage = message;
-        }
-        
-        return NextResponse.json({ error: errorMessage }, { status: 502 });
+        console.error("Judge0 submission error", response.status, await response.text());
+        return NextResponse.json(
+          { error: "Unable to run code right now. Please try again in a moment." },
+          { status: 502 },
+        );
       }
 
-      const submission = (await response.json()) as {
-        stdout?: string;
-        stderr?: string;
-        compile_stderr?: string;
-        status?: { id?: number; description?: string };
-        time?: string;
-        memory?: number;
-      };
+      submission = (await response.json()) as typeof submission;
+    } catch (error) {
+      console.error("Judge0 request error", error);
+      return NextResponse.json(
+        { error: "Unable to run code right now. Please try again in a moment." },
+        { status: 502 },
+      );
+    }
 
-      const stdout = submission.stdout ?? "";
-      const stderr = submission.stderr ?? submission.compile_stderr ?? null;
-      
-      const cleanExpected = testcase.expected.trim().replace(/\r\n/g, "\n");
-      const cleanActual = stdout.trim().replace(/\r\n/g, "\n");
+    const stdout = submission.stdout ?? "";
+    const stderr = submission.stderr ?? submission.compile_output ?? null;
 
-      const statusCode = submission.status?.id ?? 0;
-      const isCompileError = statusCode === 6;
-      const isRuntimeError = statusCode >= 11 && statusCode <= 12;
-      const isTimeLimitExceeded = statusCode === 5;
-      const isAccepted = statusCode === 3;
+    const cleanExpected = testcase.expected.trim().replace(/\r\n/g, "\n");
+    const cleanActual = stdout.trim().replace(/\r\n/g, "\n");
 
-      const passed = isAccepted && cleanActual === cleanExpected;
-      const status = isCompileError
-        ? "Compilation Error"
-        : isRuntimeError || isTimeLimitExceeded
+    const statusCode = submission.status?.id ?? 0;
+    const isCompileError = statusCode === 6;
+    const isRuntimeError = statusCode >= 11 && statusCode <= 12;
+    const isTimeLimitExceeded = statusCode === 5;
+    const isAccepted = statusCode === 3;
+
+    const passed = isAccepted && cleanActual === cleanExpected;
+    const status = isCompileError
+      ? "Compilation Error"
+      : isTimeLimitExceeded
+        ? "Time Limit Exceeded"
+        : isRuntimeError
           ? "Runtime Error"
           : passed
             ? "Accepted"
             : "Wrong Answer";
 
-      results.push({
-        index: testcase.index,
-        status,
-        actual: stdout,
-        stderr,
-        time: submission.time ?? null,
-        memory: submission.memory ?? null,
-        passed,
-        expected: testcase.expected,
-        input: testcase.input,
-      });
+    results.push({
+      index: testcase.index,
+      status,
+      actual: stdout,
+      stderr,
+      time: submission.time ?? null,
+      memory: submission.memory ?? null,
+      passed,
+      expected: testcase.expected,
+      input: testcase.input,
+    });
 
-      if (!passed) {
-        break;
-      }
-    } catch (error) {
-      console.error("Judge0 request error", error);
-      return NextResponse.json({ error: "Code execution request failed" }, { status: 502 });
+    if (!passed) {
+      break;
     }
   }
 
@@ -222,7 +293,6 @@ export async function POST(request: Request) {
       } = await authSupabase.auth.getUser();
 
       if (user?.id) {
-        // Best-effort write for user progress; do not fail submission response on tracking issues.
         await supabase.from("practice_submissions").insert({
           user_id: user.id,
           question_id: questionId,
