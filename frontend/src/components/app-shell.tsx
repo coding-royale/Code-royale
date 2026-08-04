@@ -104,7 +104,12 @@ const bottomItems = [
   },
 ];
 
-const socialButtons = [
+const socialButtons: Array<{
+  id: string;
+  label: string;
+  href?: string;
+  icon: ReactNode;
+}> = [
   {
     id: "youtube",
     label: "YouTube",
@@ -117,6 +122,7 @@ const socialButtons = [
   {
     id: "linkedin",
     label: "LinkedIn",
+    href: "https://www.linkedin.com/in/lohitaksha-patary/",
     icon: (
       <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
         <path d="M20.447 20.452H16.89v-5.569c0-1.328-.024-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.346V9h3.414v1.561h.049c.476-.9 1.637-1.85 3.368-1.85 3.601 0 4.267 2.369 4.267 5.455v6.286zM5.337 7.433a2.066 2.066 0 110-4.132 2.066 2.066 0 010 4.132zM7.119 20.452H3.555V9h3.564v11.452z" />
@@ -126,6 +132,7 @@ const socialButtons = [
   {
     id: "twitter",
     label: "Twitter",
+    href: "https://x.com/lohitaksha06",
     icon: (
       <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
         <path d="M18.244 2H21l-6.017 6.877L22 22h-5.561l-4.357-5.095L7.62 22H4.862l6.437-7.356L2 2h5.702l3.939 4.676L18.244 2zm-.968 18.347h1.531L6.87 3.566H5.227l12.049 16.781z" />
@@ -562,18 +569,39 @@ export function AppShell({ children, showSidebar = true }: AppShellProps) {
             <section>
               <h3 className="mb-3 text-lg font-semibold text-[var(--cr-fg)]">Social</h3>
               <div className="flex flex-wrap gap-3">
-                {socialButtons.map((item) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    className="inline-flex items-center gap-2 rounded-lg border border-[var(--cr-border)] bg-[var(--cr-bg)] px-4 py-2 text-sm font-medium text-[var(--cr-fg)] transition-colors hover:border-[rgba(var(--cr-accent-rgb),0.5)] hover:text-[rgb(var(--cr-accent-rgb))]"
-                    aria-label={`${item.label} (coming soon)`}
-                    title="Link coming soon"
-                  >
-                    {item.icon}
-                    <span>{item.label}</span>
-                  </button>
-                ))}
+                {socialButtons.map((item) => {
+                  const classes =
+                    "inline-flex items-center gap-2 rounded-lg border border-[var(--cr-border)] bg-[var(--cr-bg)] px-4 py-2 text-sm font-medium text-[var(--cr-fg)] transition-colors hover:border-[rgba(var(--cr-accent-rgb),0.5)] hover:text-[rgb(var(--cr-accent-rgb))]";
+
+                  if (item.href) {
+                    return (
+                      <a
+                        key={item.id}
+                        href={item.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={classes}
+                        aria-label={item.label}
+                      >
+                        {item.icon}
+                        <span>{item.label}</span>
+                      </a>
+                    );
+                  }
+
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      className={classes}
+                      aria-label={`${item.label} (coming soon)`}
+                      title="Link coming soon"
+                    >
+                      {item.icon}
+                      <span>{item.label}</span>
+                    </button>
+                  );
+                })}
               </div>
             </section>
 
