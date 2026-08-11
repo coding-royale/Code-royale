@@ -92,8 +92,17 @@ The app supports sign-in with GitHub. Supabase manages the OAuth flow. Configure
 3. Apply the username fallback function.
    - Run `supabase-github-username.sql` in the Supabase SQL editor.
    - The function reads the GitHub login from the OAuth metadata when a user signs up.
+4. Configure the URL settings.
+   - Open Authentication > URL Configuration.
+   - Set the Site URL to the origin of your deployed app. For example, set it to `https://code-royale-gilt.vercel.app`.
+   - Add the origin of your deployed app to the Redirect URLs. Use this format: `https://code-royale-gilt.vercel.app/**`.
+   - Add `http://localhost:3000/**` to the Redirect URLs when you develop locally.
+   - Set `NEXT_PUBLIC_SITE_URL` in your hosting environment to the deployed origin. For example, set it to `https://code-royale-gilt.vercel.app` in the Vercel project settings.
+   - Redeploy the app after you change `NEXT_PUBLIC_SITE_URL`.
 
 When a user signs in with GitHub for the first time, the app creates a profile row. The username comes from the GitHub login. A new user needs no extra setup.
+
+If the sign-in redirects to `http://localhost:3000` after authorization, check the URL Configuration. The redirect target must be in the Redirect URLs list. A redirect to localhost usually means that the deployed origin is missing from the list.
 
 ## Code execution
 
