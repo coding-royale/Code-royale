@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { supabase } from "../../../lib/supabase-browser";
+import { formatOAuthError, getOAuthRedirectTo } from "../../../lib/oauth";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -11,17 +12,6 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const getOAuthRedirectTo = () => {
-    const configuredSiteUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim();
-    const siteOrigin = configuredSiteUrl
-      ? configuredSiteUrl.replace(/\/$/, "")
-      : typeof window !== "undefined"
-        ? window.location.origin
-        : undefined;
-
-    return siteOrigin ? `${siteOrigin}/home` : undefined;
-  };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -91,6 +81,32 @@ export default function LoginPage() {
           ? "Cannot reach Supabase (network/CORS). Verify NEXT_PUBLIC_SUPABASE_URL is correct/https, and that your Supabase project is reachable."
           : message,
       );
+      setLoading(false);
+    }
+  };
+
+  const handleGithubSignIn = async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "github",
+        options: {
+          redirectTo: getOAuthRedirectTo(),
+        },
+      });
+
+      if (error) {
+        setError(formatOAuthError(error.message, "GitHub"));
+        setLoading(false);
+        return;
+      }
+
+      // On success, supabase-js redirects the browser to the provider automatically.
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      setError(formatOAuthError(message, "GitHub"));
       setLoading(false);
     }
   };
@@ -214,6 +230,8 @@ export default function LoginPage() {
               </button>
               <button
                 type="button"
+                onClick={handleGithubSignIn}
+                disabled={loading}
                 className="flex items-center justify-center gap-2 rounded-lg border border-cr-border bg-cr-bg px-4 py-2.5 text-sm font-medium text-cr-fg hover:bg-cr-bg-tertiary transition-colors"
               >
                 <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">

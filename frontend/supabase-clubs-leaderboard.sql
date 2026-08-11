@@ -108,7 +108,7 @@ $$ LANGUAGE SQL STABLE;
 -- Practice Questions, Matches & Matchmaking tables
 -- ============================================================
 
--- 8) Practice questions (seeded via pnpm seed:pvp)
+-- 8) Practice questions (seeded via bun run seed:pvp)
 CREATE TABLE IF NOT EXISTS practice_questions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   slug TEXT NOT NULL UNIQUE,

@@ -37,7 +37,7 @@ The documentation covers the whole codebase. See the file inventory in the [arch
 
 ## Development
 
-The app runs with `pnpm`. Read the [setup guide](docs/setup.md) before you start the app.
+The app runs with `bun`. Read the [setup guide](docs/setup.md) before you start the app.
 
 ## License
 

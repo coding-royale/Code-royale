@@ -12,7 +12,7 @@ The app uses these technologies:
 - Tailwind CSS 4
 - Supabase for the database, authentication, and realtime features
 - Judge0 for code execution
-- pnpm as the package manager
+- bun as the package manager
 
 ## High-level architecture
 
@@ -128,6 +128,7 @@ The library modules are in `frontend/src/lib`:
 - `supabase.ts` — the Supabase server client that uses cookies
 - `supabase-browser.ts` — the Supabase browser client with configuration validation
 - `supabase-service.ts` — the Supabase service-role client for server operations
+- `oauth.ts` — the shared OAuth helpers for the redirect target and error messages
 - `bot-player.ts` — the bot simulator for bot battles
 - `pvp-questions.ts` — the curated PvP question seeds
 - `use-friend-presence.ts` — the hook for live friend presence
@@ -152,7 +153,7 @@ The SQL files are in the `frontend` folder. They define the database schema. See
 The configuration files are in the `frontend` folder:
 
 - `package.json` — the dependencies and the npm scripts
-- `pnpm-lock.yaml` — the locked dependency versions
+- `bun.lock` — the locked dependency versions
 - `next.config.ts` — the Next.js configuration
 - `tsconfig.json` — the TypeScript configuration with the `@/*` path alias
 - `eslint.config.mjs` — the ESLint configuration

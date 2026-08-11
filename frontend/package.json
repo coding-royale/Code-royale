@@ -8,7 +8,7 @@
     "build": "next build --turbopack",
     "start": "next start",
     "lint": "eslint",
-    "seed:pvp": "node scripts/seed-pvp-questions.mjs"
+    "seed:pvp": "bun scripts/seed-pvp-questions.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.8.0",

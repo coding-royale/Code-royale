@@ -6,8 +6,7 @@ This document explains how to configure and run Code Royale.
 
 Install these tools before you start:
 
-- Node.js 20 or newer
-- pnpm
+- bun
 - A Supabase project
 - A code execution service (Judge0 is the default)
 
@@ -32,7 +31,7 @@ Note: `NEXT_PUBLIC_SUPABASE_ANON_KEY` must be a real key. The browser client rej
 Run this command in the `frontend` folder:
 
 ```bash
-pnpm install
+bun install
 ```
 
 ## Configure the database
@@ -53,8 +52,8 @@ The file `supabase-clubs-leaderboard.sql` is an older incremental script. Do not
 Run the seed scripts from the `frontend` folder:
 
 ```bash
-pnpm seed:pvp
-node scripts/seed-extra-questions.mjs
+bun run seed:pvp
+bun scripts/seed-extra-questions.mjs
 ```
 
 The script `seed:pvp` reads `frontend/.env.local` and inserts 50 curated questions into `practice_questions`. The script `seed-extra-questions.mjs` inserts 30 extra questions.
@@ -64,16 +63,37 @@ The script `seed:pvp` reads `frontend/.env.local` and inserts 50 curated questio
 Start the development server with this command:
 
 ```bash
-pnpm dev
+bun dev
 ```
 
 Open `http://localhost:3000` in your browser.
 
 Use these commands for the other tasks:
 
-- `pnpm build` — build the app for production
-- `pnpm start` — start the production server
-- `pnpm lint` — run the ESLint checks
+- `bun run build` — build the app for production
+- `bun start` — start the production server
+- `bun lint` — run the ESLint checks
+
+## GitHub sign-in
+
+The app supports sign-in with GitHub. Supabase manages the OAuth flow. Configure it with these steps before you start:
+
+1. Create a GitHub App (recommended) or an OAuth App.
+   - Open `https://github.com/settings/developers`.
+   - Register a new application.
+   - Enter the Homepage URL. Use the origin of your app. For example, use `http://localhost:3000` when you run the app locally.
+   - Enter the callback URL. Use `https://<project-ref>.supabase.co/auth/v1/callback`. Replace `<project-ref>` with the reference of your Supabase project.
+   - Save the client ID and the client secret.
+2. Enable the GitHub provider in the Supabase dashboard.
+   - Open Authentication > Sign In / Providers.
+   - Turn on the GitHub provider.
+   - Enter the client ID and the client secret from step 1.
+   - Save the settings.
+3. Apply the username fallback function.
+   - Run `supabase-github-username.sql` in the Supabase SQL editor.
+   - The function reads the GitHub login from the OAuth metadata when a user signs up.
+
+When a user signs in with GitHub for the first time, the app creates a profile row. The username comes from the GitHub login. A new user needs no extra setup.
 
 ## Code execution
 

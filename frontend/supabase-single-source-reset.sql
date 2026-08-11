@@ -67,7 +67,13 @@ begin
   insert into public.users (id, username, rating, wins, losses, team_name)
   values (
     new.id,
-    coalesce(new.raw_user_meta_data->>'display_name', split_part(new.email, '@', 1)),
+    coalesce(
+      new.raw_user_meta_data->>'display_name',
+      new.raw_user_meta_data->>'user_name',
+      new.raw_user_meta_data->>'preferred_username',
+      new.raw_user_meta_data->>'name',
+      split_part(new.email, '@', 1)
+    ),
     0,
     0,
     0,
