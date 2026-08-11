@@ -1,48 +1,45 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Code Royale frontend
 
-## Getting Started
+This folder contains the Code Royale application. The application is a Next.js 16 app with Supabase and Judge0.
 
-### PvP matchmaking (ranked/unranked)
+## Quick start
 
-This project supports real 1v1 matchmaking via Supabase tables `matchmaking_queue`, `matches`, and `match_players`.
-
-Before using PvP matchmaking you must seed the curated PvP questions into `practice_questions`:
-
-1. Create `frontend/.env.local` from `frontend/.env.local.example`
-2. Fill in `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_SITE_URL`, and `SUPABASE_SERVICE_ROLE_KEY`
-3. Run `pnpm seed:pvp`
-
-For auth confirmation emails, set `NEXT_PUBLIC_SITE_URL` to your deployed domain (for example `https://code-royale.app`) so verification links do not point to localhost.
-
-First, run the development server:
+Run these commands in this folder:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+pnpm install
 pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Before you run the app, create the file `.env.local` with the Supabase variables. See the [setup guide](../docs/setup.md) for the full instructions.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Open `http://localhost:3000` in your browser.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Seed the questions
 
-## Learn More
+Run this command to insert the curated questions:
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+pnpm seed:pvp
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+The seed script reads the `.env.local` file. The `SUPABASE_SERVICE_ROLE_KEY` value must be present.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Scripts
 
-## Deploy on Vercel
+The `package.json` file defines these scripts:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- `pnpm dev` — start the development server
+- `pnpm build` — build the app for production
+- `pnpm start` — start the production server
+- `pnpm lint` — run the ESLint checks
+- `pnpm seed:pvp` — seed the PvP questions
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Documentation
+
+Read the project documentation in the `docs` folder at the repository root:
+
+- [Architecture](../docs/architecture.md)
+- [Setup guide](../docs/setup.md)
+- [Database](../docs/database.md)
+- [API reference](../docs/api.md)
