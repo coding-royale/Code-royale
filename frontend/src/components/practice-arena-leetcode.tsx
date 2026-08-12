@@ -4,11 +4,13 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
+  Check,
   Clock,
   Lightbulb,
   Pause,
   Play,
   RotateCcw,
+  X,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -316,14 +318,14 @@ export function PracticeArenaLeetcode({
     }
   };
 
-  const statusDot = (status: string) =>
-    status === "passed"
-      ? "bg-emerald-500"
-      : status === "failed"
-        ? "bg-red-500"
-        : status === "pending"
-          ? "bg-amber-400"
-          : "bg-muted-foreground";
+  const StatusIcon = ({ status }: { status: string }) =>
+    status === "passed" ? (
+      <Check className="size-3.5 text-emerald-500" />
+    ) : status === "failed" ? (
+      <X className="size-3.5 text-red-500" />
+    ) : status === "pending" ? (
+      <Clock className="size-3.5 text-amber-400" />
+    ) : null;
 
   return (
     <div className="flex h-screen flex-col bg-background">
@@ -570,8 +572,8 @@ export function PracticeArenaLeetcode({
                                 : "text-muted-foreground hover:bg-accent/60 hover:text-foreground"
                             )}
                           >
-                            <span className={cn("size-2 rounded-full", statusDot(status))} />
-                            Case {i + 1}
+                              <StatusIcon status={status} />
+                              Case {i + 1}
                           </button>
                         );
                       })}
@@ -612,7 +614,7 @@ export function PracticeArenaLeetcode({
                                     : "text-muted-foreground hover:bg-accent/60 hover:text-foreground"
                                 )}
                               >
-                                <span className={cn("size-2 rounded-full", statusDot(status))} />
+                                <StatusIcon status={status} />
                                 Case {i + 1}
                               </button>
                             );

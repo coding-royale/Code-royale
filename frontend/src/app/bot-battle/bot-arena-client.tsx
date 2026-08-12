@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Bot, BookOpen, Eye, Trophy, Zap } from "lucide-react";
+import { Bot, BookOpen, Check, Clock, Eye, Trophy, X, Zap } from "lucide-react";
 import { TetrioBattleBackground } from "@/components/battle/tetrio-battle-background";
 import { MaskedOpponentEditor } from "@/components/battle/masked-opponent-editor";
 import { BotSimulator, getBotConfig, type BotDifficulty, type BotProgress } from "@/lib/bot-player";
@@ -104,27 +104,24 @@ const BOT_NAMES: Record<BotDifficulty, string> = {
 
 const DIFFICULTY_STYLES: Record<
   BotDifficulty,
-  { border: string; bg: string; text: string; dot: string; chip: string }
+  { border: string; bg: string; text: string; chip: string }
 > = {
   easy: {
     border: "border-emerald-500/40",
     bg: "bg-emerald-500/15",
     text: "text-emerald-500",
-    dot: "bg-emerald-500",
     chip: "border-emerald-500/30 bg-emerald-500/10 text-emerald-500",
   },
   medium: {
     border: "border-amber-500/40",
     bg: "bg-amber-500/15",
     text: "text-amber-500",
-    dot: "bg-amber-500",
     chip: "border-amber-500/30 bg-amber-500/10 text-amber-500",
   },
   hard: {
     border: "border-rose-500/40",
     bg: "bg-rose-500/15",
     text: "text-rose-500",
-    dot: "bg-rose-500",
     chip: "border-rose-500/30 bg-rose-500/10 text-rose-500",
   },
 };
@@ -586,9 +583,6 @@ export function BotBattleArenaClient({
                   <div className="flex gap-1.5">
                     {safeTestcases.map((tc, i) => {
                       const status = statusForIndex(i);
-                      const indicator = status === "passed" ? "bg-emerald-500"
-                        : status === "failed" ? "bg-red-500"
-                          : status === "pending" ? "bg-amber-500" : "bg-muted-foreground/50";
                       return (
                         <button
                           key={`${tc.id}-console`}
@@ -600,7 +594,13 @@ export function BotBattleArenaClient({
                               : "border-border text-muted-foreground hover:border-foreground/40"
                           }`}
                         >
-                          <span className={`size-1.5 rounded-full ${indicator}`} />
+                          {status === "passed" ? (
+                            <Check className="size-3 text-emerald-500" />
+                          ) : status === "failed" ? (
+                            <X className="size-3 text-red-500" />
+                          ) : status === "pending" ? (
+                            <Clock className="size-3 text-amber-500" />
+                          ) : null}
                           {i + 1}
                         </button>
                       );
@@ -677,8 +677,7 @@ export function BotBattleArenaClient({
                 <div className="h-full overflow-hidden rounded-xl border bg-card shadow-sm">
                   <div className="border-b px-4 py-2">
                     <div className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-muted-foreground">
-                      <span className={`size-2 rounded-full ${difficultyStyle.dot}`} />
-                      Bot Coding Activity
+                      <span>Bot Coding Activity</span>
                     </div>
                   </div>
                   <div className="h-[calc(100%-36px)] overflow-y-auto p-5">

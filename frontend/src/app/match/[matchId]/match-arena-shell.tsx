@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { BookOpen, Eye, Trophy, X } from "lucide-react";
+import { BookOpen, Check, Clock, Eye, Trophy, X } from "lucide-react";
 import { TetrioBattleBackground } from "@/components/battle/tetrio-battle-background";
 import { MaskedOpponentEditor } from "@/components/battle/masked-opponent-editor";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -708,14 +708,6 @@ export function MatchArenaShell({
                   <div className="flex gap-1.5">
                     {safeTestcases.map((tc, i) => {
                       const status = statusForIndex(i);
-                      const indicator =
-                        status === "passed"
-                          ? "bg-emerald-500"
-                          : status === "failed"
-                            ? "bg-red-500"
-                            : status === "pending"
-                              ? "bg-amber-500"
-                              : "bg-muted-foreground/50";
                       return (
                         <button
                           key={`${tc.id}-console`}
@@ -727,7 +719,13 @@ export function MatchArenaShell({
                               : "border-border text-muted-foreground hover:border-foreground/40"
                           }`}
                         >
-                          <span className={`size-1.5 rounded-full ${indicator}`} />
+                          {status === "passed" ? (
+                            <Check className="size-3 text-emerald-500" />
+                          ) : status === "failed" ? (
+                            <X className="size-3 text-red-500" />
+                          ) : status === "pending" ? (
+                            <Clock className="size-3 text-amber-500" />
+                          ) : null}
                           {i + 1}
                         </button>
                       );

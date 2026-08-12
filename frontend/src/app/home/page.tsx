@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Bot, Flame, Play, Swords, Users } from "lucide-react";
+import { ArrowRight, Bot, CheckCircle2, Flame, Play, Swords, Users } from "lucide-react";
 
 import { AppShell } from "../../components/app-shell";
 import { supabase } from "../../lib/supabase-browser";
@@ -155,16 +155,7 @@ export default function HomePage() {
 
   const solvedDenominator = Math.max(progress.totalProblems, 1);
   const solvedPercent = Math.min(100, Math.round((progress.solvedProblems / solvedDenominator) * 100));
-  const streakLabel = `${progress.streakDays} day${progress.streakDays === 1 ? "" : "s"}`;
-  const streakPercent = Math.min(100, progress.streakDays * 20);
   const shownFriends = friends.slice(0, 14);
-
-  const stats: Array<{ label: string; value: string; hint?: string }> = [
-    { label: "Matches Today", value: telemetry.matchesToday.toLocaleString() },
-    { label: "Online Now", value: telemetry.activePlayers.toLocaleString() },
-    { label: "Problems Solved", value: `${progress.solvedProblems}`, hint: `of ${progress.totalProblems}` },
-    { label: "Streak", value: streakLabel },
-  ];
 
   return (
     <AppShell>
@@ -184,6 +175,10 @@ export default function HomePage() {
               </p>
             </div>
             <div className="flex flex-col items-start gap-3 md:items-end">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-sm font-semibold text-amber-600 dark:text-amber-400">
+                <Flame className="size-4" />
+                {progress.streakDays} day streak
+              </span>
               <LinkButton size="lg" href="/game-modes" className="px-8 py-4 text-base">
                 <Swords data-icon="inline-start" />
                 Find a Match
@@ -194,22 +189,21 @@ export default function HomePage() {
               </LinkButton>
             </div>
           </div>
+          <div className="relative z-10 mt-6 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-foreground/10 pt-4 text-sm text-muted-foreground">
+            <span className="inline-flex items-center gap-1.5">
+              <Swords className="size-3.5" />
+              {telemetry.matchesToday.toLocaleString()} matches today
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <Users className="size-3.5" />
+              {telemetry.activePlayers.toLocaleString()} online now
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <CheckCircle2 className="size-3.5" />
+              {progress.solvedProblems}/{progress.totalProblems} problems solved
+            </span>
+          </div>
           <div className="pointer-events-none absolute right-0 top-0 h-full w-1/2 bg-gradient-to-l from-accent/20 to-transparent" />
-        </section>
-
-        {/* Glanceable stats */}
-        <section className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          {stats.map((stat) => (
-            <Card key={stat.label} className="shadow-sm">
-              <CardContent className="flex flex-col gap-1">
-                <span className="text-2xl font-bold tracking-tight">{stat.value}</span>
-                <span className="text-sm text-muted-foreground">
-                  {stat.label}
-                  {stat.hint ? ` · ${stat.hint}` : ""}
-                </span>
-              </CardContent>
-            </Card>
-          ))}
         </section>
 
         {/* Quick mode shortcuts */}
@@ -249,7 +243,7 @@ export default function HomePage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center justify-between gap-3 text-base">
-              <span>Online Friends ({friends.length})</span>
+              <span>Friends ({friends.length})</span>
               <LinkButton variant="ghost" size="sm" href="/friends">
                 See all
                 <ArrowRight data-icon="inline-end" />
@@ -288,9 +282,6 @@ export default function HomePage() {
                           {initialsFromName(friend.username)}
                         </AvatarFallback>
                       </Avatar>
-                      {friend.online && (
-                        <span className="absolute -bottom-0.5 left-1/2 size-3 -translate-x-1/2 rounded-full bg-emerald-500 ring-2 ring-background" />
-                      )}
                     </div>
                     <p className="mt-3 truncate text-sm font-medium">{friend.username}</p>
                   </Link>
@@ -318,9 +309,9 @@ export default function HomePage() {
               </div>
               <div className="flex flex-col gap-2">
                 {[
-                  { label: "Easy", problems: "20 problems", className: "bg-emerald-500" },
-                  { label: "Medium", problems: "35 problems", className: "bg-amber-500" },
-                  { label: "Hard", problems: "15 problems", className: "bg-rose-500" },
+                  { label: "Easy", problems: "20 problems", textClass: "text-emerald-600 dark:text-emerald-400" },
+                  { label: "Medium", problems: "35 problems", textClass: "text-amber-600 dark:text-amber-400" },
+                  { label: "Hard", problems: "15 problems", textClass: "text-rose-600 dark:text-rose-400" },
                 ].map((tier) => (
                   <Link
                     key={tier.label}
@@ -328,8 +319,7 @@ export default function HomePage() {
                     className="flex items-center justify-between rounded-lg border bg-card px-4 py-3 shadow-sm transition-all hover:border-ring hover:shadow-md"
                   >
                     <div className="flex items-center gap-3">
-                      <span className={`size-2 rounded-full ${tier.className}`} />
-                      <span className="text-sm font-medium">{tier.label}</span>
+                      <span className={`text-sm font-medium ${tier.textClass}`}>{tier.label}</span>
                       <span className="text-xs text-muted-foreground">{tier.problems}</span>
                     </div>
                     <ArrowRight className="size-4 text-muted-foreground" />
@@ -349,15 +339,6 @@ export default function HomePage() {
                   <span className="text-muted-foreground">Problems Solved</span>
                   <span className="font-medium">
                     {progress.solvedProblems} / {progress.totalProblems}
-                  </span>
-                </div>
-              </Progress>
-              <Progress value={streakPercent}>
-                <div className="flex w-full items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Current Streak</span>
-                  <span className="inline-flex items-center gap-1.5 font-medium">
-                    {streakLabel}
-                    <Flame className="size-4 text-amber-500" />
                   </span>
                 </div>
               </Progress>

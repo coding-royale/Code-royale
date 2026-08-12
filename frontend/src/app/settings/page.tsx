@@ -29,14 +29,27 @@ type StoredPrefs = {
 
 const defaultPrefs: StoredPrefs = { spectateEnabled: true, tagline: "" };
 
+// useSyncExternalStore requires getSnapshot to return a stable (cached)
+// reference — returning a fresh object every call makes React loop forever.
+let cachedPrefs: StoredPrefs | null = null;
+
 function readStoredPrefs(): StoredPrefs {
   if (typeof window === "undefined") return defaultPrefs;
   try {
     const spectate = localStorage.getItem("cr_settings_spectate_enabled");
-    return {
+    const tagline = localStorage.getItem("cr_settings_tagline") ?? "";
+    const next: StoredPrefs = {
       spectateEnabled: spectate === null ? true : spectate === "true",
-      tagline: localStorage.getItem("cr_settings_tagline") ?? "",
+      tagline,
     };
+    if (
+      cachedPrefs === null ||
+      cachedPrefs.spectateEnabled !== next.spectateEnabled ||
+      cachedPrefs.tagline !== next.tagline
+    ) {
+      cachedPrefs = next;
+    }
+    return cachedPrefs;
   } catch {
     return defaultPrefs;
   }

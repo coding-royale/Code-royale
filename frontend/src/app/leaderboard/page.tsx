@@ -184,11 +184,7 @@ export default function LeaderboardPage() {
               Compete, climb ranks, and dominate the leagues
             </p>
           </div>
-          <div className="flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 shadow-sm">
-            <span className="relative flex size-2.5">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-              <span className="relative inline-flex size-2.5 rounded-full bg-emerald-500" />
-            </span>
+          <div className="flex items-center rounded-lg border border-border bg-card px-4 py-2 shadow-sm">
             <span className="text-xs font-medium text-muted-foreground">
               {realTimeCount} player{realTimeCount !== 1 ? "s" : ""} ranked
             </span>
