@@ -7,10 +7,10 @@ interface GlowCardProps {
   accent?: "cyan" | "blue" | "purple";
 }
 
-const accentClass: Record<Required<GlowCardProps>["accent"], string> = {
-  cyan: "from-sky-500/60 via-sky-500/20 to-sky-500/0",
-  blue: "from-blue-500/60 via-blue-500/20 to-blue-500/0",
-  purple: "from-violet-500/60 via-violet-500/20 to-violet-500/0",
+const accentBarClass: Record<Required<GlowCardProps>["accent"], string> = {
+  cyan: "bg-sky-500",
+  blue: "bg-blue-500",
+  purple: "bg-violet-500",
 };
 
 export function GlowCard({
@@ -20,19 +20,16 @@ export function GlowCard({
   accent = "cyan",
 }: GlowCardProps) {
   return (
-    <section className="relative overflow-hidden rounded-3xl border border-slate-800/80 bg-slate-900/40 p-[1px] shadow-[0_0_45px_rgba(56,189,248,0.12)] backdrop-blur-xl">
-      <div className="absolute inset-0 -z-10 bg-slate-900/70" />
-      <div
-        className={`absolute -inset-px -z-20 bg-gradient-to-br ${accentClass[accent]} opacity-40`}
-      />
-      <div className="relative flex h-full flex-col gap-4 rounded-[28px] bg-slate-950/70 p-8">
+    <section className="relative overflow-hidden rounded-xl border border-[var(--cr-border)] bg-[var(--cr-bg-secondary)]">
+      <div className={`absolute inset-x-0 top-0 h-px ${accentBarClass[accent]}`} />
+      <div className="flex h-full flex-col gap-3 p-6">
         {title && (
-          <h3 className="text-xl font-semibold text-sky-100 md:text-2xl">
+          <h3 className="text-lg font-semibold text-[var(--cr-fg)]">
             {title}
           </h3>
         )}
         {description && (
-          <p className="text-sm text-sky-100/70 md:text-base">
+          <p className="text-sm text-[var(--cr-fg-muted)]">
             {description}
           </p>
         )}

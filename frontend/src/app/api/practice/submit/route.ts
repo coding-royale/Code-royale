@@ -110,15 +110,18 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid request payload" }, { status: 400 });
   }
 
-  const { questionId, code, language } = payload as {
+  const { questionId, code, language, intent } = payload as {
     questionId?: string;
     code?: string;
     language?: string;
+    intent?: "run" | "submit";
   };
 
   if (!questionId || !code || !language) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
+
+  const isSubmit = intent === "submit";
 
   if (!languageNamePatterns[language]) {
     return NextResponse.json({ error: "Unsupported language" }, { status: 400 });
@@ -285,7 +288,7 @@ export async function POST(request: Request) {
 
   const allPassed = results.length > 0 && results.every((result) => result.passed);
 
-  if (allPassed) {
+  if (allPassed && isSubmit) {
     try {
       const authSupabase = await createSupabaseServerClient();
       const {
@@ -307,6 +310,7 @@ export async function POST(request: Request) {
 
   return NextResponse.json({
     passed: allPassed,
+    solved: allPassed && isSubmit,
     results,
   });
 }

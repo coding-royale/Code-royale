@@ -336,6 +336,7 @@ export function MatchArenaShell({
           questionId: question.id,
           language,
           code,
+          intent,
         }),
       });
 

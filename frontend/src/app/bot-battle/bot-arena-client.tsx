@@ -204,7 +204,7 @@ export function BotBattleArenaClient({
       const response = await fetch("/api/practice/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ questionId: question.id, language, code }),
+        body: JSON.stringify({ questionId: question.id, language, code, intent }),
       });
 
       if (!response.ok) {

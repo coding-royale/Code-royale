@@ -28,5 +28,29 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Failed to load questions" }, { status: 500 });
   }
 
-  return NextResponse.json({ questions: data ?? [] });
+  let solvedIds = new Set<string>();
+
+  try {
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+    if (!authError && user?.id) {
+      const { data: solvedRows } = await supabase
+        .from("practice_submissions")
+        .select("question_id")
+        .eq("user_id", user.id)
+        .eq("passed", true);
+      solvedIds = new Set((solvedRows ?? []).map((row) => row.question_id as string));
+    }
+  } catch {
+    // anonymous users see all questions with solved: false
+  }
+
+  const questions = (data ?? []).map((question) => ({
+    ...question,
+    solved: solvedIds.has(question.id as string),
+  }));
+
+  return NextResponse.json({ questions });
 }

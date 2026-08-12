@@ -119,6 +119,7 @@ export function PracticeArenaLeetcode({
   const [feedbackTone, setFeedbackTone] = useState<"success" | "error" | "info" | null>(null);
   const [activeTestcaseIndex, setActiveTestcaseIndex] = useState(0);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
+  const [showSolvedModal, setShowSolvedModal] = useState(false);
   const [leftPanelWidth, setLeftPanelWidth] = useState(45);
   const [activeTab, setActiveTab] = useState<"description" | "solutions">("description");
   const [consoleTab, setConsoleTab] = useState<"testcase" | "result">("testcase");
@@ -231,7 +232,7 @@ export function PracticeArenaLeetcode({
       const response = await fetch("/api/practice/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ questionId: question.id, language, code }),
+        body: JSON.stringify({ questionId: question.id, language, code, intent }),
       });
 
       if (!response.ok) {
@@ -241,12 +242,16 @@ export function PracticeArenaLeetcode({
         return;
       }
 
-      const payload = await response.json() as { passed: boolean; results: SubmissionResult[] };
+      const payload = await response.json() as { passed: boolean; solved: boolean; results: SubmissionResult[] };
       setResults(payload.results);
 
       if (payload.passed) {
-        setFeedback(intent === "submit" ? "Accepted" : "All test cases passed");
-        setFeedbackTone("success");
+        if (intent === "submit") {
+          setShowSolvedModal(true);
+        } else {
+          setFeedback("All test cases passed");
+          setFeedbackTone("success");
+        }
       } else {
         const failed = payload.results.find((r) => !r.passed);
         const errorLine = failed ? summarizeError(failed.stderr) : null;
@@ -276,7 +281,7 @@ export function PracticeArenaLeetcode({
       <header className="flex h-12 shrink-0 items-center justify-between border-b border-[var(--cr-border)] bg-[var(--cr-bg-secondary)] px-4">
         <div className="flex items-center gap-4">
           <button
-            onClick={() => setShowExitConfirm(true)}
+            onClick={() => router.push(exitHref)}
             className="flex items-center gap-2 rounded-md px-2 py-1 text-sm text-[var(--cr-fg-muted)] transition-colors hover:bg-[var(--cr-bg-tertiary)] hover:text-[var(--cr-fg)]"
           >
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -674,6 +679,37 @@ export function PracticeArenaLeetcode({
           </div>
         </div>
       </div>
+
+      {/* Question solved modal */}
+      {showSolvedModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-lg border border-emerald-500/40 bg-[var(--cr-bg-secondary)] p-8 text-center shadow-xl">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/15">
+              <svg className="h-8 w-8 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+              </svg>
+            </div>
+            <h3 className="mt-4 text-xl font-semibold text-[var(--cr-fg)]">Question Solved!</h3>
+            <p className="mt-2 text-sm text-[var(--cr-fg-muted)]">
+              All test cases passed. This problem is now marked as solved on your profile.
+            </p>
+            <div className="mt-6 flex justify-center gap-3">
+              <button
+                onClick={() => setShowSolvedModal(false)}
+                className="rounded-md border border-[var(--cr-border)] px-4 py-2 text-sm font-medium text-[var(--cr-fg)] transition-colors hover:bg-[var(--cr-bg-tertiary)]"
+              >
+                Keep Coding
+              </button>
+              <button
+                onClick={() => router.push(exitHref)}
+                className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-500"
+              >
+                Back to Problems
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Exit confirmation modal */}
       {showExitConfirm && (

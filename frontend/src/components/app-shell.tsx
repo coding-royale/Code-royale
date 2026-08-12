@@ -486,7 +486,7 @@ export function AppShell({ children, showSidebar = true }: AppShellProps) {
               </button>
 
               {isNotificationOpen && (
-                <div className="absolute right-0 top-12 z-[80] w-80 overflow-hidden rounded-2xl border border-[var(--cr-border)] bg-[var(--cr-bg-secondary)] shadow-[0_15px_45px_rgba(2,8,25,0.6)]">
+                <div className="absolute right-0 top-12 z-[80] w-80 overflow-hidden rounded-xl border border-[var(--cr-border)] bg-[var(--cr-bg-secondary)] shadow-[0_15px_45px_rgba(0,0,0,0.45)]">
                   <div className="border-b border-[var(--cr-border)] px-4 py-3">
                     <p className="text-sm font-semibold text-[var(--cr-fg)]">Notifications</p>
                   </div>

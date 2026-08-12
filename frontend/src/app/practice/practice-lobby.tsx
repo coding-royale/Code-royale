@@ -10,6 +10,7 @@ type QuestionMeta = {
   title: string;
   slug: string | null;
   difficulty: Difficulty;
+  solved: boolean;
 };
 
 const difficultyOptions: Array<{ label: string; value: Difficulty; color: string }> = [
@@ -33,29 +34,26 @@ const languageOptions = [
   { label: "C", value: "c" },
 ];
 
+type Filter = "all" | Difficulty;
+
 export function PracticeLobby() {
   const router = useRouter();
-  const [difficulty, setDifficulty] = useState<Difficulty>("easy");
+  const [filter, setFilter] = useState<Filter>("all");
   const [timer, setTimer] = useState<number>(5 * 60);
   const [language, setLanguage] = useState<string>(languageOptions[0].value);
   const [questions, setQuestions] = useState<QuestionMeta[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const activeDifficultyLabel = useMemo(
-    () => difficultyOptions.find((option) => option.value === difficulty)?.label ?? "",
-    [difficulty],
-  );
-
   useEffect(() => {
     let isMounted = true;
 
-    const loadQuestions = async (currentDifficulty: Difficulty) => {
+    const loadQuestions = async () => {
       setLoading(true);
       setError(null);
 
       try {
-        const response = await fetch(`/api/practice/questions?difficulty=${currentDifficulty}`);
+        const response = await fetch("/api/practice/questions");
 
         if (!response.ok) {
           throw new Error(`Failed to load questions (${response.status})`);
@@ -69,7 +67,7 @@ export function PracticeLobby() {
       } catch (err) {
         console.error(err);
         if (isMounted) {
-          setError("Unable to load questions. Please try again.");
+          setError("Unable to load problems. Please try again.");
           setQuestions([]);
         }
       } finally {
@@ -79,161 +77,211 @@ export function PracticeLobby() {
       }
     };
 
-    loadQuestions(difficulty);
+    loadQuestions();
 
     return () => {
       isMounted = false;
     };
-  }, [difficulty]);
+  }, []);
 
-  const handleStart = () => {
-    if (questions.length === 0) {
-      setError("No questions available yet for this difficulty.");
-      return;
+  const filteredQuestions = useMemo(() => {
+    if (filter === "all") {
+      return questions;
     }
+    return questions.filter((question) => question.difficulty === filter);
+  }, [questions, filter]);
 
-    const playableQuestions = questions.filter((question) => {
-      const slug = typeof question.slug === "string" ? question.slug.trim() : "";
-      return slug.length > 0 || question.id.trim().length > 0;
-    });
+  const solvedCount = useMemo(
+    () => questions.filter((question) => question.solved).length,
+    [questions],
+  );
 
-    if (playableQuestions.length === 0) {
-      setError("No playable questions found. Please reseed practice data.");
-      return;
+  const countsByDifficulty = useMemo(() => {
+    const counts: Record<Filter, number> = { all: questions.length, easy: 0, medium: 0, hard: 0 };
+    for (const question of questions) {
+      if (countsByDifficultyHas(question.difficulty)) {
+        counts[question.difficulty] += 1;
+      }
     }
+    return counts;
+  }, [questions]);
 
-    setError(null);
+  const buildRouteKey = (question: QuestionMeta) =>
+    typeof question.slug === "string" && question.slug.trim().length > 0
+      ? question.slug.trim()
+      : question.id;
 
-    const randomizedQuestion = playableQuestions[Math.floor(Math.random() * playableQuestions.length)];
-    const routeKey =
-      typeof randomizedQuestion.slug === "string" && randomizedQuestion.slug.trim().length > 0
-        ? randomizedQuestion.slug.trim()
-        : randomizedQuestion.id;
-    const searchParams = new URLSearchParams({
-      timer: String(timer),
-      language,
-    });
+  const sessionParams = useMemo(() => {
+    const params = new URLSearchParams({ timer: String(timer), language });
+    return params.toString();
+  }, [timer, language]);
 
-    router.push(`/practice/${encodeURIComponent(routeKey)}?${searchParams.toString()}`);
+  const handleOpenQuestion = (question: QuestionMeta) => {
+    router.push(`/practice/${encodeURIComponent(buildRouteKey(question))}?${sessionParams}`);
   };
 
+  const handleRandom = () => {
+    if (filteredQuestions.length === 0) {
+      setError("No problems available yet for this filter.");
+      return;
+    }
+    const pick = filteredQuestions[Math.floor(Math.random() * filteredQuestions.length)];
+    router.push(`/practice/${encodeURIComponent(buildRouteKey(pick))}?${sessionParams}`);
+  };
+
+  const progressPercent =
+    questions.length > 0 ? Math.round((solvedCount / questions.length) * 100) : 0;
+
+  const filters: Array<{ label: string; value: Filter }> = [
+    { label: "All", value: "all" },
+    ...difficultyOptions.map((option) => ({ label: option.label, value: option.value as Filter })),
+  ];
+
   return (
-    <div className="grid gap-6 lg:grid-cols-3">
-      {/* Settings Panel */}
-      <div className="lg:col-span-2 space-y-6">
-        {/* Difficulty Selection */}
-        <div className="rounded-lg border border-[var(--cr-border)] bg-[var(--cr-bg-secondary)] p-5">
-          <h3 className="mb-4 text-sm font-medium text-[var(--cr-fg)]">Difficulty</h3>
-          <div className="flex gap-3">
-            {difficultyOptions.map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => setDifficulty(option.value)}
-                className={`flex-1 rounded-lg border px-4 py-3 text-sm font-medium transition-all ${
-                  difficulty === option.value
-                    ? `${option.color} shadow-sm`
-                    : "border-[var(--cr-border)] text-[var(--cr-fg-muted)] hover:border-[var(--cr-fg-muted)] hover:text-[var(--cr-fg)]"
-                }`}
-              >
-                {option.label}
-              </button>
-            ))}
+    <div className="grid gap-6 lg:grid-cols-[1fr_20rem]">
+      {/* Problem Browser */}
+      <div className="space-y-5">
+        {/* Filter tabs */}
+        <div className="flex flex-wrap items-center gap-2">
+          {filters.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => setFilter(option.value)}
+              className={`rounded-lg border px-4 py-2 text-sm font-medium transition-all ${
+                filter === option.value
+                  ? "border-[rgba(var(--cr-accent-rgb),0.5)] bg-[rgba(var(--cr-accent-rgb),0.1)] text-[rgb(var(--cr-accent-rgb))]"
+                  : "border-[var(--cr-border)] text-[var(--cr-fg-muted)] hover:border-[var(--cr-fg-muted)] hover:text-[var(--cr-fg)]"
+              }`}
+            >
+              {option.label}
+              <span className="ml-2 text-xs opacity-70">{countsByDifficulty[option.value]}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* Solved progress */}
+        <div className="rounded-lg border border-[var(--cr-border)] bg-[var(--cr-bg-secondary)] p-4">
+          <div className="mb-2 flex items-center justify-between text-sm">
+            <span className="text-[var(--cr-fg-muted)]">Solved</span>
+            <span className="text-[var(--cr-fg)]">
+              {solvedCount} / {questions.length}
+            </span>
+          </div>
+          <div className="h-2 rounded-full bg-[var(--cr-bg-tertiary)]">
+            <div
+              className="h-full rounded-full bg-emerald-500 transition-all duration-500"
+              style={{ width: `${progressPercent}%` }}
+            />
           </div>
         </div>
 
-        {/* Timer and Language */}
-        <div className="grid gap-6 md:grid-cols-2">
-          <div className="rounded-lg border border-[var(--cr-border)] bg-[var(--cr-bg-secondary)] p-5">
-            <label className="mb-3 block text-sm font-medium text-[var(--cr-fg)]">Timer</label>
-            <select
-              value={timer}
-              onChange={(event) => setTimer(Number(event.target.value))}
-              className="w-full rounded-lg border border-[var(--cr-border)] bg-[var(--cr-bg)] px-4 py-2.5 text-sm text-[var(--cr-fg)] focus:border-[rgba(var(--cr-accent-rgb),0.5)] focus:outline-none focus:ring-1 focus:ring-[rgba(var(--cr-accent-rgb),0.5)]"
-            >
-              {timerOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
+        {/* Problem list */}
+        <div className="overflow-hidden rounded-lg border border-[var(--cr-border)] bg-[var(--cr-bg-secondary)]">
+          <div className="grid grid-cols-[auto_1fr_auto] items-center gap-3 border-b border-[var(--cr-border)] px-5 py-3 text-xs uppercase tracking-wider text-[var(--cr-fg-muted)]">
+            <span className="w-8">Status</span>
+            <span>Problem</span>
+            <span>Difficulty</span>
           </div>
 
-          <div className="rounded-lg border border-[var(--cr-border)] bg-[var(--cr-bg-secondary)] p-5">
-            <label className="mb-3 block text-sm font-medium text-[var(--cr-fg)]">Language</label>
-            <select
-              value={language}
-              onChange={(event) => setLanguage(event.target.value)}
-              className="w-full rounded-lg border border-[var(--cr-border)] bg-[var(--cr-bg)] px-4 py-2.5 text-sm text-[var(--cr-fg)] focus:border-[rgba(var(--cr-accent-rgb),0.5)] focus:outline-none focus:ring-1 focus:ring-[rgba(var(--cr-accent-rgb),0.5)]"
-            >
-              {languageOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </div>
+          {loading && (
+            <div className="flex items-center gap-2 px-5 py-6 text-sm text-[var(--cr-fg-muted)]">
+              <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+              </svg>
+              Loading problems...
+            </div>
+          )}
+
+          {!loading && filteredQuestions.length === 0 && (
+            <p className="px-5 py-6 text-sm text-[var(--cr-fg-muted)]">
+              {error ?? "No problems available yet for this filter."}
+            </p>
+          )}
+
+          {!loading &&
+            filteredQuestions.length > 0 &&
+            filteredQuestions.map((question, index) => {
+              const diff = difficultyOptions.find((option) => option.value === question.difficulty);
+              return (
+                <button
+                  key={question.id}
+                  type="button"
+                  onClick={() => handleOpenQuestion(question)}
+                  className="grid w-full grid-cols-[auto_1fr_auto] items-center gap-3 border-b border-[var(--cr-border)] px-5 py-4 text-left transition-colors last:border-b-0 hover:bg-[var(--cr-bg-tertiary)]"
+                >
+                  <span className="flex w-8 items-center">
+                    {question.solved ? (
+                      <svg className="h-5 w-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                      </svg>
+                    ) : (
+                      <span className="text-xs tabular-nums text-[var(--cr-fg-muted)]">
+                        {String(index + 1).padStart(2, "0")}
+                      </span>
+                    )}
+                  </span>
+                  <span className="truncate pr-4 text-sm text-[var(--cr-fg)]">{question.title}</span>
+                  {diff && (
+                    <span className={`rounded-full border px-3 py-1 text-xs font-medium capitalize ${diff.color}`}>
+                      {diff.label}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
         </div>
       </div>
 
-      {/* Preview Panel */}
+      {/* Session settings */}
       <div className="space-y-6">
         <div className="rounded-lg border border-[var(--cr-border)] bg-[var(--cr-bg-secondary)] p-5">
-          <h3 className="mb-4 text-sm font-medium text-[var(--cr-fg)]">Problem Preview</h3>
-          <div className="space-y-4 text-sm">
-            {loading && (
-              <div className="flex items-center gap-2 text-[var(--cr-fg-muted)]">
-                <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                </svg>
-                Loading problems...
-              </div>
-            )}
-            {!loading && questions.length > 0 && (
-              <>
-                <p className="text-[var(--cr-fg-muted)]">
-                  <span className="text-[rgb(var(--cr-accent-rgb))]">{questions.length}</span> {activeDifficultyLabel.toLowerCase()} problems available
-                </p>
-                <div className="space-y-2">
-                  <p className="text-xs text-[var(--cr-fg-muted)]">Sample problems:</p>
-                  <ul className="space-y-1.5">
-                    {questions.slice(0, 4).map((question) => (
-                      <li key={question.id} className="flex items-center gap-2 text-[var(--cr-fg)]">
-                        <span className="h-1.5 w-1.5 rounded-full bg-[rgb(var(--cr-accent-rgb))]" />
-                        <span className="truncate">{question.title}</span>
-                      </li>
-                    ))}
-                    {questions.length > 4 && (
-                      <li className="text-xs text-[var(--cr-fg-muted)]">
-                        + {questions.length - 4} more
-                      </li>
-                    )}
-                  </ul>
-                </div>
-              </>
-            )}
-            {!loading && questions.length === 0 && !error && (
-              <p className="text-[var(--cr-fg-muted)]">No problems available for this difficulty yet.</p>
-            )}
-          </div>
+          <h3 className="mb-4 text-sm font-medium text-[var(--cr-fg)]">Session Settings</h3>
+
+          <label className="mb-3 block text-sm text-[var(--cr-fg-muted)]">Timer</label>
+          <select
+            value={timer}
+            onChange={(event) => setTimer(Number(event.target.value))}
+            className="w-full rounded-lg border border-[var(--cr-border)] bg-[var(--cr-bg)] px-4 py-2.5 text-sm text-[var(--cr-fg)] focus:border-[rgba(var(--cr-accent-rgb),0.5)] focus:outline-none focus:ring-1 focus:ring-[rgba(var(--cr-accent-rgb),0.5)]"
+          >
+            {timerOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+
+          <label className="mb-3 mt-5 block text-sm text-[var(--cr-fg-muted)]">Language</label>
+          <select
+            value={language}
+            onChange={(event) => setLanguage(event.target.value)}
+            className="w-full rounded-lg border border-[var(--cr-border)] bg-[var(--cr-bg)] px-4 py-2.5 text-sm text-[var(--cr-fg)] focus:border-[rgba(var(--cr-accent-rgb),0.5)] focus:outline-none focus:ring-1 focus:ring-[rgba(var(--cr-accent-rgb),0.5)]"
+          >
+            {languageOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+
+          <button
+            type="button"
+            onClick={handleRandom}
+            disabled={loading || filteredQuestions.length === 0}
+            className="mt-6 w-full rounded-lg border border-[rgba(var(--cr-accent-rgb),0.4)] bg-[rgba(var(--cr-accent-rgb),0.1)] px-6 py-3 text-sm font-semibold text-[rgb(var(--cr-accent-rgb))] transition-all hover:bg-[rgba(var(--cr-accent-rgb),0.2)] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Surprise Me
+          </button>
+          <p className="mt-2 text-center text-xs text-[var(--cr-fg-muted)]">
+            Random problem from the current filter
+          </p>
         </div>
-
-        {error && (
-          <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
-            {error}
-          </div>
-        )}
-
-        <button
-          type="button"
-          onClick={handleStart}
-          disabled={loading || questions.length === 0}
-          className="w-full rounded-lg bg-[rgb(var(--cr-accent-rgb))] px-6 py-3 text-sm font-semibold text-[var(--cr-bg)] transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          Start Practice
-        </button>
       </div>
     </div>
   );
+}
+
+function countsByDifficultyHas(value: string): value is Difficulty {
+  return value === "easy" || value === "medium" || value === "hard";
 }

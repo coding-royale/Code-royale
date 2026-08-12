@@ -70,7 +70,7 @@ export function HomeNav({ onMenuToggle, sidebarOpen = false }: HomeNavProps) {
         onMouseLeave={handleMouseLeave}
         className={`fixed left-0 right-0 top-0 z-[65] transition-all duration-300 ease-out ${visibilityClass}`}
       >
-        <div className="border-b border-[rgba(var(--cr-accent-rgb),0.12)] bg-[#05070f]/95 shadow-[0_12px_45px_rgba(5,12,28,0.55)] backdrop-blur-xl">
+        <div className="border-b border-[var(--cr-border)] bg-[var(--cr-bg)]/90 backdrop-blur-xl">
           <div className="mx-auto flex w-full max-w-7xl items-center gap-6 px-6 py-4 md:px-8">
             <div className="flex items-center gap-5">
               {onMenuToggle && (
@@ -79,10 +79,10 @@ export function HomeNav({ onMenuToggle, sidebarOpen = false }: HomeNavProps) {
                   aria-label="Toggle sidebar"
                   onClick={onMenuToggle}
                   aria-pressed={sidebarOpen}
-                  className={`flex items-center gap-2 rounded-xl border bg-[#070d18] px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] transition shadow-[0_0_20px_rgba(var(--cr-accent-rgb),0.2)] hover:border-[rgba(var(--cr-accent-rgb),0.6)] hover:text-sky-100 ${
+                  className={`flex items-center gap-2 rounded-lg border bg-[var(--cr-bg-secondary)] px-3.5 py-2 text-xs font-semibold transition ${
                     sidebarOpen
-                      ? "border-[rgba(var(--cr-accent-rgb),0.6)] text-sky-100"
-                      : "border-[rgba(var(--cr-accent-rgb),0.25)] text-[rgba(var(--cr-accent-rgb),0.8)]"
+                      ? "border-[rgba(var(--cr-accent-rgb),0.5)] text-[rgb(var(--cr-accent-rgb))]"
+                      : "border-[var(--cr-border)] text-[var(--cr-fg-muted)] hover:border-[rgba(var(--cr-accent-rgb),0.4)] hover:text-[var(--cr-fg)]"
                   }`}
                 >
                   {sidebarOpen ? <CloseIcon /> : <MenuIcon />}
@@ -90,23 +90,23 @@ export function HomeNav({ onMenuToggle, sidebarOpen = false }: HomeNavProps) {
                 </button>
               )}
               <Link href="/home" className="group inline-flex items-center gap-3">
-                <span className="relative flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border border-[rgba(var(--cr-accent-rgb),0.50)] bg-slate-900/80 shadow-[0_0_24px_rgba(var(--cr-accent-rgb),0.40)] transition group-hover:border-[rgba(var(--cr-accent-rgb),0.75)] group-hover:shadow-[0_0_32px_rgba(var(--cr-accent-rgb),0.55)]">
+                <span className="relative flex h-10 w-10 items-center justify-center overflow-hidden rounded-lg border border-[var(--cr-border)] bg-[var(--cr-bg-secondary)] transition group-hover:border-[rgba(var(--cr-accent-rgb),0.5)]">
                   <Image
                     src="/images/logo-icon.svg"
                     alt="Code Royale logo"
                     fill
-                    className="object-contain p-0.5"
+                    className="object-contain p-1"
                     sizes="40px"
                     priority
                   />
                 </span>
-                <span className="text-lg font-semibold tracking-[0.28em] text-sky-100 group-hover:text-[rgba(var(--cr-accent-rgb),0.85)]">
-                  CODE ROYALE
+                <span className="text-base font-semibold tracking-wide text-[var(--cr-fg)]">
+                  Code Royale
                 </span>
               </Link>
             </div>
 
-            <form className="ml-6 hidden min-w-[220px] flex-1 items-center gap-2 rounded-full border border-[rgba(var(--cr-accent-rgb),0.15)] bg-[#070d18] px-4 py-2 text-sm text-sky-100/75 lg:flex">
+            <form className="ml-6 hidden min-w-[220px] flex-1 items-center gap-2 rounded-lg border border-[var(--cr-border)] bg-[var(--cr-bg-secondary)] px-3.5 py-2 text-sm text-[var(--cr-fg-muted)] lg:flex focus-within:border-[rgba(var(--cr-accent-rgb),0.5)]">
               <label htmlFor="player-search" className="sr-only">
                 Search players or friends
               </label>
@@ -115,42 +115,41 @@ export function HomeNav({ onMenuToggle, sidebarOpen = false }: HomeNavProps) {
                 id="player-search"
                 type="search"
                 placeholder="Search players or friends"
-                className="w-full bg-transparent text-sky-100 placeholder:text-[rgba(var(--cr-accent-rgb),0.45)] focus:outline-none"
+                className="w-full bg-transparent text-[var(--cr-fg)] placeholder:text-[var(--cr-fg-muted)] focus:outline-none"
               />
             </form>
 
-            <nav className="ml-auto flex items-center gap-6 text-sm font-semibold text-sky-100/80">
+            <nav className="ml-auto flex items-center gap-2 text-sm font-medium text-[var(--cr-fg-muted)]">
               {menuItems.map((item) => (
                 <Link
                   key={item.href}
                   href={item.href}
-                  className="group relative px-1 py-1 transition-colors hover:text-sky-100"
+                  className="rounded-md px-3 py-2 transition-colors hover:bg-[var(--cr-bg-tertiary)] hover:text-[var(--cr-fg)]"
                 >
-                  <span className="absolute inset-x-0 -bottom-2 h-[2px] w-full origin-center scale-x-0 bg-[rgba(var(--cr-accent-rgb),0.80)] transition-transform duration-200 group-hover:scale-x-100" />
                   {item.label}
                 </Link>
               ))}
             </nav>
 
-            <div className="ml-6 flex items-center gap-3 text-sky-100/70">
+            <div className="ml-4 flex items-center gap-2 text-[var(--cr-fg-muted)]">
               <button
                 type="button"
                 aria-label="Search (mobile)"
-                className="flex h-10 w-10 items-center justify-center rounded-full border border-[rgba(var(--cr-accent-rgb),0.15)] bg-[#070d18] lg:hidden"
+                className="flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--cr-border)] bg-[var(--cr-bg-secondary)] lg:hidden"
               >
                 <SearchIcon />
               </button>
               <button
                 type="button"
                 aria-label="Notifications"
-                className="flex h-10 w-10 items-center justify-center rounded-full border border-[rgba(var(--cr-accent-rgb),0.15)] bg-[#070d18] hover:border-[rgba(var(--cr-accent-rgb),0.40)] hover:text-sky-100"
+                className="flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--cr-border)] bg-[var(--cr-bg-secondary)] hover:border-[rgba(var(--cr-accent-rgb),0.4)] hover:text-[var(--cr-fg)]"
               >
                 <BellIcon />
               </button>
               <a
                 href="/settings"
                 aria-label="Settings"
-                className="flex h-10 w-10 items-center justify-center rounded-full border border-[rgba(var(--cr-accent-rgb),0.15)] bg-[#070d18] hover:border-[rgba(var(--cr-accent-rgb),0.40)] hover:text-sky-100"
+                className="flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--cr-border)] bg-[var(--cr-bg-secondary)] hover:border-[rgba(var(--cr-accent-rgb),0.4)] hover:text-[var(--cr-fg)]"
               >
                 <GearIcon />
               </a>
@@ -165,7 +164,7 @@ export function HomeNav({ onMenuToggle, sidebarOpen = false }: HomeNavProps) {
 const SearchIcon = () => (
   <svg
     aria-hidden
-    className="h-4 w-4 text-[rgba(var(--cr-accent-rgb),0.75)]"
+    className="h-4 w-4 text-[var(--cr-fg-muted)]"
     viewBox="0 0 24 24"
     fill="none"
     stroke="currentColor"
@@ -179,7 +178,7 @@ const SearchIcon = () => (
 const BellIcon = () => (
   <svg
     aria-hidden
-    className="h-4 w-4 text-[rgba(var(--cr-accent-rgb),0.70)]"
+    className="h-4 w-4 text-[var(--cr-fg-muted)]"
     viewBox="0 0 24 24"
     fill="none"
     stroke="currentColor"
@@ -193,7 +192,7 @@ const BellIcon = () => (
 const GearIcon = () => (
   <svg
     aria-hidden
-    className="h-4 w-4 text-[rgba(var(--cr-accent-rgb),0.70)]"
+    className="h-4 w-4 text-[var(--cr-fg-muted)]"
     viewBox="0 0 24 24"
     fill="none"
     stroke="currentColor"

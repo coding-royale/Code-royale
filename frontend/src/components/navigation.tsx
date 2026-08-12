@@ -111,26 +111,26 @@ export function Navigation() {
         onMouseLeave={handleMouseLeave}
         className={`fixed left-0 right-0 top-0 z-[55] transition-all duration-300 ease-out ${visibilityClass}`}
       >
-        <div className="border-b border-sky-500/10 bg-[#05070f]/95 px-8 py-4 shadow-[0_12px_45px_rgba(5,12,28,0.6)] backdrop-blur-xl">
+        <div className="border-b border-[var(--cr-border)] bg-[var(--cr-bg)]/90 px-8 py-4 backdrop-blur-xl">
           <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center gap-6">
             <Link href="/" className="group inline-flex items-center gap-3">
-              <span className="relative flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border border-sky-500/50 bg-slate-900/80 shadow-[0_0_24px_rgba(56,189,248,0.3)] transition group-hover:border-sky-300 group-hover:shadow-[0_0_32px_rgba(56,189,248,0.45)]">
+              <span className="relative flex h-10 w-10 items-center justify-center overflow-hidden rounded-lg border border-[var(--cr-border)] bg-[var(--cr-bg-secondary)]">
                 <Image
                   src="/images/logo-icon.svg"
                   alt="Code Royale logo"
                   fill
-                  className="object-contain p-0.5"
+                  className="object-contain p-1"
                   sizes="40px"
                   priority
                 />
               </span>
-              <span className="text-lg font-semibold tracking-[0.28em] text-sky-100 group-hover:text-sky-200">
-                CODE ROYALE
+              <span className="text-base font-semibold tracking-wide text-[var(--cr-fg)]">
+                Code Royale
               </span>
             </Link>
 
             {!isPublicShell && (
-              <form className="flex min-w-[220px] flex-1 items-center gap-2 rounded-full border border-sky-500/15 bg-[#070d18] px-4 py-2 text-sm text-sky-100/70 md:max-w-lg">
+              <form className="flex min-w-[220px] flex-1 items-center gap-2 rounded-lg border border-[var(--cr-border)] bg-[var(--cr-bg-secondary)] px-3.5 py-2 text-sm text-[var(--cr-fg-muted)] md:max-w-lg focus-within:border-[rgba(var(--cr-accent-rgb),0.5)]">
                 <label htmlFor="global-search" className="sr-only">
                   Search players or friends
                 </label>
@@ -139,7 +139,7 @@ export function Navigation() {
                   id="global-search"
                   type="search"
                   placeholder="Search players or friends"
-                  className="w-full bg-transparent text-sky-100 placeholder:text-sky-400/50 focus:outline-none"
+                  className="w-full bg-transparent text-[var(--cr-fg)] placeholder:text-[var(--cr-fg-muted)] focus:outline-none"
                 />
               </form>
             )}
@@ -151,17 +151,12 @@ export function Navigation() {
                   <Link
                     key={item.href}
                     href={item.href}
-                    className={`group relative overflow-hidden px-4 py-2 text-sm font-semibold tracking-wide text-sky-100/80 transition-colors duration-200 ${
+                    className={`rounded-md px-3.5 py-2 text-sm font-medium transition-colors duration-200 ${
                       isActive
-                        ? "text-sky-50"
-                        : "hover:text-sky-100"
+                        ? "bg-[var(--cr-accent-soft)] text-[rgb(var(--cr-accent-rgb))]"
+                        : "text-[var(--cr-fg-muted)] hover:bg-[var(--cr-bg-tertiary)] hover:text-[var(--cr-fg)]"
                     }`}
                   >
-                    <span
-                      className={`absolute inset-0 -z-10 rounded-md bg-sky-500/20 transition-opacity duration-200 ${
-                        isActive ? "opacity-100" : "opacity-0 group-hover:opacity-30"
-                      }`}
-                    />
                     {item.label}
                   </Link>
                 );
@@ -177,7 +172,7 @@ export function Navigation() {
 const SearchIcon = () => (
   <svg
     aria-hidden
-    className="h-4 w-4 text-sky-300"
+    className="h-4 w-4 text-[var(--cr-fg-muted)]"
     viewBox="0 0 24 24"
     fill="none"
     stroke="currentColor"

@@ -8,7 +8,7 @@ export default function PracticePage() {
         <header className="mb-8">
           <h1 className="text-2xl font-bold text-[var(--cr-fg)]">Practice Arena</h1>
           <p className="mt-1 text-sm text-[var(--cr-fg-muted)]">
-            Sharpen your skills before stepping into PvP. Choose a difficulty and start coding.
+            Browse the problem set and pick any challenge to solve. Filter by difficulty or go random.
           </p>
         </header>
         <PracticeLobby />

@@ -7,10 +7,10 @@ export default function Home() {
       <nav className="fixed top-0 left-0 right-0 z-50 border-b border-cr-border bg-cr-bg/80 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
           <Link href="/" className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-cr-accent to-cr-accent/60">
-              <span className="text-xl font-bold text-white">CR</span>
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-cr-border bg-cr-bg-secondary">
+              <span className="text-base font-bold text-cr-accent">CR</span>
             </div>
-            <span className="text-xl font-bold text-cr-fg">Code Royale</span>
+            <span className="text-lg font-semibold text-cr-fg">Code Royale</span>
           </Link>
           <div className="flex items-center gap-6">
             <Link href="/auth/login" className="text-sm font-medium text-cr-fg-muted hover:text-cr-fg transition-colors">
@@ -28,12 +28,11 @@ export default function Home() {
 
       {/* Hero Section */}
       <section className="relative pt-32 pb-20">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,_rgba(var(--cr-accent-rgb),0.15),_transparent_50%)]" />
         <div className="relative mx-auto max-w-7xl px-6">
           <div className="mx-auto max-w-3xl text-center">
             <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-cr-border bg-cr-bg-secondary px-4 py-2 text-sm">
-              <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-              <span className="text-cr-fg-muted">Beta Now Live</span>
+              <span className="h-2 w-2 rounded-full bg-emerald-500" />
+              <span className="text-cr-fg-muted">Beta now live</span>
             </div>
             <h1 className="text-5xl font-bold tracking-tight text-cr-fg md:text-6xl lg:text-7xl">
               Battle-ready coding
@@ -44,13 +43,13 @@ export default function Home() {
               futuristic arena crafted for developers.
             </p>
             <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
-              <Link 
+              <Link
                 href="/auth/signup"
-                className="rounded-lg bg-cr-accent px-8 py-3 text-base font-semibold text-white shadow-lg shadow-cr-accent/25 hover:bg-cr-accent/90 transition-all hover:shadow-xl hover:shadow-cr-accent/30"
+                className="rounded-lg bg-cr-accent px-8 py-3 text-base font-semibold text-white hover:bg-cr-accent/90 transition-colors"
               >
                 Join the Arena
               </Link>
-              <Link 
+              <Link
                 href="/game-modes"
                 className="rounded-lg border border-cr-border bg-cr-bg-secondary px-8 py-3 text-base font-semibold text-cr-fg hover:bg-cr-bg-tertiary transition-colors"
               >
@@ -160,12 +159,11 @@ export default function Home() {
               </div>
             </div>
             <div className="relative">
-              <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-cr-accent/20 to-transparent blur-2xl" />
-              <div className="relative rounded-2xl border border-cr-border bg-cr-bg-secondary p-8">
+              <div className="relative rounded-xl border border-cr-border bg-cr-bg-secondary p-8">
                 <div className="mb-4 flex items-center gap-2">
                   <div className="h-3 w-3 rounded-full bg-red-500" />
                   <div className="h-3 w-3 rounded-full bg-yellow-500" />
-                  <div className="h-3 w-3 rounded-full bg-green-500" />
+                  <div className="h-3 w-3 rounded-full bg-emerald-500" />
                 </div>
                 <div className="space-y-3 font-mono text-sm">
                   <div className="text-cr-fg-muted">$ code-royale start</div>
@@ -189,13 +187,13 @@ export default function Home() {
             Join thousands of developers sharpening their skills through competitive coding.
           </p>
           <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
-            <Link 
+            <Link
               href="/auth/signup"
-              className="rounded-lg bg-cr-accent px-8 py-3 text-base font-semibold text-white shadow-lg shadow-cr-accent/25 hover:bg-cr-accent/90 transition-all"
+              className="rounded-lg bg-cr-accent px-8 py-3 text-base font-semibold text-white hover:bg-cr-accent/90 transition-colors"
             >
               Create Account
             </Link>
-            <Link 
+            <Link
               href="/auth/login"
               className="rounded-lg border border-cr-border px-8 py-3 text-base font-semibold text-cr-fg hover:bg-cr-bg transition-colors"
             >
@@ -210,8 +208,8 @@ export default function Home() {
         <div className="mx-auto max-w-7xl px-6">
           <div className="flex flex-col items-center justify-between gap-6 sm:flex-row">
             <div className="flex items-center gap-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-cr-accent">
-                <span className="text-sm font-bold text-white">CR</span>
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-cr-border bg-cr-bg-secondary">
+                <span className="text-sm font-bold text-cr-accent">CR</span>
               </div>
               <span className="font-semibold text-cr-fg">Code Royale</span>
             </div>
