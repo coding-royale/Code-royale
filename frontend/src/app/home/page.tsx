@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowRight, Bot, CheckCircle2, Flame, Swords, Users } from "lucide-react";
 
 import { AppShell } from "../../components/app-shell";
+import { supabase } from "../../lib/supabase-browser";
 import { useFriendPresence } from "../../lib/use-friend-presence";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -57,6 +58,7 @@ function initialsFromName(name: string) {
 
 export default function HomePage() {
   const { friends, loading: friendsLoading } = useFriendPresence();
+  const [welcomeName, setWelcomeName] = useState("Coder");
 
   const [telemetry, setTelemetry] = useState<TelemetrySummary>({
     activePlayers: 0,
@@ -107,6 +109,40 @@ export default function HomePage() {
     void fetchTelemetry();
     void fetchProgress();
 
+    const fetchWelcomeName = async () => {
+      try {
+        const { data, error } = await supabase.auth.getUser();
+        if (!alive || error || !data.user) return;
+
+        const fallbackName =
+          (data.user.user_metadata?.display_name as string | undefined)?.trim() ||
+          (data.user.email ? data.user.email.split("@")[0] : "") ||
+          "Coder";
+
+        const { data: userRow, error: userError } = await supabase
+          .from("users")
+          .select("username")
+          .eq("id", data.user.id)
+          .maybeSingle();
+
+        if (!alive) return;
+
+        if (userError) {
+          setWelcomeName(fallbackName);
+          return;
+        }
+
+        const resolvedName =
+          (typeof userRow?.username === "string" ? userRow.username.trim() : "") || fallbackName;
+
+        setWelcomeName(resolvedName);
+      } catch {
+        // ignore
+      }
+    };
+
+    void fetchWelcomeName();
+
     const interval = window.setInterval(fetchTelemetry, 10_000);
     const progressInterval = window.setInterval(fetchProgress, 20_000);
 
@@ -129,7 +165,7 @@ export default function HomePage() {
           <div className="relative z-10 flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
             <div className="max-w-xl">
               <h1 className="text-3xl font-bold tracking-tight md:text-4xl">
-                Ready to battle?
+                Ready to battle {welcomeName}?
               </h1>
             </div>
             <div className="flex flex-col items-start md:items-end">
