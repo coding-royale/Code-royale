@@ -1,8 +1,28 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
+import { Trophy } from "lucide-react";
 import { AppShell } from "../../components/app-shell";
 import { supabase } from "../../lib/supabase-browser";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { cn } from "@/lib/utils";
 
 /* ── League tier config ─────────────────────────────────── */
 type League = "bronze" | "silver" | "gold" | "platinum" | "diamond";
@@ -16,11 +36,11 @@ const leagueTiers: {
   icon: React.ReactNode;
   minTrophies: number;
 }[] = [
-  { id: "bronze",   label: "Bronze",   color: "text-amber-700",   bg: "bg-amber-900/30",   border: "border-amber-700/40",   icon: <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="2"/><circle cx="12" cy="12" r="4"/></svg>, minTrophies: 0 },
-  { id: "silver",   label: "Silver",   color: "text-slate-300",   bg: "bg-slate-600/20",   border: "border-slate-400/40",   icon: <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2l3 7h7l-5.5 4 2 7L12 16l-6.5 4 2-7L2 9h7z"/></svg>, minTrophies: 1000 },
-  { id: "gold",     label: "Gold",     color: "text-amber-400",   bg: "bg-amber-500/20",   border: "border-amber-400/40",   icon: <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2l3 7h7l-5.5 4 2 7L12 16l-6.5 4 2-7L2 9h7z"/></svg>, minTrophies: 2500 },
-  { id: "platinum", label: "Platinum", color: "text-cyan-300",    bg: "bg-cyan-500/15",    border: "border-cyan-400/40",    icon: <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L2 9l10 13L22 9z"/></svg>, minTrophies: 5000 },
-  { id: "diamond",  label: "Diamond",  color: "text-violet-300",  bg: "bg-violet-500/15",  border: "border-violet-400/40",  icon: <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L2 9l10 13L22 9z"/></svg>, minTrophies: 10000 },
+  { id: "bronze",   label: "Bronze",   color: "text-amber-700 dark:text-amber-500",   bg: "bg-amber-500/10",   border: "border-amber-700/40",   icon: <Trophy className="size-4" />, minTrophies: 0 },
+  { id: "silver",   label: "Silver",   color: "text-slate-400",   bg: "bg-slate-500/15",   border: "border-slate-400/40",   icon: <Trophy className="size-4" />, minTrophies: 1000 },
+  { id: "gold",     label: "Gold",     color: "text-amber-400",   bg: "bg-amber-500/20",   border: "border-amber-400/40",   icon: <Trophy className="size-4" />, minTrophies: 2500 },
+  { id: "platinum", label: "Platinum", color: "text-cyan-300",    bg: "bg-cyan-500/15",    border: "border-cyan-400/40",    icon: <Trophy className="size-4" />, minTrophies: 5000 },
+  { id: "diamond",  label: "Diamond",  color: "text-violet-300",  bg: "bg-violet-500/15",  border: "border-violet-400/40",  icon: <Trophy className="size-4" />, minTrophies: 10000 },
 ];
 
 function getLeague(trophies: number): League {
@@ -144,58 +164,64 @@ export default function LeaderboardPage() {
     return idx >= 0 ? idx + 1 : null;
   }, [players, myUserId]);
 
+  const rankBadgeClass = (rank: number) =>
+    rank === 1
+      ? "bg-amber-500/20 text-amber-500"
+      : rank === 2
+        ? "bg-slate-400/20 text-slate-300 dark:text-slate-400"
+        : rank === 3
+          ? "bg-orange-500/20 text-orange-500"
+          : "bg-muted text-muted-foreground";
+
   return (
     <AppShell>
       <div className="mx-auto max-w-5xl p-6">
         {/* Header */}
-        <div className="mb-6 flex items-start justify-between">
+        <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-[var(--cr-fg)]">Leaderboard</h1>
-            <p className="mt-1 text-sm text-[var(--cr-fg-muted)]">
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">Leaderboard</h1>
+            <p className="mt-1 text-sm text-muted-foreground">
               Compete, climb ranks, and dominate the leagues
             </p>
           </div>
-          <div className="flex items-center gap-2 rounded-lg border border-[var(--cr-border)] bg-[var(--cr-bg-secondary)] px-4 py-2">
-            <span className="relative flex h-2.5 w-2.5">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
-            </span>
-            <span className="text-xs font-medium text-[var(--cr-fg-muted)]">
+          <div className="flex items-center rounded-lg border border-border bg-card px-4 py-2 shadow-sm">
+            <span className="text-xs font-medium text-muted-foreground">
               {realTimeCount} player{realTimeCount !== 1 ? "s" : ""} ranked
             </span>
           </div>
         </div>
 
         {/* Your Rank Card */}
-        <div className="mb-6 rounded-lg border border-[var(--cr-border)] bg-[var(--cr-bg-secondary)] p-5">
-          <div className="flex flex-wrap items-center justify-between gap-4">
+        <Card className="mb-6 shadow-sm">
+          <CardContent className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-4">
-              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[rgba(var(--cr-accent-rgb),0.2)] text-lg font-bold text-[rgb(var(--cr-accent-rgb))]">
-                {myUserId ? "You" : "?"}
-              </div>
+              <Avatar className="size-14 bg-accent text-accent-foreground">
+                <AvatarFallback className="text-lg font-bold">{myUserId ? "You" : "?"}</AvatarFallback>
+              </Avatar>
               <div>
-                <div className="text-sm text-[var(--cr-fg-muted)]">Your Status</div>
+                <div className="text-sm text-muted-foreground">Your Status</div>
                 {isUnranked ? (
                   <div className="mt-1 flex items-center gap-2">
-                    <span className="text-lg font-bold text-[var(--cr-fg)]">Unranked</span>
-                    <span className="rounded bg-[var(--cr-bg-tertiary)] px-2 py-0.5 text-xs text-[var(--cr-fg-muted)]">
-                      Play a match to get ranked!
-                    </span>
+                    <span className="text-lg font-bold text-foreground">Unranked</span>
+                    <Badge variant="secondary">Play a match to get ranked!</Badge>
                   </div>
                 ) : (
-                  <div className="mt-1 flex items-center gap-2">
-                    <span className="text-lg font-bold text-[var(--cr-fg)]">
+                  <div className="mt-1 flex flex-wrap items-center gap-2">
+                    <span className="text-lg font-bold text-foreground">
                       {myRating.toLocaleString()} Trophies
                     </span>
                     {myLeague && (
-                      <span className={`rounded px-2 py-0.5 text-xs font-medium ${getTierConfig(myLeague).bg} ${getTierConfig(myLeague).color}`}>
+                      <Badge
+                        variant="secondary"
+                        className={cn(getTierConfig(myLeague).bg, getTierConfig(myLeague).color)}
+                      >
                         {getTierConfig(myLeague).icon} {getTierConfig(myLeague).label}
-                      </span>
+                      </Badge>
                     )}
                     {myRank && (
-                      <span className="rounded bg-[var(--cr-bg-tertiary)] px-2 py-0.5 text-xs text-[var(--cr-fg-muted)]">
+                      <Badge variant="secondary" className="text-muted-foreground">
                         Rank #{myRank}
-                      </span>
+                      </Badge>
                     )}
                   </div>
                 )}
@@ -205,195 +231,202 @@ export default function LeaderboardPage() {
             {/* W/L */}
             <div className="flex gap-6 text-center">
               <div>
-                <div className="text-lg font-bold text-emerald-400">{myWins}</div>
-                <div className="text-xs text-[var(--cr-fg-muted)]">Wins</div>
+                <div className="text-lg font-bold text-emerald-600 dark:text-emerald-400">{myWins}</div>
+                <div className="text-xs text-muted-foreground">Wins</div>
               </div>
               <div>
-                <div className="text-lg font-bold text-red-400">{myLosses}</div>
-                <div className="text-xs text-[var(--cr-fg-muted)]">Losses</div>
+                <div className="text-lg font-bold text-destructive">{myLosses}</div>
+                <div className="text-xs text-muted-foreground">Losses</div>
               </div>
               <div>
-                <div className="text-lg font-bold text-[var(--cr-fg)]">{myWins + myLosses}</div>
-                <div className="text-xs text-[var(--cr-fg-muted)]">Played</div>
+                <div className="text-lg font-bold text-foreground">{myWins + myLosses}</div>
+                <div className="text-xs text-muted-foreground">Played</div>
               </div>
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
 
         {/* League Tiers */}
         <div className="mb-6">
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-[var(--cr-fg-muted)]">
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
             Leagues
           </h2>
-          <div className="flex flex-wrap gap-2">
-            <button
-              onClick={() => setSelectedLeague("all")}
-              className={`rounded-lg px-3 py-2 text-xs font-medium transition-all ${
-                selectedLeague === "all"
-                  ? "bg-[rgba(var(--cr-accent-rgb),0.15)] text-[rgb(var(--cr-accent-rgb))] ring-1 ring-[rgb(var(--cr-accent-rgb))]"
-                  : "bg-[var(--cr-bg-secondary)] text-[var(--cr-fg-muted)] hover:text-[var(--cr-fg)]"
-              }`}
-            >
-              All Leagues
-            </button>
-            {leagueTiers.map((tier) => (
-              <button
-                key={tier.id}
-                onClick={() => setSelectedLeague(tier.id)}
-                className={`rounded-lg px-3 py-2 text-xs font-medium transition-all ${
-                  selectedLeague === tier.id
-                    ? `${tier.bg} ${tier.color} ring-1 ${tier.border}`
-                    : "bg-[var(--cr-bg-secondary)] text-[var(--cr-fg-muted)] hover:text-[var(--cr-fg)]"
-                }`}
+          <Tabs
+            value={selectedLeague}
+            onValueChange={(value) => setSelectedLeague(value as League | "all")}
+          >
+            <TabsList variant="line" className="h-auto flex-wrap justify-start gap-1 rounded-lg bg-transparent p-0">
+              <TabsTrigger
+                value="all"
+                className={cn(
+                  "rounded-lg border border-transparent px-3 py-2",
+                  selectedLeague === "all" && "border-border bg-card text-foreground shadow-sm"
+                )}
               >
-                {tier.icon} {tier.label}
-                <span className="ml-1 opacity-60">({tier.minTrophies.toLocaleString()}+)</span>
-              </button>
-            ))}
-          </div>
+                All Leagues
+              </TabsTrigger>
+              {leagueTiers.map((tier) => (
+                <TabsTrigger
+                  key={tier.id}
+                  value={tier.id}
+                  className={cn(
+                    "rounded-lg border border-transparent px-3 py-2",
+                    selectedLeague === tier.id && cn(tier.border, tier.bg, tier.color, "border shadow-sm")
+                  )}
+                >
+                  {tier.icon} {tier.label}
+                  <span className="ml-1 opacity-60">({tier.minTrophies.toLocaleString()}+)</span>
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
         </div>
 
         {/* Leaderboard Table */}
-        <div className="rounded-lg border border-[var(--cr-border)] bg-[var(--cr-bg-secondary)]">
-          <div className="border-b border-[var(--cr-border)] px-4 py-3">
-            <h2 className="font-semibold text-[var(--cr-fg)]">
+        <Card className="shadow-sm">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
               {selectedLeague === "all"
                 ? "Global Leaderboard"
                 : `${getTierConfig(selectedLeague as League).icon} ${getTierConfig(selectedLeague as League).label} League`}
-            </h2>
-          </div>
+            </CardTitle>
+          </CardHeader>
 
-          {/* Table Header */}
-          <div className="grid grid-cols-[3rem_1fr_6rem_5rem_5rem_5rem] items-center gap-2 border-b border-[var(--cr-border)] px-4 py-2 text-xs font-medium uppercase tracking-wider text-[var(--cr-fg-muted)]">
-            <span>#</span>
-            <span>Player</span>
-            <span className="text-right">Trophies</span>
-            <span className="text-right">W</span>
-            <span className="text-right">L</span>
-            <span className="text-right">League</span>
-          </div>
-
-          {/* Rows */}
-          <div className="divide-y divide-[var(--cr-border)]">
-            {loading ? (
-              <div className="p-8 text-center text-sm text-[var(--cr-fg-muted)]">
-                Loading leaderboard...
-              </div>
-            ) : sortedPlayers.length === 0 ? (
-              <div className="p-8 text-center text-sm text-[var(--cr-fg-muted)]">
-                {selectedLeague === "all"
-                  ? "No players yet. Be the first to compete!"
-                  : "No players in this league yet"}
-              </div>
-            ) : (
-              sortedPlayers.map((player, idx) => {
-                const league = getLeague(player.rating);
-                const tierCfg = getTierConfig(league);
-                const rank = idx + 1;
-                const isMe = player.id === myUserId;
-                return (
-                  <div
-                    key={player.id}
-                    className={`grid grid-cols-[3rem_1fr_6rem_5rem_5rem_5rem] items-center gap-2 px-4 py-3 transition-colors hover:bg-[var(--cr-bg-tertiary)] ${
-                      rank <= 3 ? "bg-[var(--cr-bg-tertiary)]/50" : ""
-                    } ${isMe ? "ring-1 ring-[rgba(var(--cr-accent-rgb),0.3)]" : ""}`}
-                  >
-                    {/* Rank */}
-                    <div className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold ${
-                      rank === 1
-                        ? "bg-amber-500/20 text-amber-400"
-                        : rank === 2
-                        ? "bg-slate-400/20 text-slate-300"
-                        : rank === 3
-                        ? "bg-orange-500/20 text-orange-400"
-                        : "text-[var(--cr-fg-muted)]"
-                    }`}>
-                      {rank}
-                    </div>
-
-                    {/* Player */}
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[rgba(var(--cr-accent-rgb),0.15)] text-xs font-bold text-[rgb(var(--cr-accent-rgb))]">
-                        {initialsFromName(player.username)}
-                      </div>
-                      <span className={`font-medium ${isMe ? "text-[rgb(var(--cr-accent-rgb))]" : "text-[var(--cr-fg)]"}`}>
-                        {player.username} {isMe && <span className="text-xs opacity-60">(you)</span>}
-                      </span>
-                    </div>
-
-                    {/* Trophies */}
-                    <div className="text-right">
-                      <span className="flex items-center justify-end gap-1 font-semibold text-amber-400">
-                        <svg className="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 24 24">
-                          <path d="M19 4h-1V3a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1v1H5a1 1 0 0 0-1 1v2a4 4 0 0 0 3 3.87A6 6 0 0 0 11 14.9V17H8a1 1 0 0 0 0 2h8a1 1 0 1 0 0-2h-3v-2.1a6 6 0 0 0 4-3.99 4 4 0 0 0 3-3.87V5a1 1 0 0 0-1-1Z"/>
-                        </svg>
-                        {player.rating.toLocaleString()}
-                      </span>
-                    </div>
-
-                    {/* Wins */}
-                    <div className="text-right text-sm text-emerald-400">{player.wins}</div>
-
-                    {/* Losses */}
-                    <div className="text-right text-sm text-red-400">{player.losses}</div>
-
-                    {/* League */}
-                    <div className="flex justify-end">
-                      <span className={`rounded px-2 py-0.5 text-[10px] font-medium ${tierCfg.bg} ${tierCfg.color}`}>
-                        {tierCfg.icon} {tierCfg.label}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </div>
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="w-12">#</TableHead>
+                <TableHead>Player</TableHead>
+                <TableHead className="text-right">Trophies</TableHead>
+                <TableHead className="text-right">W</TableHead>
+                <TableHead className="text-right">L</TableHead>
+                <TableHead className="text-right">League</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {loading ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <TableRow key={i}>
+                    <TableCell><Skeleton className="size-7 rounded-full" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                    <TableCell><Skeleton className="ml-auto h-4 w-16" /></TableCell>
+                    <TableCell><Skeleton className="ml-auto h-4 w-8" /></TableCell>
+                    <TableCell><Skeleton className="ml-auto h-4 w-8" /></TableCell>
+                    <TableCell><Skeleton className="ml-auto h-5 w-16" /></TableCell>
+                  </TableRow>
+                ))
+              ) : sortedPlayers.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="p-8 text-center text-sm text-muted-foreground">
+                    {selectedLeague === "all"
+                      ? "No players yet. Be the first to compete!"
+                      : "No players in this league yet"}
+                  </TableCell>
+                </TableRow>
+              ) : (
+                sortedPlayers.map((player, idx) => {
+                  const league = getLeague(player.rating);
+                  const tierCfg = getTierConfig(league);
+                  const rank = idx + 1;
+                  const isMe = player.id === myUserId;
+                  return (
+                    <TableRow key={player.id} className={cn(isMe && "bg-accent/40")}>
+                      <TableCell>
+                        <span className={cn(
+                          "flex size-7 items-center justify-center rounded-full text-xs font-bold",
+                          rankBadgeClass(rank)
+                        )}>
+                          {rank}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <Avatar className="size-9 bg-accent text-accent-foreground">
+                            <AvatarFallback className="text-xs font-bold">
+                              {initialsFromName(player.username)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className={cn("font-medium", isMe && "text-primary")}>
+                            {player.username} {isMe && <span className="text-xs opacity-60">(you)</span>}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <span className="inline-flex items-center gap-1 font-semibold text-amber-500">
+                          <Trophy className="size-3.5" />
+                          {player.rating.toLocaleString()}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right text-sm text-emerald-600 dark:text-emerald-400">
+                        {player.wins}
+                      </TableCell>
+                      <TableCell className="text-right text-sm text-destructive">
+                        {player.losses}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Badge variant="secondary" className={cn(tierCfg.bg, tierCfg.color)}>
+                          {tierCfg.icon} {tierCfg.label}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
+              )}
+            </TableBody>
+          </Table>
+        </Card>
 
         {/* Top 10 in Your League */}
         {!isUnranked && myLeague && myLeaguePlayers.length > 0 && (
-          <div className="mt-8 rounded-lg border border-[var(--cr-border)] bg-[var(--cr-bg-secondary)]">
-            <div className="border-b border-[var(--cr-border)] px-4 py-3">
-              <h2 className="font-semibold text-[var(--cr-fg)]">
+          <Card className="mt-8 shadow-sm">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
                 {getTierConfig(myLeague).icon} Top 10 in Your League ({getTierConfig(myLeague).label})
-              </h2>
-            </div>
-            <div className="divide-y divide-[var(--cr-border)]">
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-1">
               {myLeaguePlayers.map((player, idx) => {
                 const tierCfg = getTierConfig(myLeague);
                 const isMe = player.id === myUserId;
                 return (
                   <div
                     key={player.id}
-                    className={`flex items-center gap-4 px-4 py-3 transition-colors hover:bg-[var(--cr-bg-tertiary)] ${isMe ? "ring-1 ring-[rgba(var(--cr-accent-rgb),0.3)]" : ""}`}
+                    className={cn(
+                      "flex items-center gap-4 rounded-lg px-3 py-3 transition-colors hover:bg-accent/50",
+                      isMe && "bg-accent/40"
+                    )}
                   >
-                    <div className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold ${tierCfg.bg} ${tierCfg.color}`}>
+                    <span className={cn(
+                      "flex size-7 items-center justify-center rounded-full text-xs font-bold",
+                      tierCfg.bg,
+                      tierCfg.color
+                    )}>
                       {idx + 1}
-                    </div>
-                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[rgba(var(--cr-accent-rgb),0.15)] text-xs font-bold text-[rgb(var(--cr-accent-rgb))]">
-                      {initialsFromName(player.username)}
-                    </div>
+                    </span>
+                    <Avatar className="size-9 bg-accent text-accent-foreground">
+                      <AvatarFallback className="text-xs font-bold">
+                        {initialsFromName(player.username)}
+                      </AvatarFallback>
+                    </Avatar>
                     <div className="flex-1">
-                      <span className={`font-medium ${isMe ? "text-[rgb(var(--cr-accent-rgb))]" : "text-[var(--cr-fg)]"}`}>
+                      <span className={cn("font-medium", isMe && "text-primary")}>
                         {player.username} {isMe && <span className="text-xs opacity-60">(you)</span>}
                       </span>
                     </div>
-                    <span className="flex items-center gap-1 text-sm font-semibold text-amber-400">
-                      <svg className="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M19 4h-1V3a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1v1H5a1 1 0 0 0-1 1v2a4 4 0 0 0 3 3.87A6 6 0 0 0 11 14.9V17H8a1 1 0 0 0 0 2h8a1 1 0 1 0 0-2h-3v-2.1a6 6 0 0 0 4-3.99 4 4 0 0 0 3-3.87V5a1 1 0 0 0-1-1Z"/>
-                      </svg>
+                    <span className="inline-flex items-center gap-1 text-sm font-semibold text-amber-500">
+                      <Trophy className="size-3.5" />
                       {player.rating.toLocaleString()}
                     </span>
                   </div>
                 );
               })}
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         )}
 
         {/* League Progression Info */}
         <div className="mt-8">
-          <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-[var(--cr-fg-muted)]">
+          <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
             League Progression
           </h2>
           <div className="grid gap-3 sm:grid-cols-5">
@@ -402,24 +435,25 @@ export default function LeaderboardPage() {
               return (
                 <div
                   key={tier.id}
-                  className={`relative rounded-lg border p-4 text-center transition-all ${
+                  className={cn(
+                    "relative rounded-xl border p-4 text-center shadow-sm transition-all hover:shadow-md",
                     isMyLeague
-                      ? `${tier.border} ${tier.bg} ring-2 ${tier.border}`
-                      : "border-[var(--cr-border)] bg-[var(--cr-bg-secondary)]"
-                  }`}
+                      ? cn(tier.border, tier.bg, "ring-2")
+                      : "border-border bg-card"
+                  )}
                 >
                   {isMyLeague && (
-                    <div className="absolute -top-2 left-1/2 -translate-x-1/2 rounded bg-[rgb(var(--cr-accent-rgb))] px-2 py-0.5 text-[10px] font-bold text-white">
+                    <div className="absolute -top-2 left-1/2 -translate-x-1/2 rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold text-primary-foreground">
                       YOU
                     </div>
                   )}
                   <div className="text-2xl">{tier.icon}</div>
-                  <div className={`mt-1 text-sm font-semibold ${tier.color}`}>{tier.label}</div>
-                  <div className="mt-0.5 text-xs text-[var(--cr-fg-muted)]">
+                  <div className={cn("mt-1 text-sm font-semibold", tier.color)}>{tier.label}</div>
+                  <div className="mt-0.5 text-xs text-muted-foreground">
                     {tier.minTrophies === 0 ? "0" : tier.minTrophies.toLocaleString()}+ trophies
                   </div>
                   {i < leagueTiers.length - 1 && (
-                    <div className="absolute -right-2 top-1/2 hidden -translate-y-1/2 text-[var(--cr-fg-muted)] sm:block">
+                    <div className="absolute -right-2 top-1/2 hidden -translate-y-1/2 text-muted-foreground sm:block">
                       →
                     </div>
                   )}

@@ -1,26 +1,39 @@
 "use client";
 
+import { Users } from "lucide-react";
+
 import { PracticeScaffold } from "../practice/practice-scaffold";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../components/ui/card";
 
 export default function TeamPage() {
   return (
     <PracticeScaffold defaultSidebarOpen>
       <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8 px-6 pt-8 sm:px-10 lg:px-16">
-        <header className="rounded-xl border border-[var(--cr-border)] bg-[var(--cr-bg-secondary)] p-8">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--cr-fg-muted)]">
-            Clubs &amp; Teams
-          </p>
-          <h1 className="mt-4 text-4xl font-semibold text-[var(--cr-fg)] sm:text-5xl">
-            Join club/team
-          </h1>
-          <p className="mt-3 max-w-2xl text-sm text-[var(--cr-fg-muted)]">
-            Team features are not wired yet. This page is the placeholder entry point for joining or creating a team.
-          </p>
-        </header>
+        <Card className="p-8">
+          <CardHeader className="gap-3 p-0">
+            <CardDescription className="text-xs font-semibold uppercase tracking-[0.2em]">
+              Clubs &amp; Teams
+            </CardDescription>
+            <CardTitle className="text-4xl tracking-tight sm:text-5xl">
+              Join a club or team
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0 pt-3">
+            <p className="max-w-2xl text-sm text-muted-foreground">
+              Team features are not wired yet. This page is the placeholder entry point for
+              joining or creating a team.
+            </p>
+          </CardContent>
+        </Card>
 
-        <section className="rounded-xl border border-[var(--cr-border)] bg-[var(--cr-bg-secondary)] p-8 text-sm text-[var(--cr-fg-muted)]">
-          Add team browsing / invitations here once the Supabase tables are ready.
-        </section>
+        <Card>
+          <CardContent className="flex flex-col items-start gap-3 p-8 text-sm text-muted-foreground">
+            <Users className="size-5 text-muted-foreground" />
+            <p>
+              Add team browsing and invitations here once the Supabase tables are ready.
+            </p>
+          </CardContent>
+        </Card>
       </div>
     </PracticeScaffold>
   );

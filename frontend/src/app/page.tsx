@@ -1,175 +1,160 @@
 import Link from "next/link";
+import { CheckIcon, SwordsIcon, TargetIcon, TrophyIcon } from "lucide-react";
+
+import { LinkButton } from "@/components/ui/link-button";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+
+const features = [
+  {
+    icon: SwordsIcon,
+    title: "Duel Your Friends",
+    description:
+      "Go head-to-head in lightning 1v1 battles or jump into chaotic 4-player brawls. Winner takes the bragging rights.",
+  },
+  {
+    icon: TrophyIcon,
+    title: "Climb the Ranks",
+    description:
+      "Every win pushes you up the Royale ladder. Watch your rating climb on the live leaderboard and chase the top spot.",
+  },
+  {
+    icon: TargetIcon,
+    title: "Practice to Get Faster",
+    description:
+      "Warm up with practice problems that level with you. The more you play, the sharper — and faster — you get.",
+  },
+];
+
+const checklist = [
+  "1v1 duels",
+  "4-player brawls",
+  "Live leaderboards",
+  "Practice arena",
+];
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-cr-bg">
-      {/* Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-50 border-b border-cr-border bg-cr-bg/80 backdrop-blur-md">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
-          <Link href="/" className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-cr-border bg-cr-bg-secondary">
-              <span className="text-base font-bold text-cr-accent">CR</span>
-            </div>
-            <span className="text-lg font-semibold text-cr-fg">Code Royale</span>
-          </Link>
-          <div className="flex items-center gap-6">
-            <Link href="/auth/login" className="text-sm font-medium text-cr-fg-muted hover:text-cr-fg transition-colors">
-              Sign In
-            </Link>
-            <Link 
-              href="/auth/signup" 
-              className="rounded-lg bg-cr-accent px-4 py-2 text-sm font-medium text-white hover:bg-cr-accent/90 transition-colors"
-            >
-              Get Started
-            </Link>
-          </div>
-        </div>
-      </nav>
-
-      {/* Hero Section */}
-      <section className="relative pt-32 pb-20">
-        <div className="relative mx-auto max-w-7xl px-6">
+    <div className="flex min-h-screen flex-col">
+      {/* Hero */}
+      <section className="hero-glow pt-32 pb-24">
+        <div className="mx-auto max-w-7xl px-6">
           <div className="mx-auto max-w-3xl text-center">
-            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-cr-border bg-cr-bg-secondary px-4 py-2 text-sm">
-              <span className="h-2 w-2 rounded-full bg-emerald-500" />
-              <span className="text-cr-fg-muted">Beta now live</span>
-            </div>
-            <h1 className="text-5xl font-bold tracking-tight text-cr-fg md:text-6xl lg:text-7xl">
-              Battle-ready coding
-              <span className="block text-cr-accent">with neon intensity</span>
+            <h1 className="text-5xl font-semibold tracking-tight text-foreground md:text-6xl lg:text-7xl">
+              Think fast.
+              <span className="block text-muted-foreground">Code faster.</span>
             </h1>
-            <p className="mt-6 text-lg text-cr-fg-muted md:text-xl">
-              Duel friends, climb the Royale ladder, and sharpen your reflexes in a
-              futuristic arena crafted for developers.
+            <p className="mx-auto mt-6 max-w-2xl text-lg text-muted-foreground md:text-xl">
+              Code Royale is a real-time coding battleground. Duel your friends,
+              smash the leaderboard, and prove you&apos;re the sharpest coder in
+              the room — one keystroke at a time.
             </p>
             <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
-              <Link
-                href="/auth/signup"
-                className="rounded-lg bg-cr-accent px-8 py-3 text-base font-semibold text-white hover:bg-cr-accent/90 transition-colors"
-              >
-                Join the Arena
-              </Link>
-              <Link
+              <LinkButton size="lg" href="/auth/signup">
+                Start Playing
+              </LinkButton>
+              <LinkButton
+                variant="outline"
+                size="lg"
                 href="/game-modes"
-                className="rounded-lg border border-cr-border bg-cr-bg-secondary px-8 py-3 text-base font-semibold text-cr-fg hover:bg-cr-bg-tertiary transition-colors"
               >
-                Explore Modes
-              </Link>
+                See Game Modes
+              </LinkButton>
             </div>
-          </div>
-
-          {/* Stats */}
-          <div className="mt-20 grid gap-6 sm:grid-cols-3">
-            {[
-              { value: "1v1", label: "Real-time Battles" },
-              { value: "3+", label: "Game Modes" },
-              { value: "∞", label: "Practice Problems" },
-            ].map((stat) => (
-              <div
-                key={stat.label}
-                className="rounded-xl border border-cr-border bg-cr-bg-secondary p-6 text-center"
-              >
-                <div className="text-3xl font-bold text-cr-accent">{stat.value}</div>
-                <div className="mt-2 text-sm text-cr-fg-muted">{stat.label}</div>
-              </div>
-            ))}
           </div>
         </div>
       </section>
 
-      {/* Features Section */}
-      <section className="py-20 bg-cr-bg-secondary">
+      {/* Features */}
+      <section className="border-y border-border bg-muted/30 py-20">
         <div className="mx-auto max-w-7xl px-6">
           <div className="text-center">
-            <h2 className="text-3xl font-bold text-cr-fg md:text-4xl">
-              Everything you need to compete
+            <h2 className="text-3xl font-semibold tracking-tight text-foreground md:text-4xl">
+              One arena. Every way to win.
             </h2>
-            <p className="mt-4 text-cr-fg-muted">
-              From quick practice sessions to intense ranked battles
+            <p className="mt-4 text-muted-foreground">
+              Queue up solo, squad up with friends, or grind the practice arena
+              to sharpen your edge.
             </p>
           </div>
 
-          <div className="mt-16 grid gap-8 md:grid-cols-3">
-            {[
-              {
-                icon: (
-                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
-                  </svg>
-                ),
-                title: "Lightning Modes",
-                description: "60-second bullet rounds, league ladders with ELO-calibrated rivals, and smart bots for practice.",
-              },
-              {
-                icon: (
-                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
-                  </svg>
-                ),
-                title: "Live Telemetry",
-                description: "Track your streaks, solve velocity, and performance metrics in real-time.",
-              },
-              {
-                icon: (
-                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
-                  </svg>
-                ),
-                title: "Secure Sandbox",
-                description: "Instant verdicts in a hardened environment. TypeScript, Python, and C++ supported.",
-              },
-            ].map((feature) => (
-              <div
+          <div className="mt-16 grid gap-4 md:grid-cols-3">
+            {features.map((feature) => (
+              <Card
                 key={feature.title}
-                className="group rounded-xl border border-cr-border bg-cr-bg p-8 transition-all hover:border-cr-accent/50"
+                className="shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg"
               >
-                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-cr-accent/10 text-cr-accent">
-                  {feature.icon}
-                </div>
-                <h3 className="text-xl font-semibold text-cr-fg">{feature.title}</h3>
-                <p className="mt-3 text-cr-fg-muted">{feature.description}</p>
-              </div>
+                <CardHeader>
+                  <div className="mb-1 flex size-12 items-center justify-center rounded-lg bg-accent text-accent-foreground">
+                    <feature.icon />
+                  </div>
+                  <CardTitle className="text-xl">{feature.title}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-muted-foreground">
+                    {feature.description}
+                  </p>
+                </CardContent>
+              </Card>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Game Modes Preview */}
+      {/* Match preview */}
       <section className="py-20">
         <div className="mx-auto max-w-7xl px-6">
           <div className="grid gap-12 lg:grid-cols-2 lg:items-center">
             <div>
-              <h2 className="text-3xl font-bold text-cr-fg md:text-4xl">
-                Built for coders who crave adrenaline
+              <h2 className="text-3xl font-semibold tracking-tight text-foreground md:text-4xl">
+                Every match is a test of speed and smarts
               </h2>
-              <p className="mt-4 text-cr-fg-muted">
-                Code Royale fuses esports presentation with rigorous assessments.
-                Queue with teammates, scout rivals, and climb neon-lit leagues.
+              <p className="mt-4 text-muted-foreground">
+                Jump straight into a battle — no setup, no waiting. Read the
+                prompt, write the solution, and hit submit before the clock
+                runs out.
               </p>
-              <div className="mt-8 grid gap-4 sm:grid-cols-2">
-                {["Real-time sockets", "Monaco editor", "Live leaderboards", "Match replays"].map((item) => (
+              <div className="mt-8 grid gap-3 sm:grid-cols-2">
+                {checklist.map((item) => (
                   <div
                     key={item}
-                    className="flex items-center gap-3 rounded-lg border border-cr-border bg-cr-bg-secondary p-4"
+                    className="flex items-center gap-3 rounded-lg border border-border bg-muted/30 p-4 shadow-sm"
                   >
-                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-cr-accent/20 text-cr-accent text-sm">✓</span>
-                    <span className="text-cr-fg">{item}</span>
+                    <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-accent text-accent-foreground">
+                      <CheckIcon />
+                    </span>
+                    <span className="text-sm text-foreground">{item}</span>
                   </div>
                 ))}
               </div>
             </div>
-            <div className="relative">
-              <div className="relative rounded-xl border border-cr-border bg-cr-bg-secondary p-8">
-                <div className="mb-4 flex items-center gap-2">
-                  <div className="h-3 w-3 rounded-full bg-red-500" />
-                  <div className="h-3 w-3 rounded-full bg-yellow-500" />
-                  <div className="h-3 w-3 rounded-full bg-emerald-500" />
+            <div>
+              <div className="rounded-xl border border-border bg-card shadow-lg">
+                <div className="flex items-center gap-2 border-b border-border px-4 py-3">
+                  <span className="size-3 rounded-full bg-muted-foreground/30" />
+                  <span className="size-3 rounded-full bg-muted-foreground/30" />
+                  <span className="size-3 rounded-full bg-muted-foreground/30" />
                 </div>
-                <div className="space-y-3 font-mono text-sm">
-                  <div className="text-cr-fg-muted">$ code-royale start</div>
-                  <div className="text-green-400">✓ Connecting to arena...</div>
-                  <div className="text-green-400">✓ Opponent found: @rival_coder</div>
-                  <div className="text-cr-accent">⚔ Battle starting in 3...</div>
+                <div className="flex flex-col gap-3 p-6 font-mono text-sm">
+                  <div className="text-muted-foreground">
+                    &gt; Searching for an opponent...
+                  </div>
+                  <div className="text-muted-foreground">
+                    &gt; Found: @shadow_coder · rating 1420
+                  </div>
+                  <div className="text-muted-foreground">
+                    &gt; Match found — get ready!
+                  </div>
+                  <div className="text-foreground">
+                    &gt; Round 1 begins in 3...
+                  </div>
+                  <div className="text-lg font-semibold text-accent-foreground">
+                    GO!
+                  </div>
                 </div>
               </div>
             </div>
@@ -177,50 +162,65 @@ export default function Home() {
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="py-20 bg-cr-bg-secondary">
+      {/* CTA */}
+      <section
+        id="get-started"
+        className="border-t border-border bg-muted/30 py-20"
+      >
         <div className="mx-auto max-w-3xl px-6 text-center">
-          <h2 className="text-3xl font-bold text-cr-fg md:text-4xl">
-            Ready to enter the arena?
+          <h2 className="text-3xl font-semibold tracking-tight text-foreground md:text-4xl">
+            Your first duel is one click away
           </h2>
-          <p className="mt-4 text-cr-fg-muted">
-            Join thousands of developers sharpening their skills through competitive coding.
+          <p className="mt-4 text-muted-foreground">
+            Create a free account and step into the arena. No setup, no
+            waiting — just you versus the best.
           </p>
           <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
-            <Link
-              href="/auth/signup"
-              className="rounded-lg bg-cr-accent px-8 py-3 text-base font-semibold text-white hover:bg-cr-accent/90 transition-colors"
-            >
+            <LinkButton size="lg" href="/auth/signup">
               Create Account
-            </Link>
-            <Link
+            </LinkButton>
+            <LinkButton
+              variant="outline"
+              size="lg"
               href="/auth/login"
-              className="rounded-lg border border-cr-border px-8 py-3 text-base font-semibold text-cr-fg hover:bg-cr-bg transition-colors"
             >
               Sign In
-            </Link>
+            </LinkButton>
           </div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-cr-border bg-cr-bg py-12">
-        <div className="mx-auto max-w-7xl px-6">
-          <div className="flex flex-col items-center justify-between gap-6 sm:flex-row">
-            <div className="flex items-center gap-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-cr-border bg-cr-bg-secondary">
-                <span className="text-sm font-bold text-cr-accent">CR</span>
-              </div>
-              <span className="font-semibold text-cr-fg">Code Royale</span>
-            </div>
-            <div className="flex items-center gap-6 text-sm text-cr-fg-muted">
-              <Link href="/game-modes" className="hover:text-cr-fg transition-colors">Game Modes</Link>
-              <Link href="/practice" className="hover:text-cr-fg transition-colors">Practice</Link>
-              <Link href="/auth/login" className="hover:text-cr-fg transition-colors">Sign In</Link>
-            </div>
-            <div className="text-sm text-cr-fg-muted">
-              © 2024 Code Royale
-            </div>
+      <footer className="border-t border-border py-12">
+        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-6 px-6 sm:flex-row">
+          <div className="flex items-center gap-3">
+            <span className="flex size-8 items-center justify-center rounded-lg bg-muted ring-1 ring-foreground/10">
+              <span className="text-sm font-bold text-foreground">CR</span>
+            </span>
+            <span className="font-semibold text-foreground">Code Royale</span>
+          </div>
+          <div className="flex items-center gap-6 text-sm text-muted-foreground">
+            <Link
+              href="/game-modes"
+              className="transition-colors hover:text-foreground"
+            >
+              Game Modes
+            </Link>
+            <Link
+              href="/practice"
+              className="transition-colors hover:text-foreground"
+            >
+              Practice
+            </Link>
+            <Link
+              href="/auth/login"
+              className="transition-colors hover:text-foreground"
+            >
+              Sign In
+            </Link>
+          </div>
+          <div className="text-sm text-muted-foreground">
+            © {new Date().getFullYear()} Code Royale
           </div>
         </div>
       </footer>

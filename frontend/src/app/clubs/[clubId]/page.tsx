@@ -1,9 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { ArrowLeft, Lock, Trophy } from "lucide-react";
+
 import { AppShell } from "../../../components/app-shell";
+import { Alert, AlertDescription } from "../../../components/ui/alert";
+import { Badge } from "../../../components/ui/badge";
+import { Button } from "../../../components/ui/button";
+import { Card, CardContent } from "../../../components/ui/card";
 
 type ClubPrivacy = "public" | "private";
 
@@ -88,6 +94,35 @@ function clearMyClub() {
   window.localStorage.removeItem(STORAGE_MY_CUSTOM_CLUB);
 }
 
+function emblemColor(emblem: string) {
+  return emblemOptions.find((e) => e.id === emblem)?.color ?? "from-blue-500 to-cyan-500";
+}
+
+/* ── External store for club storage (hydration-safe) ──── */
+let myClubIdCache: string | null | undefined;
+let clubListCache: Club[] | undefined;
+
+function getStoredMyClubId(): string | null {
+  if (myClubIdCache === undefined) myClubIdCache = getMyClubId();
+  return myClubIdCache;
+}
+
+function getStoredClubList(): Club[] {
+  if (clubListCache === undefined) clubListCache = loadClubList();
+  return clubListCache;
+}
+
+function subscribeStoredClubs(onChange: () => void): () => void {
+  if (typeof window === "undefined") return () => {};
+  const handle = () => {
+    myClubIdCache = undefined;
+    clubListCache = undefined;
+    onChange();
+  };
+  window.addEventListener("storage", handle);
+  return () => window.removeEventListener("storage", handle);
+}
+
 export default function ClubDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -95,14 +130,10 @@ export default function ClubDetailPage() {
   const clubId = typeof params.clubId === "string" ? params.clubId : "";
   const isInviteLink = searchParams.get("invite") === "1";
 
-  const [myClubId, setMyClubIdState] = useState<string | null>(null);
-  const [clubList, setClubList] = useState<Club[]>([]);
+  const myClubId = useSyncExternalStore(subscribeStoredClubs, getStoredMyClubId, () => null);
+  const storedList = useSyncExternalStore(subscribeStoredClubs, getStoredClubList, () => []);
 
-  useEffect(() => {
-    setMyClubIdState(getMyClubId());
-    const stored = loadClubList();
-    setClubList(stored.length > 0 ? stored : topClubs);
-  }, []);
+  const clubList = storedList.length > 0 ? storedList : topClubs;
 
   const club = useMemo(() => {
     const custom = loadCustomClub();
@@ -110,19 +141,22 @@ export default function ClubDetailPage() {
     return clubList.find((c) => c.id === clubId) ?? topClubs.find((c) => c.id === clubId) ?? null;
   }, [clubId, clubList]);
 
+  const refreshStoredClubs = () => {
+    myClubIdCache = undefined;
+    clubListCache = undefined;
+    window.dispatchEvent(new Event("storage"));
+  };
+
   if (!club) {
     return (
       <AppShell>
-        <div className="mx-auto max-w-3xl p-6">
-          <div className="rounded-lg border border-[var(--cr-border)] bg-[var(--cr-bg-secondary)] p-6 text-center">
-            <p className="text-[var(--cr-fg-muted)]">Club not found.</p>
-            <button
-              onClick={() => router.push("/clubs")}
-              className="mt-4 rounded-lg bg-[rgb(var(--cr-accent-rgb))] px-4 py-2 text-sm font-medium text-white"
-            >
-              Back to Clubs
-            </button>
-          </div>
+        <div className="mx-auto w-full max-w-3xl p-6">
+          <Card className="p-6 text-center">
+            <CardContent className="flex flex-col items-center gap-4 p-0">
+              <p className="text-muted-foreground">Club not found.</p>
+              <Button onClick={() => router.push("/clubs")}>Back to Clubs</Button>
+            </CardContent>
+          </Card>
         </div>
       </AppShell>
     );
@@ -139,85 +173,79 @@ export default function ClubDetailPage() {
       return;
     }
     setMyClubId(club.id);
-    setMyClubIdState(club.id);
+    refreshStoredClubs();
   };
 
   const handleLeave = () => {
     if (!isMyClub) return;
     if (confirm("Are you sure you want to leave this club?")) {
       clearMyClub();
-      setMyClubIdState(null);
+      refreshStoredClubs();
       router.push("/clubs");
     }
   };
 
   return (
     <AppShell>
-      <div className="mx-auto max-w-5xl p-6">
+      <div className="mx-auto w-full max-w-5xl p-6">
         <div className="mb-5 flex items-center justify-between">
           <Link
             href="/clubs"
-            className="text-sm text-[var(--cr-fg-muted)] hover:text-[var(--cr-fg)]"
+            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
           >
-            ← Back to Clubs
+            <ArrowLeft data-icon="inline-start" />
+            Back to Clubs
           </Link>
           {isMyClub ? (
-            <button
+            <Button
+              variant="outline"
               onClick={handleLeave}
-              className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm font-medium text-red-400 hover:bg-red-500/20 transition-colors"
+              className="border-destructive/30 text-destructive hover:bg-destructive/10"
             >
               Leave Club
-            </button>
+            </Button>
           ) : isFull ? (
-            <span className="rounded-lg bg-[var(--cr-bg-tertiary)] px-3 py-1.5 text-xs font-medium text-[var(--cr-fg-muted)]">
-              Full
-            </span>
+            <Badge variant="secondary">Full</Badge>
           ) : isInClub ? (
-            <span className="rounded-lg bg-[var(--cr-bg-tertiary)] px-3 py-1.5 text-xs font-medium text-[var(--cr-fg-muted)]">
-              In a Club
-            </span>
+            <Badge variant="secondary">In a Club</Badge>
           ) : (
-            <button
-              onClick={handleJoin}
-              className="rounded-lg bg-[rgb(var(--cr-accent-rgb))] px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition-opacity"
-            >
+            <Button onClick={handleJoin}>
               {club.privacy === "private"
                 ? (isInviteLink ? "Request via Invite" : "Request to Join")
                 : (isInviteLink ? "Join via Invite" : "Join Club")}
-            </button>
+            </Button>
           )}
         </div>
 
         {isInviteLink && !isMyClub && !isInClub && !isFull && (
-          <div className="mb-4 rounded-lg border border-[rgba(var(--cr-accent-rgb),0.4)] bg-[rgba(var(--cr-accent-rgb),0.12)] px-4 py-3 text-sm text-[var(--cr-fg)]">
-            You opened an invite link for this club.
-          </div>
+          <Alert className="mb-4 border-accent bg-accent/40">
+            <AlertDescription>
+              You opened an invite link for this club.
+            </AlertDescription>
+          </Alert>
         )}
 
-        <div className="rounded-lg border border-[var(--cr-border)] bg-[var(--cr-bg-secondary)] p-6">
-          <div className="flex flex-wrap items-start gap-6">
-            <div className={`flex h-20 w-20 items-center justify-center rounded-xl bg-gradient-to-br ${
-              emblemOptions.find((e) => e.id === club.emblem)?.color ?? "from-blue-500 to-cyan-500"
-            } text-4xl`}>
+        <Card>
+          <CardContent className="flex flex-wrap items-start gap-6 p-6">
+            <div className={`flex size-20 items-center justify-center rounded-xl bg-gradient-to-br ${emblemColor(club.emblem)} text-4xl`}>
               {club.logo}
             </div>
-            <div className="flex-1">
+            <div className="min-w-0 flex-1">
               <div className="flex items-center gap-3">
-                <h1 className="text-2xl font-bold text-[var(--cr-fg)]">{club.name}</h1>
+                <h1 className="text-2xl font-bold tracking-tight">{club.name}</h1>
                 {club.privacy === "private" && (
-                  <span className="rounded bg-amber-500/20 px-2 py-0.5 text-xs font-medium text-amber-400">
+                  <Badge variant="outline" className="border-amber-500/30 text-amber-600 dark:text-amber-400">
+                    <Lock data-icon="inline-start" />
                     Private
-                  </span>
+                  </Badge>
                 )}
               </div>
               {club.description && (
-                <p className="mt-1 text-sm text-[var(--cr-fg-muted)]">{club.description}</p>
+                <p className="mt-1 text-sm text-muted-foreground">{club.description}</p>
               )}
-              <div className="mt-2 flex flex-wrap items-center gap-4 text-sm text-[var(--cr-fg-muted)]">
+              <div className="mt-2 flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
                 <span className="flex items-center gap-1">
-                  <svg className="h-4 w-4 text-amber-400" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M19 4h-1V3a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1v1H5a1 1 0 0 0-1 1v2a4 4 0 0 0 3 3.87A6 6 0 0 0 11 14.9V17H8a1 1 0 0 0 0 2h8a1 1 0 1 0 0-2h-3v-2.1a6 6 0 0 0 4-3.99 4 4 0 0 0 3-3.87V5a1 1 0 0 0-1-1Z"/>
-                  </svg>
+                  <Trophy className="size-4 text-amber-500" />
                   {club.trophies.toLocaleString()} Trophies
                 </span>
                 <span>•</span>
@@ -226,37 +254,41 @@ export default function ClubDetailPage() {
                 <span>Rank #{club.rank}</span>
               </div>
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
 
-        <div className="mt-6 rounded-lg border border-[var(--cr-border)] bg-[var(--cr-bg-secondary)]">
-          <div className="border-b border-[var(--cr-border)] px-4 py-3">
-            <h2 className="font-semibold text-[var(--cr-fg)]">Top Players</h2>
+        <Card className="mt-6">
+          <div className="border-b px-4 py-3">
+            <h2 className="font-semibold">Top Players</h2>
           </div>
-          <div className="divide-y divide-[var(--cr-border)]">
+          <div className="flex flex-col divide-y">
             {club.topPlayers.map((player, idx) => (
               <div key={player.id} className="flex items-center gap-4 p-4">
-                <div className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold ${
-                  idx === 0 ? "bg-amber-500/20 text-amber-400"
-                  : idx === 1 ? "bg-slate-400/20 text-slate-300"
-                  : "bg-orange-500/20 text-orange-400"
-                }`}>
+                <div
+                  className={`flex size-8 items-center justify-center rounded-full text-xs font-bold ${
+                    idx === 0
+                      ? "bg-amber-500/20 text-amber-500"
+                      : idx === 1
+                        ? "bg-muted text-muted-foreground"
+                        : "bg-orange-500/20 text-orange-500"
+                  }`}
+                >
                   {idx + 1}
                 </div>
-                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[rgba(var(--cr-accent-rgb),0.15)] text-xs font-bold text-[rgb(var(--cr-accent-rgb))]">
+                <div className="flex size-9 items-center justify-center rounded-full bg-accent text-xs font-bold text-accent-foreground">
                   {player.avatar}
                 </div>
                 <div className="flex-1">
-                  <div className="font-medium text-[var(--cr-fg)]">{player.username}</div>
-                  <div className="text-xs text-[var(--cr-fg-muted)]">{player.role.toUpperCase()}</div>
+                  <div className="font-medium">{player.username}</div>
+                  <div className="text-xs text-muted-foreground">{player.role.toUpperCase()}</div>
                 </div>
-                <div className="text-sm font-semibold text-amber-400">
+                <div className="text-sm font-semibold text-amber-500">
                   {player.trophies.toLocaleString()} trophies
                 </div>
               </div>
             ))}
           </div>
-        </div>
+        </Card>
       </div>
     </AppShell>
   );

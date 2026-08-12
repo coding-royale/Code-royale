@@ -1,9 +1,19 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { Loader2, Search, UserPlus } from "lucide-react";
+
 import { AppShell } from "../../components/app-shell";
+import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
+import { Avatar, AvatarFallback } from "../../components/ui/avatar";
+import { Badge } from "../../components/ui/badge";
+import { Button } from "../../components/ui/button";
+import { Card, CardContent } from "../../components/ui/card";
+import { Input } from "../../components/ui/input";
+import { Skeleton } from "../../components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
 import { supabase } from "../../lib/supabase-browser";
 
 export const dynamic = "force-dynamic";
@@ -51,7 +61,23 @@ function computeRelationship(viewerId: string, otherId: string, rows: Connection
 
 function FriendsContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
 
+  const paramTab = searchParams.get("tab");
+  const urlTab =
+    paramTab === "friends" || paramTab === "pending" || paramTab === "search"
+      ? paramTab
+      : null;
+  const [tabState, setTabState] = useState<ActiveTab>("friends");
+  // URL wins when ?tab= is present (e.g. deep links from the app shell);
+  // otherwise user clicks drive the state.
+  const activeTab = urlTab ?? tabState;
+
+  const changeTab = (tab: ActiveTab) => {
+    setTabState(tab);
+    if (urlTab) router.replace(pathname);
+  };
   const [viewerId, setViewerId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [searching, setSearching] = useState(false);
@@ -64,7 +90,6 @@ function FriendsContent() {
   const [outgoingRequests, setOutgoingRequests] = useState<FriendListItem[]>([]);
   const [relationshipByUserId, setRelationshipByUserId] = useState<Record<string, RelationshipState>>({});
   const [friendCountByUserId, setFriendCountByUserId] = useState<Record<string, number>>({});
-  const [activeTab, setActiveTab] = useState<ActiveTab>("friends");
 
   const trimmedQuery = query.trim();
   const canSearch = trimmedQuery.length >= 2;
@@ -74,7 +99,7 @@ function FriendsContent() {
     return trimmed && trimmed.length > 0 ? trimmed : "Unknown";
   };
 
-  const loadFriendCounts = async (userIds: string[]) => {
+  const loadFriendCounts = useCallback(async (userIds: string[]) => {
     if (userIds.length === 0) {
       return {} as Record<string, number>;
     }
@@ -89,7 +114,7 @@ function FriendsContent() {
 
     const payload = (await response.json()) as { counts?: Record<string, number> };
     return payload.counts ?? {};
-  };
+  }, []);
 
   const buildRelationshipMap = (users: UserRow[], rows: ConnectionRow[], currentViewerId: string) => {
     const relMap: Record<string, RelationshipState> = {};
@@ -103,7 +128,7 @@ function FriendsContent() {
     return relMap;
   };
 
-  const loadConnections = async (currentViewerId: string) => {
+  const loadConnections = useCallback(async (currentViewerId: string) => {
     setLoadingConnections(true);
 
     const { data: rowsData, error: rowsError } = await supabase
@@ -182,7 +207,7 @@ function FriendsContent() {
     setOutgoingRequests(outgoingIds.map(toListItem).sort(sortByName));
     setFriends(friendIds.map(toListItem).sort(sortByName));
     setLoadingConnections(false);
-  };
+  }, [loadFriendCounts]);
 
   useEffect(() => {
     let mounted = true;
@@ -206,14 +231,7 @@ function FriendsContent() {
     };
     void loadViewer();
     return () => { mounted = false; };
-  }, []);
-
-  useEffect(() => {
-    const requestedTab = searchParams.get("tab");
-    if (requestedTab === "friends" || requestedTab === "pending" || requestedTab === "search") {
-      setActiveTab(requestedTab);
-    }
-  }, [searchParams]);
+  }, [loadConnections]);
 
   const handleSearch = async () => {
     if (!canSearch) {
@@ -326,261 +344,253 @@ function FriendsContent() {
     const profileHref = isSelf ? "/profile" : `/profile?userId=${user.id}`;
 
     return (
-      <div
-        key={`${kind}-${user.id}`}
-        className="flex items-center justify-between rounded-lg border border-[var(--cr-border)] bg-[var(--cr-bg-secondary)] px-4 py-3"
-      >
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[rgba(var(--cr-accent-rgb),0.2)] text-sm font-medium text-[rgb(var(--cr-accent-rgb))]">
-            {user.username[0]?.toUpperCase() ?? "?"}
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <Link href={profileHref} className="text-sm font-medium text-[var(--cr-fg)] hover:underline">
-                {user.username}
-              </Link>
-              {kind === "friend" && (
-                <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-300">
-                  <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M16 11c1.657 0 3-1.567 3-3.5S17.657 4 16 4s-3 1.567-3 3.5 1.343 3.5 3 3.5zM8 11c1.657 0 3-1.567 3-3.5S9.657 4 8 4 5 5.567 5 7.5 6.343 11 8 11zm0 2c-2.761 0-5 2.015-5 4.5V20h10v-2.5c0-2.485-2.239-4.5-5-4.5zm8 0a5.76 5.76 0 00-1.16.118A6.52 6.52 0 0119 17.5V20h5v-2.5c0-2.485-2.239-4.5-5-4.5z" />
-                  </svg>
-                  Friends
-                </span>
-              )}
+      <Card key={`${kind}-${user.id}`}>
+        <CardContent className="flex items-center justify-between gap-3 p-4">
+          <div className="flex min-w-0 items-center gap-3">
+            <Avatar className="size-10">
+              <AvatarFallback className="text-sm font-medium">
+                {user.username[0]?.toUpperCase() ?? "?"}
+              </AvatarFallback>
+            </Avatar>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <Link
+                  href={profileHref}
+                  className="truncate text-sm font-medium hover:underline"
+                >
+                  {user.username}
+                </Link>
+                {kind === "friend" && (
+                  <Badge
+                    variant="outline"
+                    className="border-emerald-500/30 text-emerald-600 dark:text-emerald-400"
+                  >
+                    Friends
+                  </Badge>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">Rating: {user.rating}</p>
+              <p className="text-xs text-muted-foreground">Friends: {user.friendCount}</p>
             </div>
-            <p className="text-xs text-[var(--cr-fg-muted)]">Rating: {user.rating}</p>
-            <p className="text-xs text-[var(--cr-fg-muted)]">Friends: {user.friendCount}</p>
           </div>
-        </div>
 
-        {kind === "incoming" && (
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => handleAccept(user.id)}
-              className="rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-500"
+          {kind === "incoming" && (
+            <div className="flex shrink-0 items-center gap-2">
+              <Button onClick={() => handleAccept(user.id)} size="sm">
+                Accept
+              </Button>
+              <Button onClick={() => handleDecline(user.id)} variant="outline" size="sm">
+                Decline
+              </Button>
+            </div>
+          )}
+          {kind === "outgoing" && (
+            <Button
+              onClick={() => handleCancelOutgoing(user.id)}
+              variant="outline"
+              size="sm"
+              className="shrink-0"
             >
-              Accept
-            </button>
-            <button
-              onClick={() => handleDecline(user.id)}
-              className="rounded-md border border-[var(--cr-border)] bg-[var(--cr-bg)] px-3 py-1.5 text-xs font-medium text-[var(--cr-fg)] hover:bg-[var(--cr-bg-tertiary)]"
+              Cancel Request
+            </Button>
+          )}
+          {kind === "friend" && (
+            <Badge
+              variant="outline"
+              className="shrink-0 border-emerald-500/30 text-emerald-600 dark:text-emerald-400"
             >
-              Decline
-            </button>
-          </div>
-        )}
-        {kind === "outgoing" && (
-          <button
-            onClick={() => handleCancelOutgoing(user.id)}
-            className="rounded-md border border-[var(--cr-border)] bg-[var(--cr-bg)] px-3 py-1.5 text-xs font-medium text-[var(--cr-fg)] hover:bg-[var(--cr-bg-tertiary)]"
-          >
-            Cancel Request
-          </button>
-        )}
-        {kind === "friend" && (
-          <span className="text-xs text-emerald-400">Friends</span>
-        )}
-      </div>
+              Friends
+            </Badge>
+          )}
+        </CardContent>
+      </Card>
     );
   };
 
   return (
     <AppShell>
-      <div className="mx-auto max-w-3xl p-6">
+      <div className="mx-auto w-full max-w-3xl p-6">
         <header className="mb-6">
-          <h1 className="text-2xl font-bold text-[var(--cr-fg)]">Friends</h1>
-          <p className="mt-1 text-sm text-[var(--cr-fg-muted)]">
+          <h1 className="text-2xl font-bold tracking-tight">Friends</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
             Search for players and manage your connections.
           </p>
         </header>
 
-        {/* Tabs */}
-        <div className="mb-6 flex gap-1 rounded-lg bg-[var(--cr-bg-secondary)] p-1">
-          {[
-            { id: "friends", label: "Friends" },
-            { id: "pending", label: `Pending${incomingCount > 0 ? ` (${incomingCount})` : ""}` },
-            { id: "search", label: "Search" },
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as typeof activeTab)}
-              className={`flex-1 rounded-md px-4 py-2 text-sm font-medium transition-colors ${
-                activeTab === tab.id
-                  ? "bg-[var(--cr-bg)] text-[var(--cr-fg)]"
-                  : "text-[var(--cr-fg-muted)] hover:text-[var(--cr-fg)]"
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
+        <Tabs value={activeTab} onValueChange={(value) => changeTab(value as ActiveTab)} className="gap-4">
+          <TabsList variant="line" className="w-full justify-start gap-4">
+            <TabsTrigger value="friends">Friends</TabsTrigger>
+            <TabsTrigger value="pending">
+              Pending{incomingCount > 0 ? ` (${incomingCount})` : ""}
+            </TabsTrigger>
+            <TabsTrigger value="search">Search</TabsTrigger>
+          </TabsList>
 
-        {/* Search Tab */}
-        {activeTab === "search" && (
-          <div className="space-y-4">
+          <TabsContent value="search" className="flex flex-col gap-4">
             <div className="flex gap-3">
-              <input
+              <Input
                 type="text"
                 placeholder="Search by username..."
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                className="flex-1 rounded-lg border border-[var(--cr-border)] bg-[var(--cr-bg)] px-4 py-2.5 text-sm text-[var(--cr-fg)] placeholder:text-[var(--cr-fg-muted)] focus:border-[rgba(var(--cr-accent-rgb),0.5)] focus:outline-none"
+                className="flex-1"
               />
-              <button
-                onClick={handleSearch}
-                disabled={!canSearch || searching}
-                className="rounded-lg bg-[rgb(var(--cr-accent-rgb))] px-5 py-2.5 text-sm font-medium text-[var(--cr-bg)] transition-all hover:opacity-90 disabled:opacity-50"
-              >
-                {searching ? "..." : "Search"}
-              </button>
+              <Button onClick={handleSearch} disabled={!canSearch || searching}>
+                {searching ? (
+                  <Loader2 data-icon="inline-start" className="animate-spin" />
+                ) : (
+                  <Search data-icon="inline-start" />
+                )}
+                Search
+              </Button>
             </div>
 
             {error && (
-              <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-400">
-                {error}
-              </div>
+              <Alert variant="destructive">
+                <AlertTitle>Something went wrong</AlertTitle>
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
             )}
 
             {results.length > 0 && (
-              <div className="rounded-lg border border-[var(--cr-border)] bg-[var(--cr-bg-secondary)]">
+              <Card>
                 {results.map((user, i) => {
                   const relationship = relationshipByUserId[user.id] ?? "none";
                   const isSelf = user.id === viewerId;
 
                   return (
-                    <div
+                    <CardContent
                       key={user.id}
-                      className={`flex items-center justify-between p-4 ${
-                        i !== results.length - 1 ? "border-b border-[var(--cr-border)]" : ""
+                      className={`flex items-center justify-between gap-3 p-4 ${
+                        i !== results.length - 1 ? "border-b" : ""
                       }`}
                     >
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[rgba(var(--cr-accent-rgb),0.2)] text-sm font-medium text-[rgb(var(--cr-accent-rgb))]">
-                          {(user.username ?? "?")[0].toUpperCase()}
-                        </div>
-                        <div>
+                      <div className="flex min-w-0 items-center gap-3">
+                        <Avatar className="size-10">
+                          <AvatarFallback className="text-sm font-medium">
+                            {(user.username ?? "?")[0].toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="min-w-0">
                           <div className="flex items-center gap-2">
                             <Link
                               href={isSelf ? "/profile" : `/profile?userId=${user.id}`}
-                              className="text-sm font-medium text-[var(--cr-fg)] hover:underline"
+                              className="truncate text-sm font-medium hover:underline"
                             >
                               {user.username ?? "Unknown"}
                             </Link>
                             {relationship === "friends" && (
-                              <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-300">
-                                <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M16 11c1.657 0 3-1.567 3-3.5S17.657 4 16 4s-3 1.567-3 3.5 1.343 3.5 3 3.5zM8 11c1.657 0 3-1.567 3-3.5S9.657 4 8 4 5 5.567 5 7.5 6.343 11 8 11zm0 2c-2.761 0-5 2.015-5 4.5V20h10v-2.5c0-2.485-2.239-4.5-5-4.5zm8 0a5.76 5.76 0 00-1.16.118A6.52 6.52 0 0119 17.5V20h5v-2.5c0-2.485-2.239-4.5-5-4.5z" />
-                                </svg>
+                              <Badge
+                                variant="outline"
+                                className="border-emerald-500/30 text-emerald-600 dark:text-emerald-400"
+                              >
                                 Friends
-                              </span>
+                              </Badge>
                             )}
                           </div>
                           {user.rating !== undefined && (
-                            <p className="text-xs text-[var(--cr-fg-muted)]">Rating: {user.rating ?? 0}</p>
+                            <p className="text-xs text-muted-foreground">Rating: {user.rating ?? 0}</p>
                           )}
-                          <p className="text-xs text-[var(--cr-fg-muted)]">
+                          <p className="text-xs text-muted-foreground">
                             Friends: {friendCountByUserId[user.id] ?? 0}
                           </p>
                         </div>
                       </div>
                       {!isSelf && (
-                        <div>
+                        <div className="shrink-0">
                           {relationship === "none" && (
-                            <button
-                              onClick={() => handleAddFriend(user.id)}
-                              className="rounded-md border border-[var(--cr-border)] bg-[var(--cr-bg)] px-3 py-1.5 text-xs font-medium text-[var(--cr-fg)] hover:bg-[var(--cr-bg-tertiary)]"
-                            >
+                            <Button onClick={() => handleAddFriend(user.id)} variant="outline" size="sm">
+                              <UserPlus data-icon="inline-start" />
                               Add Friend
-                            </button>
+                            </Button>
                           )}
                           {relationship === "outgoing_pending" && (
-                            <span className="text-xs text-[var(--cr-fg-muted)]">Request Sent</span>
+                            <span className="text-xs text-muted-foreground">Request Sent</span>
                           )}
                           {relationship === "incoming_pending" && (
-                            <button
-                              onClick={() => handleAccept(user.id)}
-                              className="rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-500"
-                            >
+                            <Button onClick={() => handleAccept(user.id)} size="sm">
                               Accept
-                            </button>
+                            </Button>
                           )}
                           {relationship === "friends" && (
-                            <span className="text-xs text-emerald-400">Friends</span>
+                            <Badge
+                              variant="outline"
+                              className="border-emerald-500/30 text-emerald-600 dark:text-emerald-400"
+                            >
+                              Friends
+                            </Badge>
                           )}
                         </div>
                       )}
-                    </div>
+                    </CardContent>
                   );
                 })}
-              </div>
+              </Card>
             )}
 
             {results.length === 0 && !searching && trimmedQuery.length >= 2 && (
-              <div className="rounded-lg border border-[var(--cr-border)] bg-[var(--cr-bg-secondary)] p-8 text-center text-sm text-[var(--cr-fg-muted)]">
-                No users found matching &quot;{trimmedQuery}&quot;
-              </div>
+              <Card className="p-8 text-center">
+                <CardContent className="p-0">
+                  <p className="text-sm text-muted-foreground">
+                    No users found matching &quot;{trimmedQuery}&quot;
+                  </p>
+                </CardContent>
+              </Card>
             )}
-          </div>
-        )}
+          </TabsContent>
 
-        {/* Friends Tab */}
-        {activeTab === "friends" && (
-          <div className="space-y-3">
+          <TabsContent value="friends" className="flex flex-col gap-3">
             {loadingConnections && (
-              <div className="rounded-lg border border-[var(--cr-border)] bg-[var(--cr-bg-secondary)] p-6 text-center text-sm text-[var(--cr-fg-muted)]">
-                Loading friends...
+              <div className="flex flex-col gap-3">
+                <Skeleton className="h-16 w-full" />
+                <Skeleton className="h-16 w-full" />
+                <Skeleton className="h-16 w-full" />
               </div>
             )}
             {!loadingConnections && friends.length === 0 && (
-              <div className="rounded-lg border border-[var(--cr-border)] bg-[var(--cr-bg-secondary)] p-8 text-center">
-                <p className="text-sm text-[var(--cr-fg-muted)]">No friends yet</p>
-                <button
-                  onClick={() => setActiveTab("search")}
-                  className="mt-4 text-sm text-[rgb(var(--cr-accent-rgb))] hover:underline"
-                >
-                  Search for players →
-                </button>
-              </div>
+              <Card className="p-8 text-center">
+                <CardContent className="flex flex-col items-center gap-3 p-0">
+                  <p className="text-sm text-muted-foreground">No friends yet</p>
+                  <Button variant="link" onClick={() => changeTab("search")}>
+                    Search for players →
+                  </Button>
+                </CardContent>
+              </Card>
             )}
             {!loadingConnections && friends.length > 0 && friends.map((user) => renderUserLine(user, "friend"))}
-          </div>
-        )}
+          </TabsContent>
 
-        {/* Pending Tab */}
-        {activeTab === "pending" && (
-          <div className="space-y-6">
-            <section>
-              <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-[var(--cr-fg)]">
+          <TabsContent value="pending" className="flex flex-col gap-6">
+            <section className="flex flex-col gap-3">
+              <h2 className="text-sm font-semibold uppercase tracking-wide">
                 Incoming Requests
               </h2>
-              <div className="space-y-3">
-                {incomingRequests.length === 0 ? (
-                  <div className="rounded-lg border border-[var(--cr-border)] bg-[var(--cr-bg-secondary)] p-5 text-sm text-[var(--cr-fg-muted)]">
+              {incomingRequests.length === 0 ? (
+                <Card className="p-5">
+                  <CardContent className="p-0 text-sm text-muted-foreground">
                     No incoming requests.
-                  </div>
-                ) : (
-                  incomingRequests.map((user) => renderUserLine(user, "incoming"))
-                )}
-              </div>
+                  </CardContent>
+                </Card>
+              ) : (
+                incomingRequests.map((user) => renderUserLine(user, "incoming"))
+              )}
             </section>
 
-            <section>
-              <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-[var(--cr-fg)]">
-                Sent By You
-              </h2>
-              <div className="space-y-3">
-                {outgoingRequests.length === 0 ? (
-                  <div className="rounded-lg border border-[var(--cr-border)] bg-[var(--cr-bg-secondary)] p-5 text-sm text-[var(--cr-fg-muted)]">
+            <section className="flex flex-col gap-3">
+              <h2 className="text-sm font-semibold uppercase tracking-wide">Sent By You</h2>
+              {outgoingRequests.length === 0 ? (
+                <Card className="p-5">
+                  <CardContent className="p-0 text-sm text-muted-foreground">
                     No outgoing requests.
-                  </div>
-                ) : (
-                  outgoingRequests.map((user) => renderUserLine(user, "outgoing"))
-                )}
-              </div>
+                  </CardContent>
+                </Card>
+              ) : (
+                outgoingRequests.map((user) => renderUserLine(user, "outgoing"))
+              )}
             </section>
-          </div>
-        )}
+          </TabsContent>
+        </Tabs>
       </div>
     </AppShell>
   );
@@ -591,10 +601,10 @@ export default function FriendsPage() {
     <Suspense
       fallback={
         <AppShell>
-          <div className="mx-auto max-w-3xl p-6">
-            <div className="rounded-lg border border-[var(--cr-border)] bg-[var(--cr-bg-secondary)] p-6 text-sm text-[var(--cr-fg-muted)]">
-              Loading friends...
-            </div>
+          <div className="mx-auto w-full max-w-3xl p-6">
+            <Skeleton className="h-8 w-40" />
+            <Skeleton className="mt-4 h-16 w-full" />
+            <Skeleton className="mt-3 h-16 w-full" />
           </div>
         </AppShell>
       }

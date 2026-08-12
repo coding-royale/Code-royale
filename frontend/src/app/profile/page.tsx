@@ -1,10 +1,33 @@
 "use client";
 
-import { useEffect, useRef, useState, Suspense } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { Clock, Flag, Loader2, MoreVertical, Settings, Shield, Trophy, UserPlus } from "lucide-react";
 
 import { AppShell } from "../../components/app-shell";
+import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
+import { Avatar, AvatarFallback } from "../../components/ui/avatar";
+import { Badge } from "../../components/ui/badge";
+import { Button } from "../../components/ui/button";
+import { LinkButton } from "../../components/ui/link-button";
+import { Card, CardContent } from "../../components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "../../components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "../../components/ui/dropdown-menu";
+import { Skeleton } from "../../components/ui/skeleton";
+import { Textarea } from "../../components/ui/textarea";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../../components/ui/tooltip";
 import { supabase } from "../../lib/supabase-browser";
 
 type Badge = {
@@ -38,10 +61,10 @@ type RelationshipStatus =
   | "blocked_by_other";
 
 function getRankFromRating(rating: number) {
-  if (rating >= 600) return { name: "Gold", color: "text-amber-400" };
-  if (rating >= 400) return { name: "Silver", color: "text-slate-300" };
-  if (rating >= 200) return { name: "Bronze", color: "text-orange-400" };
-  return { name: "Unranked", color: "text-[var(--cr-fg-muted)]" };
+  if (rating >= 600) return { name: "Gold", color: "text-amber-500" };
+  if (rating >= 400) return { name: "Silver", color: "text-slate-400" };
+  if (rating >= 200) return { name: "Bronze", color: "text-orange-500" };
+  return { name: "Unranked", color: "text-muted-foreground" };
 }
 
 function initialsFromName(name: string) {
@@ -71,7 +94,6 @@ function ProfileContent() {
   const [reportReason, setReportReason] = useState("Harassment");
   const [reportDescription, setReportDescription] = useState("");
   const [reportSubmitted, setReportSubmitted] = useState(false);
-  const menuRef = useRef<HTMLDivElement | null>(null);
 
   const resolvedUserId = targetUserIdParam ?? viewerUserId;
   const isSelf = Boolean(resolvedUserId && viewerUserId && resolvedUserId === viewerUserId);
@@ -172,13 +194,20 @@ function ProfileContent() {
       } else if (!userRow) {
         setError("User not found.");
       } else {
-        const parsedBadges = (badgesData as any[] | null)?.map((b) => ({
-          id: b.badge.id,
-          name: b.badge.name,
-          description: b.badge.description,
-          icon: b.badge.icon,
-          awarded_at: b.awarded_at,
-        })) || [];
+        const parsedBadges = ((badgesData ?? []) as unknown as Array<{
+          awarded_at: string;
+          badge: { id: string; name: string; description: string; icon: string } | null;
+        }>)
+          .flatMap((b) => {
+            if (!b.badge) return [];
+            return [{
+              id: b.badge.id,
+              name: b.badge.name,
+              description: b.badge.description,
+              icon: b.badge.icon,
+              awarded_at: b.awarded_at,
+            }];
+          });
         
         setProfile({
           ...userRow as UserRow,
@@ -195,20 +224,6 @@ function ProfileContent() {
       mounted = false;
     };
   }, [targetUserIdParam]);
-
-  useEffect(() => {
-    if (!menuOpen) return;
-
-    const onPointerDown = (event: MouseEvent) => {
-      if (!menuRef.current) return;
-      if (!menuRef.current.contains(event.target as Node)) {
-        setMenuOpen(false);
-      }
-    };
-
-    document.addEventListener("mousedown", onPointerDown);
-    return () => document.removeEventListener("mousedown", onPointerDown);
-  }, [menuOpen]);
 
   const displayName = profile?.username || "Anonymous";
   const initials = initialsFromName(displayName);
@@ -323,335 +338,313 @@ function ProfileContent() {
 
   return (
     <AppShell>
-      <div className="mx-auto max-w-4xl p-6">
+      <div className="mx-auto w-full max-w-4xl p-6">
         {loading ? (
           <div className="flex items-center justify-center py-20">
-            <div className="h-8 w-8 animate-spin rounded-full border-2 border-[var(--cr-border)] border-t-[rgb(var(--cr-accent-rgb))]" />
+            <Loader2 className="size-8 animate-spin text-muted-foreground" />
           </div>
         ) : error ? (
-          <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-6 text-center">
-            <p className="text-red-400">{error}</p>
-            <Link
-              href="/auth/login"
-              className="mt-4 inline-block text-sm text-[rgb(var(--cr-accent-rgb))] hover:underline"
-            >
-              Sign in to view profile
-            </Link>
-          </div>
+          <Alert variant="destructive">
+            <AlertTitle>Something went wrong</AlertTitle>
+            <AlertDescription className="flex flex-col items-start gap-3">
+              {error}
+              <Link href="/auth/login" className="text-sm underline underline-offset-3">
+                Sign in to view profile
+              </Link>
+            </AlertDescription>
+          </Alert>
         ) : (
-          <div className="space-y-6">
+          <div className="flex flex-col gap-6">
             {/* Profile Header */}
-            <section className="rounded-lg border border-[var(--cr-border)] bg-[var(--cr-bg-secondary)] p-6">
-              <div className="flex flex-wrap items-start gap-6">
-                <div className="flex h-24 w-24 items-center justify-center rounded-full bg-[rgba(var(--cr-accent-rgb),0.2)] text-2xl font-bold text-[rgb(var(--cr-accent-rgb))]">
-                  {initials}
-                </div>
-                <div className="flex-1">
+            <Card>
+              <CardContent className="flex flex-wrap items-start gap-6 p-6">
+                <Avatar className="size-24 text-2xl font-bold">
+                  <AvatarFallback>{initials}</AvatarFallback>
+                </Avatar>
+                <div className="min-w-0 flex-1">
                   {!isSelf && (
-                    <div className="relative mb-2 flex justify-end" ref={menuRef}>
-                      <button
-                        type="button"
-                        onClick={() => setMenuOpen((prev) => !prev)}
-                        className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--cr-border)] bg-[var(--cr-bg)] text-[var(--cr-fg-muted)] hover:text-[var(--cr-fg)]"
-                        aria-label="Open profile actions"
-                      >
-                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.75h.008v.008H12V6.75zm0 5.25h.008v.008H12V12zm0 5.25h.008v.008H12v-.008z" />
-                        </svg>
-                      </button>
-
-                      {menuOpen && (
-                        <div className="absolute right-0 top-11 z-20 w-44 rounded-xl border border-[var(--cr-border)] bg-[var(--cr-bg)] p-1 shadow-[0_12px_32px_rgba(2,8,25,0.55)]">
+                    <div className="relative z-10 mb-2 flex justify-end">
+                      <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
+                        <DropdownMenuTrigger
+                          render={
+                            <Button variant="outline" size="icon" aria-label="Open profile actions">
+                              <MoreVertical />
+                            </Button>
+                          }
+                        />
+                        <DropdownMenuContent align="end" className="w-44">
                           {relationshipStatus !== "blocked" ? (
-                            <button
-                              type="button"
+                            <DropdownMenuItem
+                              variant="destructive"
                               onClick={() => void updateBlockStatus("block")}
-                              className="w-full rounded-lg px-3 py-2 text-left text-sm text-rose-300 hover:bg-rose-500/10"
                             >
+                              <Shield data-icon="inline-start" />
                               Block User
-                            </button>
+                            </DropdownMenuItem>
                           ) : (
-                            <button
-                              type="button"
-                              onClick={() => void updateBlockStatus("unblock")}
-                              className="w-full rounded-lg px-3 py-2 text-left text-sm text-emerald-300 hover:bg-emerald-500/10"
-                            >
+                            <DropdownMenuItem onClick={() => void updateBlockStatus("unblock")}>
+                              <Shield data-icon="inline-start" />
                               Unblock User
-                            </button>
+                            </DropdownMenuItem>
                           )}
-                          <button
-                            type="button"
+                          <DropdownMenuItem
                             onClick={() => {
                               setReportModalOpen(true);
                               setReportSubmitted(false);
                               setMenuOpen(false);
                             }}
-                            className="w-full rounded-lg px-3 py-2 text-left text-sm text-[var(--cr-fg)] hover:bg-[var(--cr-bg-secondary)]"
                           >
+                            <Flag data-icon="inline-start" />
                             Report User
-                          </button>
-                        </div>
-                      )}
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   )}
                   <div className="flex flex-wrap items-center gap-3">
-                    <h1 className="text-2xl font-bold text-[var(--cr-fg)]">{displayName}</h1>
+                    <h1 className="text-2xl font-bold tracking-tight">{displayName}</h1>
                     <span className={`rounded px-2 py-0.5 text-xs font-medium ${rank.color}`}>
                       {rank.name}
                     </span>
                     {!isSelf && isFriendWithViewer && (
-                      <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-300">
-                        <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M16 11c1.657 0 3-1.567 3-3.5S17.657 4 16 4s-3 1.567-3 3.5 1.343 3.5 3 3.5zM8 11c1.657 0 3-1.567 3-3.5S9.657 4 8 4 5 5.567 5 7.5 6.343 11 8 11zm0 2c-2.761 0-5 2.015-5 4.5V20h10v-2.5c0-2.485-2.239-4.5-5-4.5zm8 0a5.76 5.76 0 00-1.16.118A6.52 6.52 0 0119 17.5V20h5v-2.5c0-2.485-2.239-4.5-5-4.5z" />
-                        </svg>
+                      <Badge variant="outline" className="border-emerald-500/30 text-emerald-600 dark:text-emerald-400">
                         Friends
-                      </span>
+                      </Badge>
                     )}
                   </div>
-                  <p className="mt-1 text-sm text-[var(--cr-fg-muted)]">Friends: {friendCount}</p>
+                  <p className="mt-1 text-sm text-muted-foreground">Friends: {friendCount}</p>
                   {profile?.team_name && (
-                    <p className="mt-1 text-sm text-[var(--cr-fg-muted)]">
-                      Team: {profile.team_name}
-                    </p>
+                    <p className="mt-1 text-sm text-muted-foreground">Team: {profile.team_name}</p>
                   )}
-                  {/* Club Badge */}
                   {profile?.club_name && (
                     <Link
                       href="/clubs"
-                      className="mt-3 inline-flex items-center gap-2 rounded-lg border border-[var(--cr-border)] bg-[var(--cr-bg)] px-3 py-1.5 text-sm transition-colors hover:border-[rgba(var(--cr-accent-rgb),0.3)]"
+                      className="mt-3 inline-flex items-center gap-2 rounded-lg border bg-card px-3 py-1.5 text-sm shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md"
                     >
                       <span className="text-lg">{profile.club_logo || "🏆"}</span>
-                      <span className="font-medium text-[var(--cr-fg)]">{profile.club_name}</span>
-                      <span className="flex items-center gap-1 text-xs text-amber-400">
-                        <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 24 24">
-                          <path d="M19 4h-1V3a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1v1H5a1 1 0 0 0-1 1v2a4 4 0 0 0 3 3.87A6 6 0 0 0 11 14.9V17H8a1 1 0 0 0 0 2h8a1 1 0 1 0 0-2h-3v-2.1a6 6 0 0 0 4-3.99 4 4 0 0 0 3-3.87V5a1 1 0 0 0-1-1Z"/>
-                        </svg>
+                      <span className="font-medium">{profile.club_name}</span>
+                      <span className="flex items-center gap-1 text-xs text-amber-500">
+                        <Trophy className="size-3" />
                         {(profile.club_trophies ?? 0).toLocaleString()}
                       </span>
                     </Link>
                   )}
 
-                  {/* Badges */}
                   {profile?.badges && profile.badges.length > 0 && (
                     <div className="mt-4">
-                      <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--cr-fg-muted)] mb-2">Badges ({profile.badges.length})</h3>
+                      <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                        Badges ({profile.badges.length})
+                      </h3>
                       <div className="flex flex-wrap gap-2">
                         {profile.badges.map((badge) => (
-                          <div
-                            key={badge.id}
-                            title={badge.description}
-                            className="group relative flex h-11 w-11 items-center justify-center rounded-lg border border-[var(--cr-border)] bg-[var(--cr-bg)] transition-colors hover:border-[rgba(var(--cr-accent-rgb),0.3)]"
-                          >
-                            <span className="text-xl cursor-help">{badge.icon}</span>
-                            <div className="pointer-events-none absolute -top-12 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-slate-800 px-2 py-1 text-xs text-white opacity-0 transition-opacity group-hover:opacity-100 z-10 shadow-lg">
+                          <Tooltip key={badge.id}>
+                            <TooltipTrigger
+                              render={
+                                <div className="flex size-11 cursor-help items-center justify-center rounded-lg border bg-card text-xl shadow-sm transition-colors hover:border-accent-foreground/30">
+                                  {badge.icon}
+                                </div>
+                              }
+                            />
+                            <TooltipContent>
                               <p className="font-semibold">{badge.name}</p>
-                            </div>
-                          </div>
+                              <p className="text-xs text-muted-foreground">{badge.description}</p>
+                            </TooltipContent>
+                          </Tooltip>
                         ))}
                       </div>
                     </div>
                   )}
 
                   {isSelf && (
-                    <Link
-                      href="/settings"
-                      className="mt-4 inline-flex items-center gap-2 rounded-lg border border-[var(--cr-border)] bg-[var(--cr-bg)] px-4 py-2 text-sm font-medium text-[var(--cr-fg)] transition-colors hover:bg-[var(--cr-bg-tertiary)]"
-                    >
-                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
-                      </svg>
+                    <LinkButton variant="outline" href="/settings" className="mt-4">
+                      <Settings data-icon="inline-start" />
                       Edit Profile
-                    </Link>
+                    </LinkButton>
                   )}
                   {!isSelf && relationshipStatus === "none" && (
-                    <button
+                    <Button
                       type="button"
+                      variant="outline"
                       onClick={sendFriendRequest}
                       disabled={actionBusy}
-                      className="mt-4 inline-flex items-center gap-2 rounded-lg border border-[var(--cr-border)] bg-[var(--cr-bg)] px-4 py-2 text-sm font-medium text-[var(--cr-fg)] transition-colors hover:bg-[var(--cr-bg-tertiary)] disabled:cursor-not-allowed disabled:opacity-60"
+                      className="mt-4"
                     >
+                      <UserPlus data-icon="inline-start" />
                       {actionBusy ? "Sending..." : "Add Friend"}
-                    </button>
+                    </Button>
                   )}
                   {!isSelf && relationshipStatus === "incoming_pending" && (
                     <div className="mt-4 flex flex-wrap gap-2">
-                      <button
+                      <Button
                         type="button"
                         onClick={acceptFriendRequest}
                         disabled={actionBusy}
-                        className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-60"
                       >
                         {actionBusy ? "Updating..." : "Accept Request"}
-                      </button>
-                      <button
+                      </Button>
+                      <Button
                         type="button"
+                        variant="outline"
                         onClick={declineFriendRequest}
                         disabled={actionBusy}
-                        className="inline-flex items-center gap-2 rounded-lg border border-[var(--cr-border)] bg-[var(--cr-bg)] px-4 py-2 text-sm font-medium text-[var(--cr-fg)] transition-colors hover:bg-[var(--cr-bg-tertiary)] disabled:cursor-not-allowed disabled:opacity-60"
                       >
                         Decline
-                      </button>
+                      </Button>
                     </div>
                   )}
                   {!isSelf && relationshipStatus === "outgoing_pending" && (
-                    <span className="mt-4 inline-flex items-center gap-2 rounded-lg border border-[var(--cr-border)] bg-[var(--cr-bg)] px-4 py-2 text-sm font-medium text-[var(--cr-fg-muted)]">
+                    <Badge variant="secondary" className="mt-4">
                       Request Sent
-                    </span>
+                    </Badge>
                   )}
                   {!isSelf && relationshipStatus === "blocked" && (
-                    <span className="mt-4 inline-flex items-center gap-2 rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-2 text-sm font-medium text-rose-200">
+                    <Badge variant="outline" className="mt-4 border-rose-500/30 text-rose-500">
                       User blocked
-                    </span>
+                    </Badge>
                   )}
                   {!isSelf && relationshipStatus === "blocked_by_other" && (
-                    <span className="mt-4 inline-flex items-center gap-2 rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-2 text-sm font-medium text-rose-200">
+                    <Badge variant="outline" className="mt-4 border-rose-500/30 text-rose-500">
                       You are blocked by this user
-                    </span>
+                    </Badge>
                   )}
                 </div>
-              </div>
-            </section>
+              </CardContent>
+            </Card>
 
             {/* Stats Grid */}
             <section className="grid gap-4 sm:grid-cols-4">
-              <div className="rounded-lg border border-[var(--cr-border)] bg-[var(--cr-bg-secondary)] p-4 text-center">
-                <div className="text-2xl font-bold text-[rgb(var(--cr-accent-rgb))]">{rating}</div>
-                <div className="mt-1 text-xs text-[var(--cr-fg-muted)]">Rating</div>
-              </div>
-              <div className="rounded-lg border border-[var(--cr-border)] bg-[var(--cr-bg-secondary)] p-4 text-center">
-                <div className="text-2xl font-bold text-emerald-400">{wins}</div>
-                <div className="mt-1 text-xs text-[var(--cr-fg-muted)]">Wins</div>
-              </div>
-              <div className="rounded-lg border border-[var(--cr-border)] bg-[var(--cr-bg-secondary)] p-4 text-center">
-                <div className="text-2xl font-bold text-red-400">{losses}</div>
-                <div className="mt-1 text-xs text-[var(--cr-fg-muted)]">Losses</div>
-              </div>
-              <div className="rounded-lg border border-[var(--cr-border)] bg-[var(--cr-bg-secondary)] p-4 text-center">
-                <div className="text-2xl font-bold text-[var(--cr-fg)]">{winRate}%</div>
-                <div className="mt-1 text-xs text-[var(--cr-fg-muted)]">Win Rate</div>
-              </div>
+              <Card>
+                <CardContent className="p-4 text-center">
+                  <div className="text-2xl font-bold text-accent-foreground">{rating}</div>
+                  <div className="mt-1 text-xs text-muted-foreground">Rating</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4 text-center">
+                  <div className="text-2xl font-bold text-emerald-500">{wins}</div>
+                  <div className="mt-1 text-xs text-muted-foreground">Wins</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4 text-center">
+                  <div className="text-2xl font-bold text-red-500">{losses}</div>
+                  <div className="mt-1 text-xs text-muted-foreground">Losses</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4 text-center">
+                  <div className="text-2xl font-bold">{winRate}%</div>
+                  <div className="mt-1 text-xs text-muted-foreground">Win Rate</div>
+                </CardContent>
+              </Card>
             </section>
 
             {/* Recent Activity */}
-            <section className="rounded-lg border border-[var(--cr-border)] bg-[var(--cr-bg-secondary)] p-6">
-              <h2 className="mb-4 text-lg font-semibold text-[var(--cr-fg)]">Recent Activity</h2>
-              <div className="flex items-center justify-center py-8 text-[var(--cr-fg-muted)]">
-                <div className="text-center">
-                  <svg className="mx-auto h-12 w-12 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <p className="mt-2 text-sm">No recent activity</p>
-                  <Link
-                    href="/practice"
-                    className="mt-4 inline-block text-sm text-[rgb(var(--cr-accent-rgb))] hover:underline"
-                  >
-                    Start practicing →
-                  </Link>
+            <Card>
+              <CardContent className="p-6">
+                <h2 className="mb-4 text-lg font-semibold">Recent Activity</h2>
+                <div className="flex items-center justify-center py-8 text-muted-foreground">
+                  <div className="flex flex-col items-center gap-2 text-center">
+                    <Clock className="size-12 opacity-50" />
+                    <p className="text-sm">No recent activity</p>
+                    <Link href="/practice" className="text-sm text-accent-foreground underline underline-offset-3">
+                      Start practicing →
+                    </Link>
+                  </div>
                 </div>
-              </div>
-            </section>
+              </CardContent>
+            </Card>
 
             {/* Achievements */}
-            <section className="rounded-lg border border-[var(--cr-border)] bg-[var(--cr-bg-secondary)] p-6">
-              <h2 className="mb-4 text-lg font-semibold text-[var(--cr-fg)]">Achievements</h2>
-              <div className="grid gap-3 sm:grid-cols-3">
-                {[
-                  { name: "First Win", description: "Win your first match", unlocked: wins > 0 },
-                  { name: "5-Win Streak", description: "Win 5 matches in a row", unlocked: false },
-                  { name: "Problem Solver", description: "Solve 50 practice problems", unlocked: false },
-                ].map((achievement) => (
-                  <div
-                    key={achievement.name}
-                    className={`rounded-lg border p-4 ${
-                      achievement.unlocked
-                        ? "border-[rgba(var(--cr-accent-rgb),0.3)] bg-[rgba(var(--cr-accent-rgb),0.1)]"
-                        : "border-[var(--cr-border)] bg-[var(--cr-bg)] opacity-50"
-                    }`}
-                  >
-                    <div className="text-sm font-medium text-[var(--cr-fg)]">{achievement.name}</div>
-                    <div className="mt-1 text-xs text-[var(--cr-fg-muted)]">{achievement.description}</div>
-                  </div>
-                ))}
-              </div>
-            </section>
+            <Card>
+              <CardContent className="p-6">
+                <h2 className="mb-4 text-lg font-semibold">Achievements</h2>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  {[
+                    { name: "First Win", description: "Win your first match", unlocked: wins > 0 },
+                    { name: "5-Win Streak", description: "Win 5 matches in a row", unlocked: false },
+                    { name: "Problem Solver", description: "Solve 50 practice problems", unlocked: false },
+                  ].map((achievement) => (
+                    <div
+                      key={achievement.name}
+                      className={`rounded-lg border p-4 transition-all ${
+                        achievement.unlocked
+                          ? "border-accent-foreground/30 bg-accent/40 shadow-sm"
+                          : "opacity-50"
+                      }`}
+                    >
+                      <div className="text-sm font-medium">{achievement.name}</div>
+                      <div className="mt-1 text-xs text-muted-foreground">{achievement.description}</div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
           </div>
         )}
 
-        {reportModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center px-5">
-            <button
-              type="button"
-              aria-label="Close report modal"
-              className="absolute inset-0 bg-black/60"
-              onClick={() => setReportModalOpen(false)}
-            />
-            <div className="relative w-full max-w-lg rounded-2xl border border-[var(--cr-border)] bg-[var(--cr-bg-secondary)] p-6 shadow-[0_12px_45px_rgba(2,8,25,0.7)]">
-              {!reportSubmitted ? (
-                <>
-                  <h2 className="text-lg font-semibold text-[var(--cr-fg)]">Report {displayName}</h2>
-                  <p className="mt-1 text-sm text-[var(--cr-fg-muted)]">Tell us what happened. This is a demo flow for now.</p>
+        {/* Report Modal */}
+        <Dialog open={reportModalOpen} onOpenChange={setReportModalOpen}>
+          <DialogContent className="w-full max-w-lg gap-5 p-6">
+            {!reportSubmitted ? (
+              <>
+                <DialogHeader>
+                  <DialogTitle>Report {displayName}</DialogTitle>
+                  <DialogDescription>
+                    Tell us what happened. This is a demo flow for now.
+                  </DialogDescription>
+                </DialogHeader>
 
-                  <div className="mt-4 grid grid-cols-2 gap-2">
-                    {["Harassment", "Cheating", "Spam", "Inappropriate Name"].map((reason) => (
-                      <button
-                        key={reason}
-                        type="button"
-                        onClick={() => setReportReason(reason)}
-                        className={`rounded-lg border px-3 py-2 text-sm transition-colors ${
-                          reportReason === reason
-                            ? "border-[rgba(var(--cr-accent-rgb),0.6)] bg-[rgba(var(--cr-accent-rgb),0.12)] text-[var(--cr-fg)]"
-                            : "border-[var(--cr-border)] bg-[var(--cr-bg)] text-[var(--cr-fg-muted)] hover:text-[var(--cr-fg)]"
-                        }`}
-                      >
-                        {reason}
-                      </button>
-                    ))}
-                  </div>
-
-                  <textarea
-                    value={reportDescription}
-                    onChange={(event) => setReportDescription(event.target.value)}
-                    placeholder="Describe the issue..."
-                    className="mt-4 h-28 w-full rounded-lg border border-[var(--cr-border)] bg-[var(--cr-bg)] px-3 py-2 text-sm text-[var(--cr-fg)] placeholder:text-[var(--cr-fg-muted)] focus:border-[rgba(var(--cr-accent-rgb),0.5)] focus:outline-none"
-                  />
-
-                  <div className="mt-5 flex justify-end gap-2">
+                <div className="grid grid-cols-2 gap-2">
+                  {["Harassment", "Cheating", "Spam", "Inappropriate Name"].map((reason) => (
                     <button
+                      key={reason}
                       type="button"
-                      onClick={() => setReportModalOpen(false)}
-                      className="rounded-lg border border-[var(--cr-border)] bg-[var(--cr-bg)] px-4 py-2 text-sm text-[var(--cr-fg)]"
+                      onClick={() => setReportReason(reason)}
+                      className={`rounded-lg border px-3 py-2 text-sm transition-all ${
+                        reportReason === reason
+                          ? "border-accent-foreground/40 bg-accent/60 shadow-sm"
+                          : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+                      }`}
                     >
-                      Cancel
+                      {reason}
                     </button>
-                    <button
-                      type="button"
-                      onClick={submitReport}
-                      className="rounded-lg bg-[rgb(var(--cr-accent-rgb))] px-4 py-2 text-sm font-semibold text-[var(--cr-bg)]"
-                    >
-                      Submit Report
-                    </button>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <h2 className="text-lg font-semibold text-[var(--cr-fg)]">Report Submitted</h2>
-                  <p className="mt-2 text-sm text-[var(--cr-fg-muted)]">
+                  ))}
+                </div>
+
+                <Textarea
+                  value={reportDescription}
+                  onChange={(event) => setReportDescription(event.target.value)}
+                  placeholder="Describe the issue..."
+                  className="h-28"
+                />
+
+                <div className="flex justify-end gap-2">
+                  <Button type="button" variant="outline" onClick={() => setReportModalOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button type="button" onClick={submitReport}>
+                    Submit Report
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <>
+                <DialogHeader>
+                  <DialogTitle>Report Submitted</DialogTitle>
+                  <DialogDescription>
                     Our moderators will review your report. Thank you for helping keep Code Royale safe.
-                  </p>
-                  <div className="mt-5 flex justify-end">
-                    <button
-                      type="button"
-                      onClick={() => setReportModalOpen(false)}
-                      className="rounded-lg bg-[rgb(var(--cr-accent-rgb))] px-4 py-2 text-sm font-semibold text-[var(--cr-bg)]"
-                    >
-                      Close
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-        )}
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="flex justify-end">
+                  <Button type="button" onClick={() => setReportModalOpen(false)}>
+                    Close
+                  </Button>
+                </div>
+              </>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </AppShell>
   );
@@ -659,13 +652,23 @@ function ProfileContent() {
 
 export default function ProfilePage() {
   return (
-    <Suspense fallback={
-      <AppShell>
-        <div className="mx-auto max-w-4xl px-4 py-8">
-          <div className="flex justify-center p-12 text-[var(--cr-fg-muted)]">Loading...</div>
-        </div>
-      </AppShell>
-    }>
+    <Suspense
+      fallback={
+        <AppShell>
+          <div className="mx-auto w-full max-w-4xl p-6">
+            <div className="flex flex-col gap-6">
+              <Skeleton className="h-40 w-full" />
+              <div className="grid grid-cols-4 gap-4">
+                <Skeleton className="h-24" />
+                <Skeleton className="h-24" />
+                <Skeleton className="h-24" />
+                <Skeleton className="h-24" />
+              </div>
+            </div>
+          </div>
+        </AppShell>
+      }
+    >
       <ProfileContent />
     </Suspense>
   );
