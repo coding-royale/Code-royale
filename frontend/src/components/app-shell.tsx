@@ -57,12 +57,7 @@ const sidebarItems = [
   { id: "leaderboard", label: "Leaderboard", href: "/leaderboard", icon: Trophy },
   { id: "clubs", label: "Clubs", href: "/clubs", icon: Users },
   { id: "tournaments", label: "Tournaments", href: "/tournaments", icon: Medal },
-];
-
-const bottomItems = [
   { id: "friends", label: "Friends", href: "/friends", icon: UserPlus },
-  { id: "profile", label: "Profile", href: "/profile", icon: User },
-  { id: "settings", label: "Settings", href: "/settings", icon: Settings },
 ];
 
 const socialButtons: Array<{
@@ -108,6 +103,7 @@ export function AppShell({ children, showSidebar = true }: AppShellProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [viewerId, setViewerId] = useState<string | null>(null);
+  const [viewerName, setViewerName] = useState("Player");
   const [incomingRequestCount, setIncomingRequestCount] = useState(0);
   const [pendingNotifications, setPendingNotifications] = useState<PendingNotification[]>([]);
   const [acceptingRequesterIds, setAcceptingRequesterIds] = useState<Set<string>>(new Set());
@@ -171,6 +167,20 @@ export function AppShell({ children, showSidebar = true }: AppShellProps) {
       }
 
       setViewerId(data.user.id);
+
+      const { data: userRow } = await supabase
+        .from("users")
+        .select("username")
+        .eq("id", data.user.id)
+        .maybeSingle();
+
+      if (!mounted) return;
+
+      const fallback = data.user.email?.split("@")[0]?.trim() || "Player";
+      const name =
+        (typeof userRow?.username === "string" && userRow.username.trim()) || fallback;
+      setViewerName(name);
+
       await refreshIncomingRequests(data.user.id);
     };
 
@@ -242,17 +252,19 @@ export function AppShell({ children, showSidebar = true }: AppShellProps) {
           </span>
         </Link>
         <Separator orientation="vertical" className="h-6 max-md:hidden" />
-        <div className="relative hidden max-w-sm flex-1 items-center md:flex">
-          <Search className="absolute left-2.5 size-4 text-muted-foreground" />
-          <Input
-            type="search"
-            placeholder="Search problems…"
-            className="h-9 pl-8 pr-14"
-            aria-label="Search problems"
-          />
-          <kbd className="absolute right-2.5 hidden rounded border border-border bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground lg:inline-block">
-            ⌘K
-          </kbd>
+        <div className="pointer-events-none absolute inset-x-0 flex justify-center max-md:hidden">
+          <div className="pointer-events-auto relative w-full max-w-sm">
+            <Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              type="search"
+              placeholder="Search problems…"
+              className="h-9 pl-8 pr-14"
+              aria-label="Search problems"
+            />
+            <kbd className="absolute right-2.5 top-1/2 hidden -translate-y-1/2 rounded border border-border bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground lg:inline-block">
+              ⌘K
+            </kbd>
+          </div>
         </div>
 
         <div className="ml-auto flex items-center gap-2">
@@ -348,28 +360,6 @@ export function AppShell({ children, showSidebar = true }: AppShellProps) {
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
-
-            <SidebarGroup>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {bottomItems.map((item) => {
-                    const active = isActive(item.href);
-                    return (
-                      <SidebarMenuItem key={item.id}>
-                        <SidebarMenuButton
-                          render={<Link href={item.href} />}
-                          isActive={active}
-                          tooltip={item.label}
-                        >
-                          <item.icon />
-                          <span className="font-semibold">{item.label}</span>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    );
-                  })}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
           </SidebarContent>
 
           <SidebarFooter>
@@ -379,13 +369,13 @@ export function AppShell({ children, showSidebar = true }: AppShellProps) {
                   <DropdownMenuTrigger
                     render={
                       <SidebarMenuButton size="lg">
-                        <Avatar className="size-8 rounded-lg">
-                          <AvatarFallback className="rounded-lg bg-accent font-semibold text-accent-foreground">
+                        <Avatar className="size-8 rounded-full">
+                          <AvatarFallback className="rounded-full bg-accent font-semibold text-accent-foreground">
                             CR
                           </AvatarFallback>
                         </Avatar>
                         <span className="grid flex-1 text-left text-sm leading-tight">
-                          <span className="truncate font-semibold">Player</span>
+                          <span className="truncate font-semibold">{viewerName}</span>
                           <span className="truncate text-xs text-muted-foreground">Signed in</span>
                         </span>
                         <ChevronUpDownIcon />
@@ -396,13 +386,13 @@ export function AppShell({ children, showSidebar = true }: AppShellProps) {
                     <DropdownMenuGroup>
                       <DropdownMenuLabel className="p-0 font-normal">
                         <div className="flex items-center gap-2 px-1 py-1.5 text-sm">
-                          <Avatar className="size-8 rounded-lg">
-                            <AvatarFallback className="rounded-lg bg-accent font-semibold text-accent-foreground">
+                          <Avatar className="size-8 rounded-full">
+                            <AvatarFallback className="rounded-full bg-accent font-semibold text-accent-foreground">
                               CR
                             </AvatarFallback>
                           </Avatar>
                           <div className="grid flex-1 text-left leading-tight">
-                            <span className="truncate font-semibold">Player</span>
+                            <span className="truncate font-semibold">{viewerName}</span>
                             <span className="truncate text-xs text-muted-foreground">Code Royale</span>
                           </div>
                         </div>
