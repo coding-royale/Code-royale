@@ -2,10 +2,9 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Bot, CheckCircle2, Flame, Play, Swords, Users } from "lucide-react";
+import { ArrowRight, Bot, CheckCircle2, Flame, Swords, Users } from "lucide-react";
 
 import { AppShell } from "../../components/app-shell";
-import { supabase } from "../../lib/supabase-browser";
 import { useFriendPresence } from "../../lib/use-friend-presence";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -58,7 +57,6 @@ function initialsFromName(name: string) {
 
 export default function HomePage() {
   const { friends, loading: friendsLoading } = useFriendPresence();
-  const [welcomeName, setWelcomeName] = useState("Coder");
 
   const [telemetry, setTelemetry] = useState<TelemetrySummary>({
     activePlayers: 0,
@@ -109,40 +107,6 @@ export default function HomePage() {
     void fetchTelemetry();
     void fetchProgress();
 
-    const fetchWelcomeName = async () => {
-      try {
-        const { data, error } = await supabase.auth.getUser();
-        if (!alive || error || !data.user) return;
-
-        const fallbackName =
-          (data.user.user_metadata?.display_name as string | undefined)?.trim() ||
-          (data.user.email ? data.user.email.split("@")[0] : "") ||
-          "Coder";
-
-        const { data: userRow, error: userError } = await supabase
-          .from("users")
-          .select("username")
-          .eq("id", data.user.id)
-          .maybeSingle();
-
-        if (!alive) return;
-
-        if (userError) {
-          setWelcomeName(fallbackName);
-          return;
-        }
-
-        const resolvedName =
-          (typeof userRow?.username === "string" ? userRow.username.trim() : "") || fallbackName;
-
-        setWelcomeName(resolvedName);
-      } catch {
-        // ignore
-      }
-    };
-
-    void fetchWelcomeName();
-
     const interval = window.setInterval(fetchTelemetry, 10_000);
     const progressInterval = window.setInterval(fetchProgress, 20_000);
 
@@ -164,28 +128,14 @@ export default function HomePage() {
         <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-secondary via-muted/50 to-background p-8 shadow-sm ring-1 ring-foreground/10 sm:p-10">
           <div className="relative z-10 flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
             <div className="max-w-xl">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent-foreground">
-                Welcome back, {welcomeName}
-              </p>
-              <h1 className="mt-2 text-3xl font-bold tracking-tight md:text-4xl">
+              <h1 className="text-3xl font-bold tracking-tight md:text-4xl">
                 Ready to battle?
               </h1>
-              <p className="mt-2 text-muted-foreground">
-                Quick match against a rival. About 10 minutes, ranked.
-              </p>
             </div>
-            <div className="flex flex-col items-start gap-3 md:items-end">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-sm font-semibold text-amber-600 dark:text-amber-400">
-                <Flame className="size-4" />
-                {progress.streakDays} day streak
-              </span>
+            <div className="flex flex-col items-start md:items-end">
               <LinkButton size="lg" href="/game-modes" className="px-8 py-4 text-base">
                 <Swords data-icon="inline-start" />
                 Find a Match
-              </LinkButton>
-              <LinkButton variant="ghost" href="/practice">
-                <Play data-icon="inline-start" />
-                Practice instead
               </LinkButton>
             </div>
           </div>
@@ -201,6 +151,10 @@ export default function HomePage() {
             <span className="inline-flex items-center gap-1.5">
               <CheckCircle2 className="size-3.5" />
               {progress.solvedProblems}/{progress.totalProblems} problems solved
+            </span>
+            <span className="inline-flex items-center gap-1.5 font-semibold text-amber-600 dark:text-amber-400">
+              <Flame className="size-3.5" />
+              {progress.streakDays} day streak
             </span>
           </div>
           <div className="pointer-events-none absolute right-0 top-0 h-full w-1/2 bg-gradient-to-l from-accent/20 to-transparent" />
