@@ -2,8 +2,27 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Bot, BookOpen, Eye, Trophy, Zap } from "lucide-react";
 import { TetrioBattleBackground } from "@/components/battle/tetrio-battle-background";
+import { MaskedOpponentEditor } from "@/components/battle/masked-opponent-editor";
 import { BotSimulator, getBotConfig, type BotDifficulty, type BotProgress } from "@/lib/bot-player";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Progress } from "@/components/ui/progress";import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 type Testcase = {
   id: string;
@@ -83,10 +102,31 @@ const BOT_NAMES: Record<BotDifficulty, string> = {
   hard: "Elite Bot",
 };
 
-const DIFFICULTY_COLORS: Record<BotDifficulty, string> = {
-  easy: "emerald",
-  medium: "amber",
-  hard: "rose",
+const DIFFICULTY_STYLES: Record<
+  BotDifficulty,
+  { border: string; bg: string; text: string; dot: string; chip: string }
+> = {
+  easy: {
+    border: "border-emerald-500/40",
+    bg: "bg-emerald-500/15",
+    text: "text-emerald-500",
+    dot: "bg-emerald-500",
+    chip: "border-emerald-500/30 bg-emerald-500/10 text-emerald-500",
+  },
+  medium: {
+    border: "border-amber-500/40",
+    bg: "bg-amber-500/15",
+    text: "text-amber-500",
+    dot: "bg-amber-500",
+    chip: "border-amber-500/30 bg-amber-500/10 text-amber-500",
+  },
+  hard: {
+    border: "border-rose-500/40",
+    bg: "bg-rose-500/15",
+    text: "text-rose-500",
+    dot: "bg-rose-500",
+    chip: "border-rose-500/30 bg-rose-500/10 text-rose-500",
+  },
 };
 
 const SOLUTION_CODE_BY_LANG: Record<string, string> = {
@@ -285,83 +325,114 @@ export function BotBattleArenaClient({
   const topics = Array.isArray(question.meta?.topics) ? question.meta.topics.filter(Boolean) : [];
 
   const botName = BOT_NAMES[botDifficulty];
-  const accentColor = DIFFICULTY_COLORS[botDifficulty];
+  const difficultyStyle = DIFFICULTY_STYLES[botDifficulty];
 
   const activeResult = results?.find((r) => r.index === activeTestcaseIndex);
   const activeTestcase = safeTestcases[activeTestcaseIndex];
 
   const isMatchOver = matchResult !== "playing";
 
+  const handlePlayAgain = useCallback(() => {
+    setMatchResult("playing");
+    setPointsAwarded(null);
+    setResults(null);
+    setFeedback(null);
+    setFeedbackTone(null);
+    setCode(buildTemplate(normalizedInitialLanguage, question.title));
+    setElapsedTime(0);
+    startedAtRef.current = Date.now();
+  }, [normalizedInitialLanguage, question.title]);
+
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[#030915]">
+    <div className="relative min-h-screen overflow-hidden bg-background">
       <TetrioBattleBackground />
 
       <div className="relative z-10 flex min-h-screen flex-col">
-        <header className="relative z-20 flex flex-wrap items-center justify-between gap-4 border-b border-sky-500/10 bg-[#060d1f]/80 px-6 py-4 backdrop-blur-md">
+        <header className="relative z-20 flex flex-wrap items-center justify-between gap-4 border-b bg-background/80 px-6 py-4 backdrop-blur-md">
           <div className="flex items-center gap-5">
             <div className="flex flex-col">
-              <span className="text-[10px] uppercase tracking-[0.4em] text-amber-400/70">
+              <span className="text-[10px] uppercase tracking-[0.4em] text-amber-500">
                 Bot Battle · {botDifficulty.toUpperCase()}
               </span>
-              <h1 className="text-xl font-bold uppercase tracking-wider text-sky-50 md:text-2xl">
+              <h1 className="text-xl font-bold uppercase tracking-wider md:text-2xl">
                 {question.title}
               </h1>
             </div>
-            <span className="rounded-lg border border-sky-500/20 bg-sky-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.3em] text-sky-300/80">
+            <Badge variant="outline" className="uppercase tracking-wider">
               {question.difficulty}
-            </span>
+            </Badge>
           </div>
 
           <div className="flex items-center gap-4">
-            <div className="flex items-center gap-3 rounded-xl border border-sky-500/30 bg-sky-500/10 px-5 py-2.5">
-              <span className="text-[10px] uppercase tracking-[0.35em] text-sky-300/70">
+            <div className="flex items-center gap-3 rounded-xl border bg-muted/40 px-5 py-2.5">
+              <span className="text-[10px] uppercase tracking-[0.35em] text-muted-foreground">
                 Elapsed
               </span>
-              <span className="text-2xl font-bold tabular-nums text-sky-100">
+              <span className="text-2xl font-bold tabular-nums">
                 {formatDuration(elapsedTime)}
               </span>
             </div>
 
             <div className="flex items-center gap-2">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-sky-400/40 bg-sky-500/15 text-sm font-bold text-sky-200">
-                You
-              </div>
-              <span className="text-lg font-black uppercase text-amber-400">VS</span>
-              <div className={`flex h-10 w-10 items-center justify-center rounded-full border-2 border-${accentColor}-400/40 bg-${accentColor}-500/15 text-sm font-bold text-${accentColor}-200`}>
-                BOT
-              </div>
+              <Avatar className="size-10 border-2 border-border text-sm font-bold">
+                <AvatarFallback>You</AvatarFallback>
+              </Avatar>
+              <span className="text-lg font-black uppercase text-amber-500">VS</span>
+              <Avatar className={`size-10 border-2 ${difficultyStyle.border} ${difficultyStyle.bg} text-sm font-bold`}>
+                <AvatarFallback className={difficultyStyle.text}>BOT</AvatarFallback>
+              </Avatar>
             </div>
 
-            <button
+            <Button
               type="button"
+              variant="outline"
               onClick={handleExit}
-              className="rounded-lg border border-red-500/50 bg-red-500/15 px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.28em] text-red-300 transition hover:border-red-400 hover:text-red-200"
+              className="border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
             >
               {isMatchOver ? "Leave" : "Forfeit"}
-            </button>
+            </Button>
           </div>
         </header>
 
         <div className="relative z-10 flex flex-1 overflow-hidden">
-          {showQuestion && (
-            <aside className="flex w-[300px] shrink-0 flex-col border-r border-sky-500/10 bg-[#060d1f]/60 p-5 backdrop-blur-sm">
+          <aside className="flex w-[300px] shrink-0 flex-col border-r bg-muted/20 p-4 backdrop-blur-sm">
               <div className="mb-3 flex items-center justify-between">
-                <span className="text-[10px] uppercase tracking-[0.35em] text-sky-400/60">Challenge</span>
-                <button
-                  type="button"
-                  onClick={() => setShowQuestion(false)}
-                  className="rounded-md border border-sky-500/20 px-2 py-0.5 text-[9px] uppercase tracking-wider text-sky-400/50 transition hover:border-sky-400/40 hover:text-sky-300/70"
-                >
-                  Hide
-                </button>
+                <div className="inline-flex rounded-lg bg-muted p-0.5">
+                  <button
+                    type="button"
+                    onClick={() => setShowQuestion(true)}
+                    className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider transition ${
+                      showQuestion
+                        ? "bg-background text-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <BookOpen className="size-3" />
+                    Problem
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowQuestion(false)}
+                    className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider transition ${
+                      !showQuestion
+                        ? "bg-background text-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <Eye className="size-3" />
+                    Opponent
+                  </button>
+                </div>
               </div>
-              <div className="flex-1 overflow-y-auto text-sm leading-relaxed text-sky-100/80">
+
+              {showQuestion ? (
+                <div className="flex-1 overflow-y-auto text-sm leading-relaxed text-foreground/80">
                 {question.description.split(/\n\n+/).map((p, i) => (
                   <p key={i} className="mb-3">{p}</p>
                 ))}
 
-                <div className="mt-5 rounded-xl bg-[#0a1530]/70 p-4">
-                  <span className="text-[10px] uppercase tracking-[0.3em] text-sky-400/50">Test Cases</span>
+                <div className="mt-5 rounded-xl border bg-card/60 p-4 shadow-sm">
+                  <span className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground">Test Cases</span>
                   <div className="mt-2 flex flex-wrap gap-2">
                     {safeTestcases.map((tc, i) => {
                       const status = statusForIndex(i);
@@ -372,9 +443,13 @@ export function BotBattleArenaClient({
                           type="button"
                           onClick={() => setActiveTestcaseIndex(i)}
                           className={`rounded-md border px-2.5 py-1 text-[10px] font-medium uppercase tracking-wider transition ${
-                            isActive ? "border-sky-400 text-sky-50" : "border-sky-500/20 text-sky-300/60 hover:border-sky-300/50"
-                          } ${
-                            status === "passed" ? "border-emerald-500/50 text-emerald-300" : status === "failed" ? "border-red-500/50 text-red-300" : ""
+                            status === "passed"
+                              ? "border-emerald-500/50 text-emerald-500"
+                              : status === "failed"
+                                ? "border-red-500/50 text-red-500"
+                                : isActive
+                                  ? "border-foreground text-foreground"
+                                  : "border-border text-muted-foreground hover:border-foreground/40"
                           }`}
                         >
                           {i + 1}
@@ -383,122 +458,125 @@ export function BotBattleArenaClient({
                     })}
                   </div>
                   <div className="mt-3 grid gap-2 text-xs">
-                    <div className="rounded-lg bg-[#060e22] p-3">
-                      <span className="text-[9px] uppercase tracking-wider text-sky-400/50">Input</span>
-                      <pre className="mt-1 max-h-24 overflow-auto whitespace-pre-wrap text-sky-100/80">{activeTestcase?.input ?? ""}</pre>
+                    <div className="rounded-lg bg-muted/60 p-3">
+                      <span className="text-[9px] uppercase tracking-wider text-muted-foreground">Input</span>
+                      <pre className="mt-1 max-h-24 overflow-auto whitespace-pre-wrap text-foreground/80">{activeTestcase?.input ?? ""}</pre>
                     </div>
-                    <div className="rounded-lg bg-[#060e22] p-3">
-                      <span className="text-[9px] uppercase tracking-wider text-sky-400/50">Expected</span>
-                      <pre className="mt-1 max-h-24 overflow-auto whitespace-pre-wrap text-emerald-200/80">{activeTestcase?.output ?? ""}</pre>
+                    <div className="rounded-lg bg-muted/60 p-3">
+                      <span className="text-[9px] uppercase tracking-wider text-muted-foreground">Expected</span>
+                      <pre className="mt-1 max-h-24 overflow-auto whitespace-pre-wrap text-emerald-600 dark:text-emerald-400">{activeTestcase?.output ?? ""}</pre>
                     </div>
                   </div>
                 </div>
 
                 <div className="mt-4 grid grid-cols-2 gap-2 text-[10px]">
-                  <div className="rounded-lg bg-[#0a1530]/60 p-2.5">
-                    <span className="uppercase tracking-wider text-sky-400/50">Time</span>
-                    <p className="mt-1 text-sky-100/70">{timeComplexity}</p>
+                  <div className="rounded-lg border bg-card/50 p-2.5">
+                    <span className="uppercase tracking-wider text-muted-foreground">Time</span>
+                    <p className="mt-1 text-foreground/70">{timeComplexity}</p>
                   </div>
-                  <div className="rounded-lg bg-[#0a1530]/60 p-2.5">
-                    <span className="uppercase tracking-wider text-sky-400/50">Space</span>
-                    <p className="mt-1 text-sky-100/70">{spaceComplexity}</p>
+                  <div className="rounded-lg border bg-card/50 p-2.5">
+                    <span className="uppercase tracking-wider text-muted-foreground">Space</span>
+                    <p className="mt-1 text-foreground/70">{spaceComplexity}</p>
                   </div>
                 </div>
 
                 {topics.length > 0 && (
                   <div className="mt-3 flex flex-wrap gap-1.5">
                     {topics.map((topic) => (
-                      <span key={topic} className="rounded-md border border-sky-500/15 bg-sky-500/5 px-2 py-0.5 text-[9px] uppercase tracking-wider text-sky-300/60">
+                      <Badge key={topic} variant="secondary" className="text-[9px] uppercase tracking-wider">
                         {topic}
-                      </span>
+                      </Badge>
                     ))}
                   </div>
                 )}
               </div>
+              ) : (
+                <div className="min-h-0 flex-1">
+                  <MaskedOpponentEditor opponentName={botName} code={botProgress.code} />
+                </div>
+              )}
             </aside>
-          )}
-
-          {!showQuestion && (
-            <button
-              type="button"
-              onClick={() => setShowQuestion(true)}
-              className="absolute left-0 top-1/2 z-30 -translate-y-1/2 rounded-r-lg border border-l-0 border-sky-500/20 bg-[#060d1f]/80 px-2 py-6 text-[10px] uppercase tracking-wider text-sky-400/60 backdrop-blur-sm transition hover:border-sky-400/40 hover:text-sky-300"
-            >
-              Q
-            </button>
-          )}
 
           <div className="flex flex-1">
-            <div className="relative flex w-1/2 flex-col border-r border-sky-500/10">
+            <div className="relative flex w-1/2 flex-col border-r">
               <div className="relative flex-1 p-4">
                 <div className="relative z-10 flex h-full flex-col gap-4">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <select
-                        value={language}
-                        onChange={(e) => {
-                          const normalized = normalizeLanguage(e.target.value);
-                          setLanguage(normalized);
-                          setCode((c) => (!c.trim() ? buildTemplate(normalized, question.title) : c));
-                        }}
-                        className="rounded-lg border border-sky-500/25 bg-slate-900/70 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-sky-100/85 focus:border-sky-300/70 focus:outline-none"
-                      >
+                    <Select
+                      value={language}
+                      onValueChange={(value) => {
+                        if (value === null) return;
+                        const normalized = normalizeLanguage(value);
+                        setLanguage(normalized);
+                        setCode((c) => (!c.trim() ? buildTemplate(normalized, question.title) : c));
+                      }}
+                    >
+                      <SelectTrigger size="sm" className="text-[11px] font-semibold uppercase tracking-wider">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
                         {availableLanguages.map((lang) => (
-                          <option key={lang} value={lang}>
+                          <SelectItem key={lang} value={lang}>
                             {languageLabels[lang] ?? lang}
-                          </option>
+                          </SelectItem>
                         ))}
-                      </select>
-                    </div>
+                      </SelectContent>
+                    </Select>
 
                     <div className="flex items-center gap-2">
-                      <button
+                      <Button
                         type="button"
+                        variant="outline"
                         onClick={() => handleSubmit("run")}
                         disabled={isSubmitting || isMatchOver}
-                        className="rounded-lg border border-sky-500/30 bg-sky-500/15 px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.25em] text-sky-200 transition hover:border-sky-300/60 disabled:opacity-50"
+                        className="text-[10px] font-semibold uppercase tracking-[0.25em]"
                       >
                         {isSubmitting ? "Running..." : "Run"}
-                      </button>
-                      <button
+                      </Button>
+                      <Button
                         type="button"
                         onClick={() => handleSubmit("submit")}
                         disabled={isSubmitting || isMatchOver}
-                        className="rounded-lg border border-emerald-500/60 bg-emerald-500/20 px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.25em] text-emerald-200 transition hover:border-emerald-400 disabled:opacity-50"
+                        className="text-[10px] font-semibold uppercase tracking-[0.25em]"
                       >
                         {isSubmitting ? "Submitting..." : "Submit"}
-                      </button>
-                      <button
+                      </Button>
+                      <Button
                         type="button"
+                        variant="ghost"
                         onClick={() => setCode("")}
-                        className="rounded-lg border border-slate-600/40 px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-sky-300/60 transition hover:border-sky-400/40 hover:text-sky-200"
+                        className="text-[10px] font-semibold uppercase tracking-wider"
                       >
                         Clear
-                      </button>
+                      </Button>
                     </div>
                   </div>
 
-                  <div className="flex flex-1 overflow-hidden rounded-2xl border border-slate-600/40 bg-[#020711] shadow-[0_0_60px_rgba(56,189,248,0.12)]">
+                  <div className="flex flex-1 overflow-hidden rounded-xl border bg-card shadow-sm">
                     <textarea
                       value={code}
                       onChange={(e) => setCode(e.target.value)}
                       spellCheck={false}
-                      className="code-editor h-full w-full resize-none bg-transparent p-5 text-[14px] text-sky-100/90 focus:outline-none"
+                      className="code-editor h-full w-full resize-none bg-transparent p-5 text-[14px] text-foreground/90 focus:outline-none"
                       disabled={isMatchOver}
                     />
                   </div>
                 </div>
               </div>
 
-              <div className="border-t border-sky-500/10 bg-[#060d1f]/70 p-4 backdrop-blur-sm">
-                <div className="flex items-center justify-between text-[10px] uppercase tracking-[0.3em] text-sky-400/60">
+              <div className="border-t bg-muted/20 p-4 backdrop-blur-sm">
+                <div className="flex items-center justify-between text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
                   <span>Console</span>
                   {feedback && (
-                    <span className={`rounded-md border px-3 py-1 text-[10px] ${
-                      feedbackTone === "success" ? "border-emerald-500/40 text-emerald-300"
-                        : feedbackTone === "error" ? "border-red-500/40 text-red-300"
-                          : "border-sky-500/30 text-sky-200"
-                    }`}>
+                    <span
+                      className={`rounded-md border px-3 py-1 text-[10px] ${
+                        feedbackTone === "success"
+                          ? "border-emerald-500/40 text-emerald-500"
+                          : feedbackTone === "error"
+                            ? "border-red-500/40 text-red-500"
+                            : "border-border text-foreground"
+                      }`}
+                    >
                       {feedback}
                     </span>
                   )}
@@ -510,17 +588,19 @@ export function BotBattleArenaClient({
                       const status = statusForIndex(i);
                       const indicator = status === "passed" ? "bg-emerald-500"
                         : status === "failed" ? "bg-red-500"
-                          : status === "pending" ? "bg-amber-400" : "bg-slate-600";
+                          : status === "pending" ? "bg-amber-500" : "bg-muted-foreground/50";
                       return (
                         <button
                           key={`${tc.id}-console`}
                           type="button"
                           onClick={() => setActiveTestcaseIndex(i)}
                           className={`flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-[10px] uppercase tracking-wider transition ${
-                            i === activeTestcaseIndex ? "border-sky-400 text-sky-100" : "border-slate-600/50 text-sky-300/60 hover:border-sky-400/30"
+                            i === activeTestcaseIndex
+                              ? "border-foreground text-foreground"
+                              : "border-border text-muted-foreground hover:border-foreground/40"
                           }`}
                         >
-                          <span className={`h-1.5 w-1.5 rounded-full ${indicator}`} />
+                          <span className={`size-1.5 rounded-full ${indicator}`} />
                           {i + 1}
                         </button>
                       );
@@ -530,27 +610,27 @@ export function BotBattleArenaClient({
                   <div className="flex-1 overflow-hidden">
                     <div className="grid grid-cols-3 gap-2 text-[10px]">
                       <div>
-                        <span className="uppercase tracking-wider text-sky-400/50">Status</span>
-                        <p className="mt-0.5 text-sky-100/80">
+                        <span className="uppercase tracking-wider text-muted-foreground">Status</span>
+                        <p className="mt-0.5 text-foreground/80">
                           {activeResult ? `${activeResult.status}` : results ? "Pending" : "—"}
                         </p>
                       </div>
                       <div>
-                        <span className="uppercase tracking-wider text-sky-400/50">Time</span>
-                        <p className="mt-0.5 text-sky-100/80">{activeResult?.time ?? "—"}</p>
+                        <span className="uppercase tracking-wider text-muted-foreground">Time</span>
+                        <p className="mt-0.5 text-foreground/80">{activeResult?.time ?? "—"}</p>
                       </div>
                       <div>
-                        <span className="uppercase tracking-wider text-sky-400/50">Memory</span>
-                        <p className="mt-0.5 text-sky-100/80">{activeResult?.memory != null ? `${activeResult.memory}` : "—"}</p>
+                        <span className="uppercase tracking-wider text-muted-foreground">Memory</span>
+                        <p className="mt-0.5 text-foreground/80">{activeResult?.memory != null ? `${activeResult.memory}` : "—"}</p>
                       </div>
                     </div>
                     {activeResult && !activeResult.passed && activeResult.actual && (
-                      <pre className="mt-2 max-h-20 overflow-auto whitespace-pre-wrap rounded-lg border border-slate-700/40 bg-[#030915] p-2 text-[10px] text-sky-100/75">
+                      <pre className="mt-2 max-h-20 overflow-auto whitespace-pre-wrap rounded-lg border bg-muted/40 p-2 text-[10px] text-foreground/75">
                         {activeResult.actual}
                       </pre>
                     )}
                     {activeResult?.stderr && (
-                      <pre className="mt-2 max-h-16 overflow-auto whitespace-pre-wrap rounded-lg border border-red-500/30 bg-red-500/5 p-2 text-[10px] text-red-200/75">
+                      <pre className="mt-2 max-h-16 overflow-auto whitespace-pre-wrap rounded-lg border border-red-500/30 bg-red-500/5 p-2 text-[10px] text-red-500">
                         {activeResult.stderr}
                       </pre>
                     )}
@@ -560,54 +640,51 @@ export function BotBattleArenaClient({
             </div>
 
             <div className="flex w-1/2 flex-col">
-              <div className={`flex flex-col items-center justify-center border-b border-${accentColor}-500/20 bg-[#060d1f]/60 px-6 py-4`}>
+              <div className={`flex flex-col items-center justify-center border-b ${difficultyStyle.border} bg-muted/20 px-6 py-4`}>
                 <div className="flex items-center gap-3">
-                  <div className={`flex h-12 w-12 items-center justify-center rounded-full border-2 border-${accentColor}-400/40 bg-${accentColor}-500/15 text-lg font-bold text-${accentColor}-200`}>
-                    <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23.693L5 14.5m14.8.8l1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0112 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5"/></svg>
-                  </div>
+                  <Avatar className={`size-12 border-2 ${difficultyStyle.border} ${difficultyStyle.bg} text-lg font-bold`}>
+                    <AvatarFallback className={difficultyStyle.text}>
+                      <Bot className="size-6" />
+                    </AvatarFallback>
+                  </Avatar>
                   <div>
-                    <h3 className="text-lg font-bold text-sky-50">{botName}</h3>
+                    <h3 className="text-lg font-bold">{botName}</h3>
                     <div className="flex items-center gap-2">
-                      <span className={`rounded-md border border-${accentColor}-500/30 bg-${accentColor}-500/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-${accentColor}-300`}>
+                      <Badge variant="outline" className={`text-[9px] font-semibold uppercase tracking-wider ${difficultyStyle.chip}`}>
                         {botDifficulty} · ~{formatDuration(botConfig.estimatedSeconds)}
-                      </span>
-                      <span className="text-[10px] text-sky-400/50">{botProgress.statusMessage}</span>
+                      </Badge>
+                      <span className="text-[10px] text-muted-foreground">{botProgress.statusMessage}</span>
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div className={`px-6 py-3 border-b border-${accentColor}-500/10 bg-[#060d1f]/40`}>
-                <div className="flex items-center justify-between text-[10px] uppercase tracking-wider text-sky-400/50 mb-1">
+              <div className={`border-b ${difficultyStyle.border} bg-muted/10 px-6 py-3`}>
+                <div className="mb-1 flex items-center justify-between text-[10px] uppercase tracking-wider text-muted-foreground">
                   <span>Bot Progress</span>
                   <span>{Math.round(botProgress.overallProgress * 100)}%</span>
                 </div>
-                <div className="h-2 w-full overflow-hidden rounded-full bg-slate-800">
-                  <div
-                    className={`h-full rounded-full transition-all duration-500 ease-out bg-${accentColor}-500`}
-                    style={{ width: `${botProgress.overallProgress * 100}%` }}
-                  />
-                </div>
-                <div className="flex items-center justify-between mt-2 text-[9px] uppercase tracking-wider">
-                  <span className={`text-${accentColor}-300/70`}>{botProgress.stage}</span>
-                  <span className="text-sky-400/50">
+                <Progress value={botProgress.overallProgress * 100} className="w-full" />
+                <div className="mt-2 flex items-center justify-between text-[9px] uppercase tracking-wider">
+                  <span className={difficultyStyle.text}>{botProgress.stage}</span>
+                  <span className="text-muted-foreground">
                     ~{formatDuration(botProgress.estimatedTimeRemaining)} remaining
                   </span>
                 </div>
               </div>
 
               <div className="flex-1 overflow-hidden p-4">
-                <div className="h-full overflow-hidden rounded-2xl border border-slate-600/40 bg-[#020711] shadow-[0_0_40px_rgba(56,189,248,0.08)]">
-                  <div className="border-b border-slate-700/30 px-4 py-2">
-                    <div className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-sky-400/50">
-                      <span className={`h-2 w-2 rounded-full bg-${accentColor}-500`} />
+                <div className="h-full overflow-hidden rounded-xl border bg-card shadow-sm">
+                  <div className="border-b px-4 py-2">
+                    <div className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-muted-foreground">
+                      <span className={`size-2 rounded-full ${difficultyStyle.dot}`} />
                       Bot Coding Activity
                     </div>
                   </div>
                   <div className="h-[calc(100%-36px)] overflow-y-auto p-5">
-                    <pre className="whitespace-pre-wrap text-[13px] font-mono text-sky-100/70">
+                    <pre className="whitespace-pre-wrap font-mono text-[13px] text-foreground/70">
                       {botProgress.code || (
-                        <span className="italic text-sky-500/40">
+                        <span className="italic text-muted-foreground">
                           {botProgress.stage === "thinking" ? "Thinking about the problem..." : "// writing solution..."}
                         </span>
                       )}
@@ -621,92 +698,102 @@ export function BotBattleArenaClient({
         </div>
       </div>
 
-      {isMatchOver && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm">
-          <div className={`w-full max-w-lg rounded-3xl border ${matchResult === "won" ? "border-emerald-500/25" : matchResult === "bot_won" ? "border-red-500/25" : "border-amber-500/25"} bg-[#0c1425] p-8 text-sky-100 shadow-[0_0_60px_rgba(16,185,129,0.2)]`}>
-            <div className="text-center">
-              <div className="text-5xl mb-4">
-                {matchResult === "won" ? <svg className="mx-auto h-16 w-16 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M16.5 18.75h-9m9 0a3 3 0 013 3h-15a3 3 0 013-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 01-.982-3.172M9.497 14.25a7.454 7.454 0 00.981-3.172M5.25 4.236c-.982.143-1.954.317-2.916.52A6.003 6.003 0 007.73 9.728M5.25 4.236V4.5c0 2.108.966 3.99 2.48 5.228M5.25 4.236V2.721C7.456 2.41 9.71 2.25 12 2.25c2.291 0 4.545.16 6.75.47v1.516M18.75 4.236c.982.143 1.954.317 2.916.52A6.003 6.003 0 0016.27 9.728M18.75 4.236V4.5c0 2.108-.966 3.99-2.48 5.228m0 0a6.015 6.015 0 01-2.52.52m0 0a6.015 6.015 0 01-2.52-.52"/></svg> : matchResult === "bot_won" ? <svg className="mx-auto h-16 w-16 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23.693L5 14.5m14.8.8l1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0112 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5"/></svg> : <svg className="mx-auto h-16 w-16 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z"/></svg>}
-              </div>
-              <h3 className={`text-3xl font-bold uppercase tracking-wider ${
-                matchResult === "won" ? "text-emerald-200" : matchResult === "bot_won" ? "text-red-200" : "text-amber-200"
-              }`}>
-                {matchResult === "won" ? "Victory!" : matchResult === "bot_won" ? "Bot Wins" : "Draw"}
-              </h3>
-              <p className="mt-3 text-sm text-sky-200/70">
-                {matchResult === "won"
-                  ? "You solved the problem before the bot! Excellent work."
-                  : matchResult === "bot_won"
-                    ? `The ${botName} solved the problem first. Try a lower difficulty or practice more.`
-                    : "You solved it, but the bot finished first too."}
-              </p>
-              {pointsAwarded !== null && (
-                <div className="mt-6 inline-flex items-center gap-3 rounded-2xl border border-amber-400/30 bg-amber-500/10 px-8 py-4">
-                  <svg className="h-8 w-8 text-amber-400" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-                  <div>
-                    <p className="text-[10px] uppercase tracking-[0.35em] text-amber-300/70">Points Earned</p>
-                    <p className="text-3xl font-bold text-amber-200">{pointsAwarded}</p>
-                  </div>
-                </div>
+      <Dialog open={isMatchOver} onOpenChange={() => {}}>
+        <DialogContent className="w-full max-w-lg gap-6 p-8 text-center">
+          <DialogHeader className="items-center gap-2">
+            <DialogTitle className={`text-3xl font-bold uppercase tracking-wider ${
+              matchResult === "won"
+                ? "text-emerald-600 dark:text-emerald-400"
+                : matchResult === "bot_won"
+                  ? "text-red-600 dark:text-red-400"
+                  : "text-amber-600 dark:text-amber-400"
+            }`}>
+              {matchResult === "won" ? (
+                <span className="flex flex-col items-center gap-2">
+                  <Trophy className="size-16 text-emerald-500" />
+                  Victory!
+                </span>
+              ) : matchResult === "bot_won" ? (
+                <span className="flex flex-col items-center gap-2">
+                  <Bot className="size-16 text-red-500" />
+                  Bot Wins
+                </span>
+              ) : (
+                <span className="flex flex-col items-center gap-2">
+                  <Zap className="size-16 text-amber-500" />
+                  Draw
+                </span>
               )}
-            </div>
-            <div className="mt-8 flex justify-center gap-4">
-              <button
-                type="button"
-                onClick={() => {
-                  setMatchResult("playing");
-                  setPointsAwarded(null);
-                  setResults(null);
-                  setFeedback(null);
-                  setFeedbackTone(null);
-                  setCode(buildTemplate(normalizedInitialLanguage, question.title));
-                  setElapsedTime(0);
-                  startedAtRef.current = Date.now();
-                }}
-                className="rounded-full border border-emerald-400/70 bg-emerald-500/20 px-8 py-3 text-sm font-semibold uppercase tracking-[0.35em] text-emerald-50 shadow-[0_0_30px_rgba(16,185,129,0.3)] transition hover:border-emerald-200 hover:bg-emerald-500/30"
-              >
-                Play Again
-              </button>
-              <button
-                type="button"
-                onClick={() => router.push("/game-modes")}
-                className="rounded-full border border-sky-400/60 px-8 py-3 text-sm font-semibold uppercase tracking-[0.35em] text-sky-100 transition hover:border-sky-200 hover:bg-sky-500/30"
-              >
-                Back to Modes
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+            </DialogTitle>
+            <DialogDescription className="text-sm">
+              {matchResult === "won"
+                ? "You solved the problem before the bot! Excellent work."
+                : matchResult === "bot_won"
+                  ? `The ${botName} solved the problem first. Try a lower difficulty or practice more.`
+                  : "You solved it, but the bot finished first too."}
+            </DialogDescription>
+          </DialogHeader>
 
-      {showForfeitConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-3xl border border-red-500/25 bg-[#0c1425] p-8 text-sky-100 shadow-[0_0_60px_rgba(248,113,113,0.2)]">
-            <h3 className="text-2xl font-bold uppercase tracking-wider text-red-200">
-              Forfeit Match?
-            </h3>
-            <p className="mt-3 text-sm text-sky-200/70">
-              You will lose this bot battle. Are you sure you want to forfeit?
-            </p>
-            <div className="mt-6 flex justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => setShowForfeitConfirm(false)}
-                className="rounded-lg border border-sky-500/30 px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.25em] text-sky-200 transition hover:border-sky-300"
-              >
-                Keep Going
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirmForfeit}
-                className="rounded-lg border border-red-500/60 bg-red-500/20 px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.25em] text-red-200 transition hover:border-red-400"
-              >
-                Forfeit
-              </button>
+          {pointsAwarded !== null && (
+            <div className="inline-flex items-center gap-3 self-center rounded-2xl border border-amber-500/30 bg-amber-500/10 px-8 py-4">
+              <Trophy className="size-8 text-amber-500" />
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.35em] text-amber-500/80">Points Earned</p>
+                <p className="text-3xl font-bold text-amber-600 dark:text-amber-400">{pointsAwarded}</p>
+              </div>
             </div>
+          )}
+
+          <div className="flex justify-center gap-4">
+            <Button
+              type="button"
+              onClick={handlePlayAgain}
+              className="px-8 py-3 text-sm font-semibold uppercase tracking-[0.35em]"
+            >
+              Play Again
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => router.push("/game-modes")}
+              className="px-8 py-3 text-sm font-semibold uppercase tracking-[0.35em]"
+            >
+              Back to Modes
+            </Button>
           </div>
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showForfeitConfirm} onOpenChange={setShowForfeitConfirm}>
+        <DialogContent className="w-full max-w-md gap-5 p-8">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold uppercase tracking-wider text-destructive">
+              Forfeit Match?
+            </DialogTitle>
+            <DialogDescription>
+              You will lose this bot battle. Are you sure you want to forfeit?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setShowForfeitConfirm(false)}
+              className="text-xs font-semibold uppercase tracking-[0.25em]"
+            >
+              Keep Going
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={handleConfirmForfeit}
+              className="text-xs font-semibold uppercase tracking-[0.25em]"
+            >
+              Forfeit
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

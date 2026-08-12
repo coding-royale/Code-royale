@@ -3,7 +3,19 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useSyncExternalStore } from "react";
+import { useTheme } from "next-themes";
+import { MenuIcon, MoonIcon, SearchIcon, SunIcon } from "lucide-react";
+
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 
 const navItems = [
   { href: "/", label: "Dashboard" },
@@ -14,45 +26,29 @@ const navItems = [
 
 const publicRoutes = ["/", "/auth/login", "/auth/signup"];
 
+const appRoutes = [
+  "/home",
+  "/practice",
+  "/game-modes",
+  "/settings",
+  "/profile",
+  "/leaderboard",
+  "/clubs",
+  "/friends",
+  "/tournaments",
+  "/bot-battle",
+  "/match",
+];
+
 export function Navigation() {
   const pathname = usePathname();
-
-  const [isHidden, setIsHidden] = useState(false);
-  const [isHovering, setIsHovering] = useState(false);
-  const lastScrollRef = useRef(0);
-  const hoveringRef = useRef(false);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      const current = window.scrollY;
-      const last = lastScrollRef.current;
-
-      if (current > last && current > 48 && !hoveringRef.current) {
-        setIsHidden(true);
-      } else if (current < last || current <= 48) {
-        setIsHidden(false);
-      }
-
-      lastScrollRef.current = current;
-    };
-
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
-
-  const handleMouseEnter = () => {
-    hoveringRef.current = true;
-    setIsHovering(true);
-    setIsHidden(false);
-  };
-
-  const handleMouseLeave = () => {
-    hoveringRef.current = false;
-    setIsHovering(false);
-    if (window.scrollY > 64) {
-      setIsHidden(true);
-    }
-  };
+  const { resolvedTheme, setTheme } = useTheme();
+  // True only after hydration; prevents a light/dark icon mismatch on first paint.
+  const mounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
 
   const isPublicShell = !pathname || publicRoutes.some((route) => {
     if (route === "/") {
@@ -60,22 +56,15 @@ export function Navigation() {
     }
     return pathname?.startsWith(route) ?? false;
   });
-  const isAuthScreen = pathname?.startsWith("/auth/login") || pathname?.startsWith("/auth/signup");
+  const isAuthScreen =
+    pathname?.startsWith("/auth/login") || pathname?.startsWith("/auth/signup");
 
   const visibleNavItems = useMemo(() => {
-    if (isAuthScreen) {
+    if (isAuthScreen || isPublicShell) {
       return navItems.filter((item) =>
         item.href === "/" ||
         item.href === "/auth/login" ||
-        item.href === "/auth/signup"
-      );
-    }
-
-    if (isPublicShell) {
-      return navItems.filter((item) =>
-        item.href === "/" ||
-        item.href === "/auth/login" ||
-        item.href === "/auth/signup"
+        item.href === "/auth/signup",
       );
     }
     return navItems;
@@ -83,102 +72,116 @@ export function Navigation() {
 
   const activeMap = useMemo(() => {
     return visibleNavItems.reduce<Record<string, boolean>>((acc, item) => {
-      const isActive = item.href === "/"
-        ? pathname === "/"
-        : pathname?.startsWith(item.href);
+      const isActive =
+        item.href === "/" ? pathname === "/" : pathname?.startsWith(item.href);
       acc[item.href] = Boolean(isActive);
       return acc;
     }, {});
   }, [pathname, visibleNavItems]);
 
-  if (pathname?.startsWith("/home") || pathname?.startsWith("/practice") || pathname?.startsWith("/game-modes") || pathname?.startsWith("/settings") || pathname?.startsWith("/profile") || pathname?.startsWith("/leaderboard") || pathname?.startsWith("/clubs") || pathname?.startsWith("/friends") || pathname?.startsWith("/tournaments")) {
+  if (appRoutes.some((route) => pathname?.startsWith(route))) {
     return null;
   }
 
-  const visibilityClass = isHidden && !isHovering
-    ? "-translate-y-full opacity-0 pointer-events-none"
-    : "opacity-100 pointer-events-auto";
+  const isDark = mounted && resolvedTheme === "dark";
+
+  const renderLinks = (mobile = false) =>
+    visibleNavItems.map((item) => {
+      const isActive = activeMap[item.href];
+      return (
+        <Link
+          key={item.href}
+          href={item.href}
+          className={cn(
+            "rounded-md px-3.5 py-2 text-sm font-medium transition-colors duration-200",
+            mobile && "w-full",
+            isActive
+              ? "bg-accent text-accent-foreground"
+              : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
+          )}
+        >
+          {item.label}
+        </Link>
+      );
+    });
 
   return (
-    <>
-      <div
-        className="fixed left-0 right-0 top-0 z-[60] h-6"
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={handleMouseLeave}
-      />
-      <header
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={handleMouseLeave}
-        className={`fixed left-0 right-0 top-0 z-[55] transition-all duration-300 ease-out ${visibilityClass}`}
-      >
-        <div className="border-b border-[var(--cr-border)] bg-[var(--cr-bg)]/90 px-8 py-4 backdrop-blur-xl">
-          <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center gap-6">
-            <Link href="/" className="group inline-flex items-center gap-3">
-              <span className="relative flex h-10 w-10 items-center justify-center overflow-hidden rounded-lg border border-[var(--cr-border)] bg-[var(--cr-bg-secondary)]">
-                <Image
-                  src="/images/logo-icon.svg"
-                  alt="Code Royale logo"
-                  fill
-                  className="object-contain p-1"
-                  sizes="40px"
-                  priority
-                />
-              </span>
-              <span className="text-base font-semibold tracking-wide text-[var(--cr-fg)]">
-                Code Royale
-              </span>
-            </Link>
+    <header className="fixed inset-x-0 top-0 z-50 border-b border-border bg-background/80 backdrop-blur-xl">
+      <div className="mx-auto flex h-16 w-full max-w-7xl items-center gap-4 px-4 sm:px-6">
+        <Link href="/" className="group inline-flex shrink-0 items-center gap-3">
+          <span className="flex size-9 items-center justify-center overflow-hidden rounded-lg bg-muted ring-1 ring-foreground/10 transition group-hover:ring-foreground/20">
+            <Image
+              src="/images/logo-icon.svg"
+              alt="Code Royale logo"
+              width={36}
+              height={36}
+              className="object-contain p-1.5"
+              priority
+            />
+          </span>
+          <span className="text-base font-semibold tracking-tight text-foreground">
+            Code Royale
+          </span>
+        </Link>
 
-            {!isPublicShell && (
-              <form className="flex min-w-[220px] flex-1 items-center gap-2 rounded-lg border border-[var(--cr-border)] bg-[var(--cr-bg-secondary)] px-3.5 py-2 text-sm text-[var(--cr-fg-muted)] md:max-w-lg focus-within:border-[rgba(var(--cr-accent-rgb),0.5)]">
-                <label htmlFor="global-search" className="sr-only">
-                  Search players or friends
-                </label>
-                <SearchIcon />
-                <input
-                  id="global-search"
-                  type="search"
-                  placeholder="Search players or friends"
-                  className="w-full bg-transparent text-[var(--cr-fg)] placeholder:text-[var(--cr-fg-muted)] focus:outline-none"
-                />
-              </form>
-            )}
+        {!isPublicShell && (
+          <form
+            role="search"
+            className="hidden min-w-0 flex-1 items-center gap-2 rounded-lg border border-input bg-muted/40 px-3 md:flex md:max-w-sm lg:max-w-md"
+          >
+            <SearchIcon data-icon="inline-start" />
+            <label htmlFor="global-search" className="sr-only">
+              Search players or friends
+            </label>
+            <input
+              id="global-search"
+              type="search"
+              placeholder="Search players or friends"
+              className="h-8 w-full min-w-0 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
+            />
+          </form>
+        )}
 
-            <nav className="ml-auto flex items-center gap-1">
-              {visibleNavItems.map((item) => {
-                const isActive = activeMap[item.href];
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={`rounded-md px-3.5 py-2 text-sm font-medium transition-colors duration-200 ${
-                      isActive
-                        ? "bg-[var(--cr-accent-soft)] text-[rgb(var(--cr-accent-rgb))]"
-                        : "text-[var(--cr-fg-muted)] hover:bg-[var(--cr-bg-tertiary)] hover:text-[var(--cr-fg)]"
-                    }`}
-                  >
-                    {item.label}
-                  </Link>
-                );
-              })}
-            </nav>
-          </div>
+        <nav className="ml-auto hidden items-center gap-1 md:flex">
+          {renderLinks()}
+        </nav>
+
+        <div className="ml-auto flex items-center gap-2 md:ml-0">
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label={
+              isDark ? "Switch to light theme" : "Switch to dark theme"
+            }
+            onClick={() => setTheme(isDark ? "light" : "dark")}
+          >
+            {mounted && (isDark ? <SunIcon /> : <MoonIcon />)}
+          </Button>
+
+          <Sheet>
+            <SheetTrigger
+              render={
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="md:hidden"
+                  aria-label="Open menu"
+                />
+              }
+            >
+              <MenuIcon />
+            </SheetTrigger>
+            <SheetContent side="right" className="w-72">
+              <SheetHeader>
+                <SheetTitle>Code Royale</SheetTitle>
+              </SheetHeader>
+              <nav className="flex flex-col gap-1 px-4">
+                {renderLinks(true)}
+              </nav>
+            </SheetContent>
+          </Sheet>
         </div>
-      </header>
-    </>
+      </div>
+    </header>
   );
 }
-
-const SearchIcon = () => (
-  <svg
-    aria-hidden
-    className="h-4 w-4 text-[var(--cr-fg-muted)]"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.5"
-  >
-    <circle cx="11" cy="11" r="6" />
-    <path d="M20 20l-3.6-3.6" />
-  </svg>
-);

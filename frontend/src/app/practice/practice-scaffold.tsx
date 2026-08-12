@@ -1,6 +1,8 @@
 "use client";
 
 import { ReactNode, useState } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 import { HomeNav } from "../home/home-nav";
 
@@ -70,7 +72,7 @@ export function PracticeScaffold({ children, defaultSidebarOpen = false }: Pract
   const mainPaddingClass = isSidebarOpen ? "lg:pl-[18rem]" : "lg:pl-0";
 
   return (
-    <div className="relative min-h-screen bg-[var(--cr-bg)] text-[var(--cr-fg)]">
+    <div className="relative min-h-screen bg-background text-foreground">
       <HomeNav
         onMenuToggle={toggleSidebar}
         sidebarOpen={isSidebarOpen}
@@ -103,17 +105,18 @@ export function PracticeScaffold({ children, defaultSidebarOpen = false }: Pract
 function PracticeSidebar({ isOpen, onClose, onCollapse }: PracticeSidebarProps) {
   return (
     <aside
-      className={`fixed left-0 top-24 z-50 flex h-[calc(100vh-6rem)] w-72 flex-col gap-6 border-r border-[var(--cr-border)] bg-[var(--cr-bg-secondary)]/95 p-6 backdrop-blur-xl transition-transform duration-300 ease-out lg:top-28 lg:h-[calc(100vh-7rem)] ${
+      className={cn(
+        "fixed left-0 top-24 z-50 flex h-[calc(100vh-6rem)] w-72 flex-col gap-6 border-r border-border bg-card/95 p-6 backdrop-blur-xl transition-transform duration-300 ease-out lg:top-28 lg:h-[calc(100vh-7rem)]",
         isOpen ? "translate-x-0" : "-translate-x-full"
-      }`}
+      )}
     >
-      <div className="flex items-center justify-between text-xs uppercase tracking-[0.2em] text-[var(--cr-fg-muted)]">
+      <div className="flex items-center justify-between text-xs uppercase tracking-[0.2em] text-muted-foreground">
         <span>More</span>
         <button
           type="button"
           aria-label="Close sidebar"
           onClick={onClose}
-          className="rounded-lg border border-[var(--cr-border)] px-2 py-1 text-[10px] text-[var(--cr-fg-muted)] transition hover:border-[rgba(var(--cr-accent-rgb),0.5)] hover:text-[var(--cr-fg)] lg:hidden"
+          className="rounded-lg border border-border px-2 py-1 text-[10px] text-muted-foreground transition hover:border-accent hover:text-foreground lg:hidden"
         >
           Close
         </button>
@@ -122,10 +125,10 @@ function PracticeSidebar({ isOpen, onClose, onCollapse }: PracticeSidebarProps) 
         {sidebarLinks.map((link) => {
           const inner = (
             <div className="flex flex-col">
-              <div className="text-sm font-semibold text-[var(--cr-fg)]">
+              <div className="text-sm font-semibold text-foreground">
                 {link.title}
               </div>
-              <p className="mt-1 text-xs text-[var(--cr-fg-muted)]">{link.subtitle}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{link.subtitle}</p>
             </div>
           );
 
@@ -135,7 +138,7 @@ function PracticeSidebar({ isOpen, onClose, onCollapse }: PracticeSidebarProps) 
                 key={link.id}
                 href={link.href}
                 onClick={onClose}
-                className="rounded-xl border border-[var(--cr-border)] bg-[var(--cr-bg)] p-4 text-left transition hover:border-[rgba(var(--cr-accent-rgb),0.4)]"
+                className="rounded-xl border border-border bg-background p-4 text-left shadow-sm transition hover:border-accent hover:shadow-md"
               >
                 {inner}
               </a>
@@ -147,7 +150,7 @@ function PracticeSidebar({ isOpen, onClose, onCollapse }: PracticeSidebarProps) 
               key={link.id}
               type="button"
               onClick={onClose}
-              className="rounded-xl border border-[var(--cr-border)] bg-[var(--cr-bg)] p-4 text-left transition hover:border-[rgba(var(--cr-accent-rgb),0.4)]"
+              className="rounded-xl border border-border bg-background p-4 text-left shadow-sm transition hover:border-accent hover:shadow-md"
             >
               {inner}
             </button>
@@ -159,9 +162,9 @@ function PracticeSidebar({ isOpen, onClose, onCollapse }: PracticeSidebarProps) 
           type="button"
           aria-label="Collapse sidebar"
           onClick={onCollapse}
-          className="absolute right-[-22px] top-1/2 hidden h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-[var(--cr-border)] bg-[var(--cr-bg-secondary)] text-[var(--cr-fg-muted)] transition hover:border-[rgba(var(--cr-accent-rgb),0.6)] hover:text-[var(--cr-fg)] lg:flex"
+          className="absolute right-[-22px] top-1/2 hidden h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-md transition hover:border-accent hover:text-foreground lg:flex"
         >
-          <ChevronIcon direction="collapse" />
+          <ChevronLeft className="size-5" />
         </button>
       )}
     </aside>
@@ -174,27 +177,9 @@ function CollapsedSidebarHandle({ onToggle }: { onToggle: () => void }) {
       type="button"
       aria-label="Open sidebar"
       onClick={onToggle}
-      className="fixed left-0 top-1/2 z-40 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-r-full border border-[var(--cr-border)] bg-[var(--cr-bg-secondary)] text-[var(--cr-fg-muted)] transition hover:border-[rgba(var(--cr-accent-rgb),0.6)] hover:text-[var(--cr-fg)]"
+      className="fixed left-0 top-1/2 z-40 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-r-full border border-border bg-card text-muted-foreground shadow-md transition hover:border-accent hover:text-foreground"
     >
-      <ChevronIcon direction="expand" />
+      <ChevronRight className="size-5" />
     </button>
-  );
-}
-
-function ChevronIcon({ direction }: { direction: "expand" | "collapse" }) {
-  const rotation = direction === "collapse" ? "rotate-180" : "rotate-0";
-
-  return (
-    <svg
-      className={`h-5 w-5 text-[var(--cr-fg-muted)] transition ${rotation}`}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M9 18l6-6-6-6" />
-    </svg>
   );
 }

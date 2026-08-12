@@ -2,6 +2,36 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  ArrowLeft,
+  Clock,
+  Lightbulb,
+  Pause,
+  Play,
+  RotateCcw,
+} from "lucide-react";
+
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Progress } from "@/components/ui/progress";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { cn } from "@/lib/utils";
 
 type PracticeTestcase = {
   id: string;
@@ -86,10 +116,16 @@ const summarizeError = (stderr: string | null) => {
   return line.length > 90 ? `${line.slice(0, 87)}...` : line;
 };
 
-const difficultyColors: Record<string, { bg: string; text: string }> = {
-  easy: { bg: "bg-emerald-500/10", text: "text-emerald-400" },
-  medium: { bg: "bg-amber-500/10", text: "text-amber-400" },
-  hard: { bg: "bg-red-500/10", text: "text-red-400" },
+const difficultyColors: Record<string, { badge: string }> = {
+  easy: { badge: "text-emerald-600 dark:text-emerald-400" },
+  medium: { badge: "text-amber-600 dark:text-amber-400" },
+  hard: { badge: "text-red-600 dark:text-red-400" },
+};
+
+const feedbackToneClasses: Record<string, string> = {
+  success: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+  error: "bg-red-500/10 text-red-600 dark:text-red-400",
+  info: "bg-accent text-accent-foreground",
 };
 
 export function PracticeArenaLeetcode({
@@ -188,6 +224,11 @@ export function PracticeArenaLeetcode({
     return formatDuration(timerSeconds);
   }, [timerSeconds]);
 
+  const timerPercent = useMemo(
+    () => Math.max(0, Math.min(100, (timerSeconds / initialTimer) * 100)),
+    [timerSeconds, initialTimer]
+  );
+
   const resultsMap = useMemo(() => {
     if (!results) return new Map<number, SubmissionResult>();
     return new Map(results.map((r) => [r.index, r]));
@@ -275,74 +316,77 @@ export function PracticeArenaLeetcode({
     }
   };
 
+  const statusDot = (status: string) =>
+    status === "passed"
+      ? "bg-emerald-500"
+      : status === "failed"
+        ? "bg-red-500"
+        : status === "pending"
+          ? "bg-amber-400"
+          : "bg-muted-foreground";
+
   return (
-    <div className="flex h-screen flex-col bg-[var(--cr-bg)]">
+    <div className="flex h-screen flex-col bg-background">
       {/* Top bar */}
-      <header className="flex h-12 shrink-0 items-center justify-between border-b border-[var(--cr-border)] bg-[var(--cr-bg-secondary)] px-4">
-        <div className="flex items-center gap-4">
-          <button
+      <header className="flex h-12 shrink-0 items-center justify-between gap-4 border-b border-border bg-card px-4">
+        <div className="flex min-w-0 items-center gap-3">
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() => router.push(exitHref)}
-            className="flex items-center gap-2 rounded-md px-2 py-1 text-sm text-[var(--cr-fg-muted)] transition-colors hover:bg-[var(--cr-bg-tertiary)] hover:text-[var(--cr-fg)]"
+            className="shrink-0 text-muted-foreground"
           >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-            </svg>
-            <span>Problem List</span>
-          </button>
-          <div className="h-4 w-px bg-[var(--cr-border)]" />
-          <span className="text-sm font-medium text-[var(--cr-fg)]">{question.title}</span>
-          <span className={`rounded px-2 py-0.5 text-xs font-medium capitalize ${diffColor.bg} ${diffColor.text}`}>
+            <ArrowLeft data-icon="inline-start" />
+            <span className="hidden sm:inline">Problem List</span>
+          </Button>
+          <Separator orientation="vertical" className="h-4" />
+          <span className="truncate text-sm font-medium text-foreground">{question.title}</span>
+          <Badge variant="secondary" className={cn("shrink-0 capitalize", diffColor.badge)}>
             {question.difficulty}
-          </span>
+          </Badge>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex shrink-0 items-center gap-3">
           {/* Timer */}
-          <div className="flex items-center gap-2 rounded-md border border-[var(--cr-border)] bg-[var(--cr-bg)] px-3 py-1">
-            <svg className="h-4 w-4 text-[var(--cr-fg-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <span className={`text-sm font-mono ${timerSeconds === 0 ? "text-red-400" : "text-[var(--cr-fg)]"}`}>
+          <div className="flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-1.5 shadow-sm">
+            <Clock className="size-4 text-muted-foreground" />
+            <span className={cn("text-sm font-mono tabular-nums", timerSeconds === 0 ? "text-destructive" : "text-foreground")}>
               {timerState}
             </span>
-            <button
+            <Progress value={timerPercent} className="hidden w-20 md:flex [&_[data-slot=progress-track]]:h-1" />
+            <Button
+              variant="ghost"
+              size="icon-xs"
               onClick={() => setIsTimerActive(!isTimerActive)}
-              className="text-[var(--cr-fg-muted)] hover:text-[var(--cr-fg)]"
               title={isTimerActive ? "Pause" : "Resume"}
+              aria-label={isTimerActive ? "Pause timer" : "Resume timer"}
             >
-              {isTimerActive ? (
-                <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
-                </svg>
-              ) : (
-                <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M8 5v14l11-7z" />
-                </svg>
-              )}
-            </button>
-            <button
+              {isTimerActive ? <Pause /> : <Play />}
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon-xs"
               onClick={handleResetTimer}
-              className="text-[var(--cr-fg-muted)] hover:text-[var(--cr-fg)]"
               title="Reset timer"
+              aria-label="Reset timer"
             >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
-              </svg>
-            </button>
+              <RotateCcw />
+            </Button>
           </div>
 
           {/* Language selector */}
-          <select
-            value={language}
-            onChange={(e) => handleLanguageChange(e.target.value)}
-            className="rounded-md border border-[var(--cr-border)] bg-[var(--cr-bg)] px-3 py-1.5 text-sm text-[var(--cr-fg)] focus:outline-none focus:ring-1 focus:ring-[rgba(var(--cr-accent-rgb),0.5)]"
-          >
-            {availableLanguages.map((lang) => (
-              <option key={lang} value={lang}>
-                {languageLabels[lang] ?? lang}
-              </option>
-            ))}
-          </select>
+          <Select value={language} onValueChange={(value) => value != null && handleLanguageChange(value)}>
+            <SelectTrigger className="hidden sm:flex">
+              <SelectValue placeholder="Language" />
+            </SelectTrigger>
+            <SelectContent>
+              {availableLanguages.map((lang) => (
+                <SelectItem key={lang} value={lang}>
+                  {languageLabels[lang] ?? lang}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </header>
 
@@ -350,62 +394,46 @@ export function PracticeArenaLeetcode({
       <div ref={containerRef} className="flex flex-1 overflow-hidden">
         {/* Left panel - Problem description */}
         <div
-          className="flex flex-col overflow-hidden border-r border-[var(--cr-border)]"
+          className="flex flex-col overflow-hidden border-r border-border bg-background"
           style={{ width: `${leftPanelWidth}%` }}
         >
           {/* Tabs */}
-          <div className="flex border-b border-[var(--cr-border)] bg-[var(--cr-bg-secondary)]">
-            <button
-              onClick={() => setActiveTab("description")}
-              className={`px-4 py-2.5 text-sm font-medium transition-colors ${
-                activeTab === "description"
-                  ? "border-b-2 border-[rgb(var(--cr-accent-rgb))] text-[rgb(var(--cr-accent-rgb))]"
-                  : "text-[var(--cr-fg-muted)] hover:text-[var(--cr-fg)]"
-              }`}
-            >
-              Description
-            </button>
-            <button
-              onClick={() => setActiveTab("solutions")}
-              className={`px-4 py-2.5 text-sm font-medium transition-colors ${
-                activeTab === "solutions"
-                  ? "border-b-2 border-[rgb(var(--cr-accent-rgb))] text-[rgb(var(--cr-accent-rgb))]"
-                  : "text-[var(--cr-fg-muted)] hover:text-[var(--cr-fg)]"
-              }`}
-            >
-              Solutions
-            </button>
-          </div>
+          <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "description" | "solutions")}>
+            <TabsList variant="line" className="h-10 w-full justify-start rounded-none border-b border-border px-2">
+              <TabsTrigger value="description" className="px-3">Description</TabsTrigger>
+              <TabsTrigger value="solutions" className="px-3">Solutions</TabsTrigger>
+            </TabsList>
+          </Tabs>
 
           {/* Content */}
           <div className="flex-1 overflow-y-auto p-6">
             {activeTab === "description" ? (
-              <div className="space-y-6">
+              <div className="flex flex-col gap-6">
                 {/* Description */}
-                <div className="prose prose-invert max-w-none">
+                <div>
                   {question.description.split(/\n\n+/).map((p, i) => (
-                    <p key={i} className="text-sm leading-relaxed text-[var(--cr-fg)]">
+                    <p key={i} className="text-sm leading-relaxed text-foreground">
                       {p}
                     </p>
                   ))}
                 </div>
 
                 {/* Examples */}
-                <div className="space-y-4">
-                  <h3 className="text-sm font-semibold text-[var(--cr-fg)]">Examples</h3>
+                <div className="flex flex-col gap-4">
+                  <h3 className="text-sm font-semibold text-foreground">Examples</h3>
                   {safeTestcases.slice(0, 2).map((tc, i) => (
-                    <div key={tc.id} className="rounded-lg bg-[var(--cr-bg-secondary)] p-4">
-                      <div className="mb-2 text-xs font-medium text-[var(--cr-fg-muted)]">Example {i + 1}</div>
-                      <div className="space-y-3">
+                    <div key={tc.id} className="rounded-xl border border-border bg-card p-4 shadow-sm">
+                      <div className="mb-2 text-xs font-medium text-muted-foreground">Example {i + 1}</div>
+                      <div className="flex flex-col gap-3">
                         <div>
-                          <span className="text-xs text-[var(--cr-fg-muted)]">Input:</span>
-                          <pre className="mt-1 rounded bg-[var(--cr-bg)] p-2 font-mono text-sm text-[var(--cr-fg)]">
+                          <span className="text-xs text-muted-foreground">Input:</span>
+                          <pre className="mt-1 rounded-lg bg-muted p-2 font-mono text-sm text-foreground">
                             {tc.input || "(empty)"}
                           </pre>
                         </div>
                         <div>
-                          <span className="text-xs text-[var(--cr-fg-muted)]">Output:</span>
-                          <pre className="mt-1 rounded bg-[var(--cr-bg)] p-2 font-mono text-sm text-emerald-400">
+                          <span className="text-xs text-muted-foreground">Output:</span>
+                          <pre className="mt-1 rounded-lg bg-muted p-2 font-mono text-sm text-emerald-600 dark:text-emerald-400">
                             {tc.output || "(empty)"}
                           </pre>
                         </div>
@@ -416,15 +444,15 @@ export function PracticeArenaLeetcode({
 
                 {/* Metadata */}
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="rounded-lg bg-[var(--cr-bg-secondary)] p-4">
-                    <div className="text-xs text-[var(--cr-fg-muted)]">Time Complexity</div>
-                    <div className="mt-1 text-sm text-[var(--cr-fg)]">
+                  <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+                    <div className="text-xs text-muted-foreground">Time Complexity</div>
+                    <div className="mt-1 text-sm text-foreground">
                       {question.meta?.timeComplexity || "To be determined"}
                     </div>
                   </div>
-                  <div className="rounded-lg bg-[var(--cr-bg-secondary)] p-4">
-                    <div className="text-xs text-[var(--cr-fg-muted)]">Space Complexity</div>
-                    <div className="mt-1 text-sm text-[var(--cr-fg)]">
+                  <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+                    <div className="text-xs text-muted-foreground">Space Complexity</div>
+                    <div className="mt-1 text-sm text-foreground">
                       {question.meta?.spaceComplexity || "To be determined"}
                     </div>
                   </div>
@@ -433,27 +461,22 @@ export function PracticeArenaLeetcode({
                 {/* Topics */}
                 {question.meta?.topics && question.meta.topics.length > 0 && (
                   <div>
-                    <div className="mb-2 text-xs text-[var(--cr-fg-muted)]">Related Topics</div>
+                    <div className="mb-2 text-xs text-muted-foreground">Related Topics</div>
                     <div className="flex flex-wrap gap-2">
                       {question.meta.topics.map((topic) => (
-                        <span
-                          key={topic}
-                          className="rounded-full bg-[var(--cr-bg-secondary)] px-3 py-1 text-xs text-[var(--cr-fg)]"
-                        >
+                        <Badge key={topic} variant="secondary">
                           {topic}
-                        </span>
+                        </Badge>
                       ))}
                     </div>
                   </div>
                 )}
               </div>
             ) : (
-              <div className="flex h-full items-center justify-center text-[var(--cr-fg-muted)]">
-                <div className="text-center">
-                  <svg className="mx-auto h-12 w-12 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                  </svg>
-                  <p className="mt-2 text-sm">Solutions will be available after solving</p>
+              <div className="flex h-full items-center justify-center text-muted-foreground">
+                <div className="flex flex-col items-center gap-2 text-center">
+                  <Lightbulb className="size-12 opacity-50" />
+                  <p className="text-sm">Solutions will be available after solving</p>
                 </div>
               </div>
             )}
@@ -461,10 +484,7 @@ export function PracticeArenaLeetcode({
         </div>
 
         {/* Resizer */}
-        <div
-          ref={resizerRef}
-          className="w-1 cursor-col-resize bg-[var(--cr-border)] transition-colors hover:bg-[rgba(var(--cr-accent-rgb),0.5)]"
-        />
+        <div ref={resizerRef} className="split-pane-resizer shrink-0" />
 
         {/* Right panel - Code editor */}
         <div className="flex flex-1 flex-col overflow-hidden">
@@ -475,66 +495,54 @@ export function PracticeArenaLeetcode({
               onChange={(e) => setCode(e.target.value)}
               spellCheck={false}
               placeholder={editorPlaceholder(language)}
-              className="code-editor h-full w-full resize-none border-0 bg-[var(--cr-bg)] p-4 text-[var(--cr-fg)] placeholder:text-[var(--cr-fg-muted)] focus:outline-none"
+              className="code-editor h-full w-full resize-none border-0 bg-background p-4 text-foreground placeholder:text-muted-foreground focus:outline-none"
             />
           </div>
 
           {/* Console panel */}
-          <div className={`border-t border-[var(--cr-border)] bg-[var(--cr-bg-secondary)] transition-all ${consoleExpanded ? "h-64" : "h-10"}`}>
+          <div className={cn(
+            "border-t border-border bg-card transition-all",
+            consoleExpanded ? "h-64" : "h-10"
+          )}>
             {/* Console header */}
-            <div className="flex h-10 items-center justify-between border-b border-[var(--cr-border)] px-4">
+            <div className="flex h-10 items-center justify-between border-b border-border px-4">
               <div className="flex items-center gap-4">
                 <button
                   onClick={() => setConsoleExpanded(!consoleExpanded)}
-                  className="flex items-center gap-1 text-sm font-medium text-[var(--cr-fg)]"
+                  className="flex items-center gap-1 text-sm font-medium text-foreground"
                 >
-                  <svg
-                    className={`h-4 w-4 transition-transform ${consoleExpanded ? "" : "rotate-180"}`}
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    strokeWidth={2}
+                  <span
+                    className={cn(
+                      "inline-flex size-4 items-center justify-center transition-transform",
+                      consoleExpanded ? "" : "rotate-180"
+                    )}
                   >
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                  </svg>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="size-4">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </span>
                   Console
                 </button>
                 {consoleExpanded && (
-                  <div className="flex">
-                    <button
-                      onClick={() => setConsoleTab("testcase")}
-                      className={`px-3 py-1 text-xs font-medium ${
-                        consoleTab === "testcase"
-                          ? "text-[rgb(var(--cr-accent-rgb))]"
-                          : "text-[var(--cr-fg-muted)] hover:text-[var(--cr-fg)]"
-                      }`}
-                    >
-                      Testcase
-                    </button>
-                    <button
-                      onClick={() => setConsoleTab("result")}
-                      className={`px-3 py-1 text-xs font-medium ${
-                        consoleTab === "result"
-                          ? "text-[rgb(var(--cr-accent-rgb))]"
-                          : "text-[var(--cr-fg-muted)] hover:text-[var(--cr-fg)]"
-                      }`}
-                    >
-                      Result
-                    </button>
-                  </div>
+                  <Tabs
+                    value={consoleTab}
+                    onValueChange={(value) => setConsoleTab(value as "testcase" | "result")}
+                  >
+                    <TabsList variant="line" className="h-7">
+                      <TabsTrigger value="testcase" className="px-2.5 text-xs">Testcase</TabsTrigger>
+                      <TabsTrigger value="result" className="px-2.5 text-xs">Result</TabsTrigger>
+                    </TabsList>
+                  </Tabs>
                 )}
               </div>
 
               {/* Feedback badge */}
               {feedback && (
                 <span
-                  className={`rounded px-2 py-0.5 text-xs font-medium ${
-                    feedbackTone === "success"
-                      ? "bg-emerald-500/10 text-emerald-400"
-                      : feedbackTone === "error"
-                      ? "bg-red-500/10 text-red-400"
-                      : "bg-blue-500/10 text-blue-400"
-                  }`}
+                  className={cn(
+                    "rounded-full px-2.5 py-0.5 text-xs font-medium",
+                    feedbackToneClasses[feedbackTone ?? "info"]
+                  )}
                 >
                   {feedback}
                 </span>
@@ -545,9 +553,9 @@ export function PracticeArenaLeetcode({
             {consoleExpanded && (
               <div className="h-[calc(100%-2.5rem)] overflow-y-auto p-4">
                 {consoleTab === "testcase" ? (
-                  <div className="space-y-4">
+                  <div className="flex flex-col gap-4">
                     {/* Test case tabs */}
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2">
                       {safeTestcases.map((tc, i) => {
                         const status = statusForIndex(i);
                         const isActive = i === activeTestcaseIndex;
@@ -555,14 +563,14 @@ export function PracticeArenaLeetcode({
                           <button
                             key={tc.id}
                             onClick={() => setActiveTestcaseIndex(i)}
-                            className={`flex items-center gap-1.5 rounded px-3 py-1 text-xs font-medium transition-colors ${
+                            className={cn(
+                              "flex items-center gap-1.5 rounded-lg px-3 py-1 text-xs font-medium transition-colors",
                               isActive
-                                ? "bg-[var(--cr-bg-tertiary)] text-[var(--cr-fg)]"
-                                : "text-[var(--cr-fg-muted)] hover:bg-[var(--cr-bg)] hover:text-[var(--cr-fg)]"
-                            }`}
+                                ? "bg-muted text-foreground shadow-sm"
+                                : "text-muted-foreground hover:bg-accent/60 hover:text-foreground"
+                            )}
                           >
-                            {status === "passed" && <span className="h-2 w-2 rounded-full bg-emerald-500" />}
-                            {status === "failed" && <span className="h-2 w-2 rounded-full bg-red-500" />}
+                            <span className={cn("size-2 rounded-full", statusDot(status))} />
                             Case {i + 1}
                           </button>
                         );
@@ -570,26 +578,26 @@ export function PracticeArenaLeetcode({
                     </div>
 
                     {/* Input/Output */}
-                    <div className="space-y-3">
+                    <div className="flex flex-col gap-3">
                       <div>
-                        <label className="mb-1 block text-xs text-[var(--cr-fg-muted)]">Input</label>
-                        <pre className="rounded bg-[var(--cr-bg)] p-3 font-mono text-sm text-[var(--cr-fg)]">
+                        <label className="mb-1 block text-xs text-muted-foreground">Input</label>
+                        <pre className="rounded-lg bg-muted p-3 font-mono text-sm text-foreground">
                           {activeTestcase?.input || "(empty)"}
                         </pre>
                       </div>
                       <div>
-                        <label className="mb-1 block text-xs text-[var(--cr-fg-muted)]">Expected Output</label>
-                        <pre className="rounded bg-[var(--cr-bg)] p-3 font-mono text-sm text-emerald-400">
+                        <label className="mb-1 block text-xs text-muted-foreground">Expected Output</label>
+                        <pre className="rounded-lg bg-muted p-3 font-mono text-sm text-emerald-600 dark:text-emerald-400">
                           {activeTestcase?.output || "(empty)"}
                         </pre>
                       </div>
                     </div>
                   </div>
                 ) : (
-                  <div className="space-y-3">
+                  <div className="flex flex-col gap-3">
                     {results ? (
                       <>
-                        <div className="flex gap-2">
+                        <div className="flex flex-wrap gap-2">
                           {safeTestcases.map((tc, i) => {
                             const status = statusForIndex(i);
                             const isActive = i === activeTestcaseIndex;
@@ -597,14 +605,14 @@ export function PracticeArenaLeetcode({
                               <button
                                 key={tc.id}
                                 onClick={() => setActiveTestcaseIndex(i)}
-                                className={`flex items-center gap-1.5 rounded px-3 py-1 text-xs font-medium transition-colors ${
+                                className={cn(
+                                  "flex items-center gap-1.5 rounded-lg px-3 py-1 text-xs font-medium transition-colors",
                                   isActive
-                                    ? "bg-[var(--cr-bg-tertiary)] text-[var(--cr-fg)]"
-                                    : "text-[var(--cr-fg-muted)] hover:bg-[var(--cr-bg)] hover:text-[var(--cr-fg)]"
-                                }`}
+                                    ? "bg-muted text-foreground shadow-sm"
+                                    : "text-muted-foreground hover:bg-accent/60 hover:text-foreground"
+                                )}
                               >
-                                {status === "passed" && <span className="h-2 w-2 rounded-full bg-emerald-500" />}
-                                {status === "failed" && <span className="h-2 w-2 rounded-full bg-red-500" />}
+                                <span className={cn("size-2 rounded-full", statusDot(status))} />
                                 Case {i + 1}
                               </button>
                             );
@@ -612,28 +620,36 @@ export function PracticeArenaLeetcode({
                         </div>
 
                         {activeResult && (
-                          <div className="space-y-3">
-                            <div className="flex items-center gap-4 text-xs text-[var(--cr-fg-muted)]">
-                              <span>Status: <span className={activeResult.passed ? "text-emerald-400" : "text-red-400"}>{activeResult.status}</span></span>
+                          <div className="flex flex-col gap-3">
+                            <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
+                              <span>
+                                Status:{" "}
+                                <span className={activeResult.passed ? "text-emerald-600 dark:text-emerald-400" : "text-destructive"}>
+                                  {activeResult.status}
+                                </span>
+                              </span>
                               {activeResult.time && <span>Runtime: {activeResult.time}</span>}
-                              {activeResult.memory && <span>Memory: {activeResult.memory} KB</span>}
+                              {activeResult.memory != null && <span>Memory: {activeResult.memory} KB</span>}
                             </div>
                             <div>
-                              <label className="mb-1 block text-xs text-[var(--cr-fg-muted)]">Your Output</label>
-                              <pre className={`rounded bg-[var(--cr-bg)] p-3 font-mono text-sm ${activeResult.passed ? "text-emerald-400" : "text-red-400"}`}>
+                              <label className="mb-1 block text-xs text-muted-foreground">Your Output</label>
+                              <pre className={cn(
+                                "rounded-lg bg-muted p-3 font-mono text-sm",
+                                activeResult.passed ? "text-emerald-600 dark:text-emerald-400" : "text-destructive"
+                              )}>
                                 {activeResult.actual || "(empty)"}
                               </pre>
                             </div>
                             <div>
-                              <label className="mb-1 block text-xs text-[var(--cr-fg-muted)]">Expected</label>
-                              <pre className="rounded bg-[var(--cr-bg)] p-3 font-mono text-sm text-emerald-400">
+                              <label className="mb-1 block text-xs text-muted-foreground">Expected</label>
+                              <pre className="rounded-lg bg-muted p-3 font-mono text-sm text-emerald-600 dark:text-emerald-400">
                                 {activeResult.expected || "(empty)"}
                               </pre>
                             </div>
                             {activeResult.stderr && (
                               <div>
-                                <label className="mb-1 block text-xs text-red-400">Stderr</label>
-                                <pre className="rounded bg-red-500/5 p-3 font-mono text-sm text-red-400">
+                                <label className="mb-1 block text-xs text-destructive">Stderr</label>
+                                <pre className="rounded-lg bg-destructive/10 p-3 font-mono text-sm text-destructive">
                                   {activeResult.stderr}
                                 </pre>
                               </div>
@@ -642,7 +658,7 @@ export function PracticeArenaLeetcode({
                         )}
                       </>
                     ) : (
-                      <div className="flex h-32 items-center justify-center text-sm text-[var(--cr-fg-muted)]">
+                      <div className="flex h-32 items-center justify-center text-sm text-muted-foreground">
                         Run your code to see results
                       </div>
                     )}
@@ -653,89 +669,86 @@ export function PracticeArenaLeetcode({
           </div>
 
           {/* Action buttons */}
-          <div className="flex items-center justify-between border-t border-[var(--cr-border)] bg-[var(--cr-bg-secondary)] px-4 py-3">
-            <button
+          <div className="flex items-center justify-between border-t border-border bg-card px-4 py-3">
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => setCode("")}
-              className="rounded-md px-3 py-1.5 text-sm text-[var(--cr-fg-muted)] transition-colors hover:bg-[var(--cr-bg-tertiary)] hover:text-[var(--cr-fg)]"
+              className="text-muted-foreground"
             >
               Reset Code
-            </button>
-            <div className="flex items-center gap-3">
-              <button
+            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() => handleSubmit("run")}
                 disabled={isSubmitting}
-                className="rounded-md border border-[var(--cr-border)] bg-[var(--cr-bg)] px-4 py-1.5 text-sm font-medium text-[var(--cr-fg)] transition-colors hover:bg-[var(--cr-bg-tertiary)] disabled:opacity-50"
               >
                 {isSubmitting ? "Running..." : "Run"}
-              </button>
-              <button
+              </Button>
+              <Button
+                size="sm"
                 onClick={() => handleSubmit("submit")}
                 disabled={isSubmitting}
-                className="rounded-md bg-emerald-600 px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-emerald-500 disabled:opacity-50"
               >
                 {isSubmitting ? "Submitting..." : "Submit"}
-              </button>
+              </Button>
             </div>
           </div>
         </div>
       </div>
 
       {/* Question solved modal */}
-      {showSolvedModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-lg border border-emerald-500/40 bg-[var(--cr-bg-secondary)] p-8 text-center shadow-xl">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/15">
-              <svg className="h-8 w-8 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+      <Dialog open={showSolvedModal} onOpenChange={setShowSolvedModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader className="items-center gap-3 text-center">
+            <div className="flex size-14 items-center justify-center rounded-full bg-emerald-500/15">
+              <svg className="size-7 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
               </svg>
             </div>
-            <h3 className="mt-4 text-xl font-semibold text-[var(--cr-fg)]">Question Solved!</h3>
-            <p className="mt-2 text-sm text-[var(--cr-fg-muted)]">
+            <DialogTitle className="text-xl">Question Solved!</DialogTitle>
+            <DialogDescription>
               All test cases passed. This problem is now marked as solved on your profile.
-            </p>
-            <div className="mt-6 flex justify-center gap-3">
-              <button
-                onClick={() => setShowSolvedModal(false)}
-                className="rounded-md border border-[var(--cr-border)] px-4 py-2 text-sm font-medium text-[var(--cr-fg)] transition-colors hover:bg-[var(--cr-bg-tertiary)]"
-              >
-                Keep Coding
-              </button>
-              <button
-                onClick={() => router.push(exitHref)}
-                className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-500"
-              >
-                Back to Problems
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter showCloseButton={false} className="justify-center">
+            <Button variant="outline" onClick={() => setShowSolvedModal(false)}>
+              Keep Coding
+            </Button>
+            <Button onClick={() => router.push(exitHref)}>
+              Back to Problems
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Exit confirmation modal */}
-      {showExitConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-lg border border-[var(--cr-border)] bg-[var(--cr-bg-secondary)] p-6 shadow-xl">
-            <h3 className="text-lg font-semibold text-[var(--cr-fg)]">Leave practice session?</h3>
-            <p className="mt-2 text-sm text-[var(--cr-fg-muted)]">
+      <Dialog open={showExitConfirm} onOpenChange={setShowExitConfirm}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Leave practice session?</DialogTitle>
+            <DialogDescription>
               Your current progress will not be saved. Are you sure you want to exit?
-            </p>
-            <div className="mt-6 flex justify-end gap-3">
-              <button
-                onClick={() => setShowExitConfirm(false)}
-                className="rounded-md px-4 py-2 text-sm font-medium text-[var(--cr-fg-muted)] transition-colors hover:bg-[var(--cr-bg-tertiary)] hover:text-[var(--cr-fg)]"
-              >
-                Stay
-              </button>
-              <button
-                onClick={() => router.push(exitHref)}
-                className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-500"
-              >
-                Exit
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter showCloseButton={false}>
+            <Button variant="outline" onClick={() => setShowExitConfirm(false)}>
+              Stay
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                setShowExitConfirm(false);
+                router.push(exitHref);
+              }}
+            >
+              Exit
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

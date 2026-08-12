@@ -22,6 +22,14 @@ function parseTimerFromMetadata(metadata: unknown) {
   };
 }
 
+function computeInitialTimer(startedAt: string | null | undefined, timeLimit: number): number {
+  if (!startedAt) return timeLimit;
+  const startedMs = Date.parse(startedAt);
+  if (!Number.isFinite(startedMs)) return timeLimit;
+  const elapsedSeconds = Math.floor((Date.now() - startedMs) / 1000);
+  return Math.max(timeLimit - elapsedSeconds, 0);
+}
+
 function parseMatchMode(metadata: unknown, mode: string | null): string {
   const record = metadata && typeof metadata === "object" ? (metadata as Record<string, unknown>) : null;
   const metadataMode = record?.match_type ?? record?.mode;
@@ -119,14 +127,7 @@ export default async function MatchPage({ params }: PageProps) {
 
   const timeLimit = Number.isFinite(timeLimitSeconds) && (timeLimitSeconds as number) > 0 ? (timeLimitSeconds as number) : 8 * 60;
 
-  let initialTimer = timeLimit;
-  if (startedAt) {
-    const startedMs = Date.parse(startedAt);
-    if (Number.isFinite(startedMs)) {
-      const elapsedSeconds = Math.floor((Date.now() - startedMs) / 1000);
-      initialTimer = Math.max(timeLimit - elapsedSeconds, 0);
-    }
-  }
+  const initialTimer = computeInitialTimer(startedAt, timeLimit);
 
   return (
     <PracticeScaffold>

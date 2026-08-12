@@ -1,7 +1,28 @@
-'use client';
+"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { CheckCircle2, Clock, Languages, Shuffle } from "lucide-react";
+
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 type Difficulty = "easy" | "medium" | "hard";
 
@@ -13,10 +34,10 @@ type QuestionMeta = {
   solved: boolean;
 };
 
-const difficultyOptions: Array<{ label: string; value: Difficulty; color: string }> = [
-  { label: "Easy", value: "easy", color: "text-emerald-400 border-emerald-500/30 bg-emerald-500/10" },
-  { label: "Medium", value: "medium", color: "text-amber-400 border-amber-500/30 bg-amber-500/10" },
-  { label: "Hard", value: "hard", color: "text-red-400 border-red-500/30 bg-red-500/10" },
+const difficultyOptions: Array<{ label: string; value: Difficulty; badgeClass: string }> = [
+  { label: "Easy", value: "easy", badgeClass: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" },
+  { label: "Medium", value: "medium", badgeClass: "bg-amber-500/10 text-amber-600 dark:text-amber-400" },
+  { label: "Hard", value: "hard", badgeClass: "bg-red-500/10 text-red-600 dark:text-red-400" },
 ];
 
 const timerOptions = [
@@ -140,62 +161,57 @@ export function PracticeLobby() {
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr_20rem]">
       {/* Problem Browser */}
-      <div className="space-y-5">
+      <div className="flex flex-col gap-5">
         {/* Filter tabs */}
-        <div className="flex flex-wrap items-center gap-2">
-          {filters.map((option) => (
-            <button
-              key={option.value}
-              type="button"
-              onClick={() => setFilter(option.value)}
-              className={`rounded-lg border px-4 py-2 text-sm font-medium transition-all ${
-                filter === option.value
-                  ? "border-[rgba(var(--cr-accent-rgb),0.5)] bg-[rgba(var(--cr-accent-rgb),0.1)] text-[rgb(var(--cr-accent-rgb))]"
-                  : "border-[var(--cr-border)] text-[var(--cr-fg-muted)] hover:border-[var(--cr-fg-muted)] hover:text-[var(--cr-fg)]"
-              }`}
-            >
-              {option.label}
-              <span className="ml-2 text-xs opacity-70">{countsByDifficulty[option.value]}</span>
-            </button>
-          ))}
-        </div>
+        <Tabs value={filter} onValueChange={(value) => setFilter(value as Filter)}>
+          <TabsList className="h-9 w-fit">
+            {filters.map((option) => (
+              <TabsTrigger key={option.value} value={option.value} className="gap-1.5 px-3">
+                {option.label}
+                <span className="text-xs text-muted-foreground">{countsByDifficulty[option.value]}</span>
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
 
         {/* Solved progress */}
-        <div className="rounded-lg border border-[var(--cr-border)] bg-[var(--cr-bg-secondary)] p-4">
-          <div className="mb-2 flex items-center justify-between text-sm">
-            <span className="text-[var(--cr-fg-muted)]">Solved</span>
-            <span className="text-[var(--cr-fg)]">
-              {solvedCount} / {questions.length}
-            </span>
-          </div>
-          <div className="h-2 rounded-full bg-[var(--cr-bg-tertiary)]">
-            <div
-              className="h-full rounded-full bg-emerald-500 transition-all duration-500"
-              style={{ width: `${progressPercent}%` }}
-            />
-          </div>
-        </div>
+        <Card className="shadow-sm">
+          <CardContent className="flex flex-col gap-3">
+            <div className="flex items-center justify-between text-sm">
+              <span className="flex items-center gap-2 text-muted-foreground">
+                <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-400" />
+                Solved
+              </span>
+              <span className="font-medium text-foreground tabular-nums">
+                {solvedCount} / {questions.length}
+              </span>
+            </div>
+            <Progress value={progressPercent} className="[&_[data-slot=progress-track]]:h-2" />
+          </CardContent>
+        </Card>
 
         {/* Problem list */}
-        <div className="overflow-hidden rounded-lg border border-[var(--cr-border)] bg-[var(--cr-bg-secondary)]">
-          <div className="grid grid-cols-[auto_1fr_auto] items-center gap-3 border-b border-[var(--cr-border)] px-5 py-3 text-xs uppercase tracking-wider text-[var(--cr-fg-muted)]">
+        <Card className="overflow-hidden shadow-sm">
+          <div className="grid grid-cols-[auto_1fr_auto] items-center gap-3 border-b border-border px-5 py-3 text-xs uppercase tracking-wider text-muted-foreground">
             <span className="w-8">Status</span>
             <span>Problem</span>
             <span>Difficulty</span>
           </div>
 
           {loading && (
-            <div className="flex items-center gap-2 px-5 py-6 text-sm text-[var(--cr-fg-muted)]">
-              <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-              </svg>
-              Loading problems...
+            <div className="flex flex-col gap-4 p-5">
+              {[0, 1, 2, 3, 4].map((i) => (
+                <div key={i} className="grid grid-cols-[auto_1fr_auto] items-center gap-3">
+                  <Skeleton className="size-6 rounded-full" />
+                  <Skeleton className="h-4 w-full max-w-md" />
+                  <Skeleton className="h-5 w-16 rounded-full" />
+                </div>
+              ))}
             </div>
           )}
 
           {!loading && filteredQuestions.length === 0 && (
-            <p className="px-5 py-6 text-sm text-[var(--cr-fg-muted)]">
+            <p className="px-5 py-6 text-sm text-muted-foreground">
               {error ?? "No problems available yet for this filter."}
             </p>
           )}
@@ -209,74 +225,88 @@ export function PracticeLobby() {
                   key={question.id}
                   type="button"
                   onClick={() => handleOpenQuestion(question)}
-                  className="grid w-full grid-cols-[auto_1fr_auto] items-center gap-3 border-b border-[var(--cr-border)] px-5 py-4 text-left transition-colors last:border-b-0 hover:bg-[var(--cr-bg-tertiary)]"
+                  className="grid w-full grid-cols-[auto_1fr_auto] items-center gap-3 border-b border-border px-5 py-4 text-left transition-colors last:border-b-0 hover:bg-accent/50"
                 >
                   <span className="flex w-8 items-center">
                     {question.solved ? (
-                      <svg className="h-5 w-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                      </svg>
+                      <CheckCircle2 className="size-5 text-emerald-600 dark:text-emerald-400" />
                     ) : (
-                      <span className="text-xs tabular-nums text-[var(--cr-fg-muted)]">
+                      <span className="text-xs tabular-nums text-muted-foreground">
                         {String(index + 1).padStart(2, "0")}
                       </span>
                     )}
                   </span>
-                  <span className="truncate pr-4 text-sm text-[var(--cr-fg)]">{question.title}</span>
+                  <span className="truncate pr-4 text-sm text-foreground">{question.title}</span>
                   {diff && (
-                    <span className={`rounded-full border px-3 py-1 text-xs font-medium capitalize ${diff.color}`}>
+                    <Badge variant="outline" className={diff.badgeClass}>
                       {diff.label}
-                    </span>
+                    </Badge>
                   )}
                 </button>
               );
             })}
-        </div>
+        </Card>
       </div>
 
       {/* Session settings */}
-      <div className="space-y-6">
-        <div className="rounded-lg border border-[var(--cr-border)] bg-[var(--cr-bg-secondary)] p-5">
-          <h3 className="mb-4 text-sm font-medium text-[var(--cr-fg)]">Session Settings</h3>
+      <div className="flex flex-col gap-6">
+        <Card className="h-fit shadow-sm">
+          <CardHeader>
+            <CardTitle>Session Settings</CardTitle>
+            <CardDescription>Set your timer and language before jumping in.</CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-5">
+            <div className="flex flex-col gap-2">
+              <span className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Clock className="size-4" />
+                Timer
+              </span>
+              <Select value={String(timer)} onValueChange={(value) => value != null && setTimer(Number(value))}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select timer" />
+                </SelectTrigger>
+                <SelectContent>
+                  {timerOptions.map((option) => (
+                    <SelectItem key={option.value} value={String(option.value)}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-          <label className="mb-3 block text-sm text-[var(--cr-fg-muted)]">Timer</label>
-          <select
-            value={timer}
-            onChange={(event) => setTimer(Number(event.target.value))}
-            className="w-full rounded-lg border border-[var(--cr-border)] bg-[var(--cr-bg)] px-4 py-2.5 text-sm text-[var(--cr-fg)] focus:border-[rgba(var(--cr-accent-rgb),0.5)] focus:outline-none focus:ring-1 focus:ring-[rgba(var(--cr-accent-rgb),0.5)]"
-          >
-            {timerOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
+            <div className="flex flex-col gap-2">
+              <span className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Languages className="size-4" />
+                Language
+              </span>
+              <Select value={language} onValueChange={(value) => value != null && setLanguage(value)}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select language" />
+                </SelectTrigger>
+                <SelectContent>
+                  {languageOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-          <label className="mb-3 mt-5 block text-sm text-[var(--cr-fg-muted)]">Language</label>
-          <select
-            value={language}
-            onChange={(event) => setLanguage(event.target.value)}
-            className="w-full rounded-lg border border-[var(--cr-border)] bg-[var(--cr-bg)] px-4 py-2.5 text-sm text-[var(--cr-fg)] focus:border-[rgba(var(--cr-accent-rgb),0.5)] focus:outline-none focus:ring-1 focus:ring-[rgba(var(--cr-accent-rgb),0.5)]"
-          >
-            {languageOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-
-          <button
-            type="button"
-            onClick={handleRandom}
-            disabled={loading || filteredQuestions.length === 0}
-            className="mt-6 w-full rounded-lg border border-[rgba(var(--cr-accent-rgb),0.4)] bg-[rgba(var(--cr-accent-rgb),0.1)] px-6 py-3 text-sm font-semibold text-[rgb(var(--cr-accent-rgb))] transition-all hover:bg-[rgba(var(--cr-accent-rgb),0.2)] disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            Surprise Me
-          </button>
-          <p className="mt-2 text-center text-xs text-[var(--cr-fg-muted)]">
-            Random problem from the current filter
-          </p>
-        </div>
+            <Button
+              onClick={handleRandom}
+              disabled={loading || filteredQuestions.length === 0}
+              className="w-full"
+            >
+              <Shuffle data-icon="inline-start" />
+              Surprise Me
+            </Button>
+            <p className="text-center text-xs text-muted-foreground">
+              Random problem from the current filter
+            </p>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

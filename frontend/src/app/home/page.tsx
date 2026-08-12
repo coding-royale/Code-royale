@@ -1,40 +1,37 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
+import { ArrowRight, Bot, Flame, Play, Swords, Users } from "lucide-react";
 
 import { AppShell } from "../../components/app-shell";
 import { supabase } from "../../lib/supabase-browser";
 import { useFriendPresence } from "../../lib/use-friend-presence";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { LinkButton } from "@/components/ui/link-button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const battleModes = [
   {
-    title: "Battle Against Bots",
-    description: "Solo queue against adaptive AI rivals tuned for practice.",
-    icon: (
-      <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 3v1.5M4.5 8.25H3m18 0h-1.5M4.5 12H3m18 0h-1.5m-15 3.75H3m18 0h-1.5M8.25 19.5V21M12 3v1.5m0 15V21m3.75-18v1.5m0 15V21m-9-1.5h10.5a2.25 2.25 0 002.25-2.25V6.75a2.25 2.25 0 00-2.25-2.25H6.75A2.25 2.25 0 004.5 6.75v10.5a2.25 2.25 0 002.25 2.25zm.75-12h9v9h-9v-9z" />
-      </svg>
-    ),
+    title: "Bot Battle",
+    description: "Race an AI rival. Choose your difficulty.",
+    href: "/bot-battle",
+    icon: Bot,
   },
   {
-    title: "1v1 Duels",
-    description: "Head-to-head clashes where speed and accuracy crown the champion.",
-    icon: (
-      <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
-      </svg>
-    ),
+    title: "1v1 Duel",
+    description: "Head-to-head. Speed and accuracy win.",
+    href: "/game-modes",
+    icon: Swords,
   },
   {
-    title: "4-Player Brawls",
-    description: "1v1v1v1 chaos built for squads or rivals.",
-    icon: (
-      <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
-      </svg>
-    ),
+    title: "4-Player Brawl",
+    description: "Chaos with friends. Last solver standing.",
+    href: "/game-modes",
+    icon: Users,
   },
 ];
 
@@ -49,12 +46,6 @@ type ProgressSummary = {
   totalProblems: number;
   streakDays: number;
 };
-
-const statDefinitions: Array<{ label: string; key: keyof TelemetrySummary }> = [
-  { label: "Active Players", key: "activePlayers" },
-  { label: "Current Visits", key: "currentVisits" },
-  { label: "Matches Today", key: "matchesToday" },
-];
 
 function initialsFromName(name: string) {
   const trimmed = name.trim();
@@ -168,212 +159,220 @@ export default function HomePage() {
   const streakPercent = Math.min(100, progress.streakDays * 20);
   const shownFriends = friends.slice(0, 14);
 
+  const stats: Array<{ label: string; value: string; hint?: string }> = [
+    { label: "Matches Today", value: telemetry.matchesToday.toLocaleString() },
+    { label: "Online Now", value: telemetry.activePlayers.toLocaleString() },
+    { label: "Problems Solved", value: `${progress.solvedProblems}`, hint: `of ${progress.totalProblems}` },
+    { label: "Streak", value: streakLabel },
+  ];
+
   return (
     <AppShell>
-      <div className="flex flex-col gap-8 p-6">
-        {/* Hero Section */}
-        <section className="relative overflow-hidden rounded-xl bg-gradient-to-br from-[var(--cr-bg-secondary)] to-[var(--cr-bg-tertiary)] p-8">
-          <div className="relative z-10 max-w-2xl">
-            <h1 className="text-3xl font-bold text-[var(--cr-fg)] md:text-4xl">
-              Welcome back, {welcomeName}
-            </h1>
-            <p className="mt-3 text-[var(--cr-fg-muted)]">
-              Ready for your next challenge? Jump into practice mode or queue up for a real-time battle.
-            </p>
-            <div className="mt-6 flex flex-wrap gap-3">
-              <Link
-                href="/practice"
-                className="inline-flex items-center gap-2 rounded-lg bg-[rgb(var(--cr-accent-rgb))] px-5 py-2.5 text-sm font-semibold text-[var(--cr-bg)] transition-all hover:opacity-90"
-              >
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                Start Practice
-              </Link>
-              <Link
-                href="/game-modes"
-                className="inline-flex items-center gap-2 rounded-lg border border-[var(--cr-border)] bg-[var(--cr-bg)] px-5 py-2.5 text-sm font-semibold text-[var(--cr-fg)] transition-all hover:bg-[var(--cr-bg-secondary)]"
-              >
-                Battle Mode
-              </Link>
+      <div className="flex flex-col gap-8 p-4 sm:p-6 lg:p-8">
+        {/* Primary action */}
+        <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-secondary via-muted/50 to-background p-8 shadow-sm ring-1 ring-foreground/10 sm:p-10">
+          <div className="relative z-10 flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+            <div className="max-w-xl">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent-foreground">
+                Welcome back, {welcomeName}
+              </p>
+              <h1 className="mt-2 text-3xl font-bold tracking-tight md:text-4xl">
+                Ready to battle?
+              </h1>
+              <p className="mt-2 text-muted-foreground">
+                Quick match against a rival. About 10 minutes, ranked.
+              </p>
+            </div>
+            <div className="flex flex-col items-start gap-3 md:items-end">
+              <LinkButton size="lg" href="/game-modes" className="px-8 py-4 text-base">
+                <Swords data-icon="inline-start" />
+                Find a Match
+              </LinkButton>
+              <LinkButton variant="ghost" href="/practice">
+                <Play data-icon="inline-start" />
+                Practice instead
+              </LinkButton>
             </div>
           </div>
-          {/* Decorative gradient */}
-          <div className="pointer-events-none absolute right-0 top-0 h-full w-1/2 bg-gradient-to-l from-[rgba(var(--cr-accent-rgb),0.1)] to-transparent" />
+          <div className="pointer-events-none absolute right-0 top-0 h-full w-1/2 bg-gradient-to-l from-accent/20 to-transparent" />
         </section>
 
-        <section className="rounded-xl border border-[var(--cr-border)] bg-[var(--cr-bg-secondary)] p-5">
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="text-xl font-semibold text-[var(--cr-fg)]">Connections ({friends.length})</h2>
-            <Link href="/friends" className="text-sm font-medium text-[var(--cr-fg)] hover:underline">
-              See all →
-            </Link>
-          </div>
-
-          {friendsLoading && (
-            <div className="mt-4 flex gap-4 overflow-x-auto pb-2">
-              {Array.from({ length: 8 }).map((_, index) => (
-                <div key={index} className="min-w-[90px] text-center">
-                  <div className="mx-auto h-16 w-16 animate-pulse rounded-full bg-[var(--cr-bg-tertiary)]" />
-                  <div className="mx-auto mt-3 h-3 w-16 animate-pulse rounded bg-[var(--cr-bg-tertiary)]" />
-                </div>
-              ))}
-            </div>
-          )}
-
-          {!friendsLoading && shownFriends.length === 0 && (
-            <div className="mt-4 rounded-lg border border-[var(--cr-border)] bg-[var(--cr-bg)] px-4 py-3 text-sm text-[var(--cr-fg-muted)]">
-              No friends yet. Add players from the Friends tab to see them here.
-            </div>
-          )}
-
-          {!friendsLoading && shownFriends.length > 0 && (
-            <div className="mt-4 flex gap-5 overflow-x-auto pb-2">
-              {shownFriends.map((friend) => (
-                <Link key={friend.id} href={`/profile?userId=${friend.id}`} className="group min-w-[96px] text-center">
-                  <div className="relative mx-auto h-16 w-16 rounded-full bg-[var(--cr-bg-tertiary)] ring-1 ring-[var(--cr-border)] transition-all group-hover:ring-[rgba(var(--cr-accent-rgb),0.55)]">
-                    <span className="flex h-full w-full items-center justify-center text-xl font-bold text-[rgb(var(--cr-accent-rgb))]">
-                      {initialsFromName(friend.username)}
-                    </span>
-                    {friend.online && (
-                      <span className="absolute left-1/2 top-full mt-1 h-2.5 w-2.5 -translate-x-1/2 rounded-full bg-emerald-400 ring-2 ring-[var(--cr-bg-secondary)]" />
-                    )}
-                  </div>
-                  <p className="mt-4 truncate text-sm font-medium text-[var(--cr-fg)]">{friend.username}</p>
-                </Link>
-              ))}
-            </div>
-          )}
-        </section>
-
-        {/* Stats Row */}
-        <section className="grid gap-4 sm:grid-cols-3">
-          {statDefinitions.map((stat) => (
-            <div
-              key={stat.label}
-              className="rounded-xl border border-[var(--cr-border)] bg-[var(--cr-bg-secondary)] p-5"
-            >
-              <div className="text-2xl font-bold text-[rgb(var(--cr-accent-rgb))]">{telemetry[stat.key]}</div>
-              <div className="mt-1 text-sm text-[var(--cr-fg-muted)]">{stat.label}</div>
-            </div>
+        {/* Glanceable stats */}
+        <section className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          {stats.map((stat) => (
+            <Card key={stat.label} className="shadow-sm">
+              <CardContent className="flex flex-col gap-1">
+                <span className="text-2xl font-bold tracking-tight">{stat.value}</span>
+                <span className="text-sm text-muted-foreground">
+                  {stat.label}
+                  {stat.hint ? ` · ${stat.hint}` : ""}
+                </span>
+              </CardContent>
+            </Card>
           ))}
         </section>
 
-        {/* Battle Modes */}
-        <section>
-          <h2 className="mb-4 text-lg font-semibold text-[var(--cr-fg)]">Battle Modes</h2>
+        {/* Quick mode shortcuts */}
+        <section className="flex flex-col gap-3">
+          <h2 className="text-lg font-semibold">Quick Play</h2>
           <div className="grid gap-4 md:grid-cols-3">
-            {battleModes.map((mode) => (
-              <div
-                key={mode.title}
-                className="group rounded-xl border border-[var(--cr-border)] bg-[var(--cr-bg-secondary)] p-5 transition-all hover:border-[rgba(var(--cr-accent-rgb),0.3)]"
-              >
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[rgba(var(--cr-accent-rgb),0.1)] text-[rgb(var(--cr-accent-rgb))]">
-                  {mode.icon}
-                </div>
-                <h3 className="mt-4 text-base font-semibold text-[var(--cr-fg)]">{mode.title}</h3>
-                <p className="mt-2 text-sm text-[var(--cr-fg-muted)]">{mode.description}</p>
-                <Link
-                  href="/game-modes"
-                  className="mt-4 inline-flex items-center gap-1 text-sm text-[rgb(var(--cr-accent-rgb))] transition-colors hover:underline"
+            {battleModes.map((mode) => {
+              const Icon = mode.icon;
+              return (
+                <Card
+                  key={mode.title}
+                  className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
                 >
-                  Play now
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                  </svg>
-                </Link>
-              </div>
-            ))}
+                  <CardContent className="flex flex-col gap-3">
+                    <div className="flex size-10 items-center justify-center rounded-lg bg-accent text-accent-foreground">
+                      <Icon className="size-5" />
+                    </div>
+                    <h3 className="text-base font-semibold">{mode.title}</h3>
+                    <p className="text-sm text-muted-foreground">{mode.description}</p>
+                    <LinkButton
+                      variant="ghost"
+                      size="sm"
+                      className="mt-1 w-fit pl-0 text-accent-foreground hover:bg-transparent hover:underline"
+                      href={mode.href}
+                    >
+                      Play now
+                      <ArrowRight data-icon="inline-end" />
+                    </LinkButton>
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         </section>
 
-        {/* Recent Activity / Quick Actions */}
-        <div className="grid gap-6 lg:grid-cols-2">
-          {/* Quick Practice */}
-          <section className="rounded-xl border border-[var(--cr-border)] bg-[var(--cr-bg-secondary)] p-5">
-            <h2 className="mb-4 text-lg font-semibold text-[var(--cr-fg)]">Quick Practice</h2>
-            <div className="space-y-3">
-              {[
-                { label: "Easy", problems: "20 problems", color: "text-emerald-400" },
-                { label: "Medium", problems: "35 problems", color: "text-amber-400" },
-                { label: "Hard", problems: "15 problems", color: "text-red-400" },
-              ].map((tier) => (
-                <Link
-                  key={tier.label}
-                  href={`/practice?difficulty=${tier.label.toLowerCase()}`}
-                  className="flex items-center justify-between rounded-lg border border-[var(--cr-border)] bg-[var(--cr-bg)] p-4 transition-all hover:border-[rgba(var(--cr-accent-rgb),0.3)]"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className={`text-sm font-medium ${tier.color}`}>{tier.label}</span>
-                    <span className="text-xs text-[var(--cr-fg-muted)]">{tier.problems}</span>
+        {/* Live friends */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between gap-3 text-base">
+              <span>Online Friends ({friends.length})</span>
+              <LinkButton variant="ghost" size="sm" href="/friends">
+                See all
+                <ArrowRight data-icon="inline-end" />
+              </LinkButton>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {friendsLoading && (
+              <div className="flex gap-5 overflow-x-auto pb-2">
+                {Array.from({ length: 8 }).map((_, index) => (
+                  <div key={index} className="min-w-[90px] text-center">
+                    <Skeleton className="mx-auto size-16 rounded-full" />
+                    <Skeleton className="mx-auto mt-3 h-3 w-16" />
                   </div>
-                  <svg className="h-5 w-5 text-[var(--cr-fg-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                  </svg>
-                </Link>
-              ))}
-            </div>
-          </section>
+                ))}
+              </div>
+            )}
 
-          {/* Your Progress */}
-          <section className="rounded-xl border border-[var(--cr-border)] bg-[var(--cr-bg-secondary)] p-5">
-            <h2 className="mb-4 text-lg font-semibold text-[var(--cr-fg)]">Your Progress</h2>
-            <div className="space-y-4">
-              <div>
-                <div className="mb-2 flex items-center justify-between text-sm">
-                  <span className="text-[var(--cr-fg-muted)]">Problems Solved</span>
-                  <span className="text-[var(--cr-fg)]">{progress.solvedProblems} / {progress.totalProblems}</span>
-                </div>
-                <div className="h-2 rounded-full bg-[var(--cr-bg-tertiary)]">
-                  <div className="h-full rounded-full bg-[rgb(var(--cr-accent-rgb))]" style={{ width: `${solvedPercent}%` }} />
-                </div>
+            {!friendsLoading && shownFriends.length === 0 && (
+              <div className="rounded-lg border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
+                No friends yet. Add players from the Friends tab to see them here.
               </div>
-              <div>
-                <div className="mb-2 flex items-center justify-between text-sm">
-                  <span className="text-[var(--cr-fg-muted)]">Current Streak</span>
-                  <span className="text-[var(--cr-fg)]">{streakLabel} <svg className="inline h-4 w-4 text-orange-400" fill="currentColor" viewBox="0 0 24 24"><path d="M12 23c-4.97 0-8-3.58-8-8 0-4.42 4-8.28 6-10 .55.77 1.39 2 2 3 .61-1.17 1.45-2.66 2-3.5C16.13 3.16 20 7.03 20 11c0 3.31-1.69 5.25-3 6.5.93.83 1.73 2.02 2 3.5.24 1.17-.12 1.76-1 2C17.91 23.67 15.11 23 12 23z"/></svg></span>
-                </div>
-                <div className="h-2 rounded-full bg-[var(--cr-bg-tertiary)]">
-                  <div className="h-full rounded-full bg-amber-500" style={{ width: `${streakPercent}%` }} />
-                </div>
+            )}
+
+            {!friendsLoading && shownFriends.length > 0 && (
+              <div className="flex gap-5 overflow-x-auto pb-2">
+                {shownFriends.map((friend) => (
+                  <Link
+                    key={friend.id}
+                    href={`/profile?userId=${friend.id}`}
+                    className="group min-w-[96px] text-center"
+                  >
+                    <div className="relative mx-auto size-16">
+                      <Avatar className="size-16 ring-1 ring-foreground/10 transition group-hover:ring-2 group-hover:ring-ring">
+                        <AvatarFallback className="bg-accent font-semibold text-accent-foreground">
+                          {initialsFromName(friend.username)}
+                        </AvatarFallback>
+                      </Avatar>
+                      {friend.online && (
+                        <span className="absolute -bottom-0.5 left-1/2 size-3 -translate-x-1/2 rounded-full bg-emerald-500 ring-2 ring-background" />
+                      )}
+                    </div>
+                    <p className="mt-3 truncate text-sm font-medium">{friend.username}</p>
+                  </Link>
+                ))}
               </div>
-              <div className="pt-2">
-                <Link
-                  href="/profile"
-                  className="text-sm text-[rgb(var(--cr-accent-rgb))] hover:underline"
-                >
-                  View full profile →
-                </Link>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Recent results + progress */}
+        <div className="grid gap-6 lg:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Recent Results</CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-2">
+              <div className="rounded-lg border border-dashed px-4 py-8 text-center">
+                <p className="text-sm text-muted-foreground">
+                  Your match history shows up here after your first battle.
+                </p>
+                <LinkButton variant="link" href="/game-modes" className="mt-2">
+                  Start your first match
+                  <ArrowRight data-icon="inline-end" />
+                </LinkButton>
               </div>
-            </div>
-          </section>
+              <div className="flex flex-col gap-2">
+                {[
+                  { label: "Easy", problems: "20 problems", className: "bg-emerald-500" },
+                  { label: "Medium", problems: "35 problems", className: "bg-amber-500" },
+                  { label: "Hard", problems: "15 problems", className: "bg-rose-500" },
+                ].map((tier) => (
+                  <Link
+                    key={tier.label}
+                    href={`/practice?difficulty=${tier.label.toLowerCase()}`}
+                    className="flex items-center justify-between rounded-lg border bg-card px-4 py-3 shadow-sm transition-all hover:border-ring hover:shadow-md"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className={`size-2 rounded-full ${tier.className}`} />
+                      <span className="text-sm font-medium">{tier.label}</span>
+                      <span className="text-xs text-muted-foreground">{tier.problems}</span>
+                    </div>
+                    <ArrowRight className="size-4 text-muted-foreground" />
+                  </Link>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Your Progress</CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-5">
+              <Progress value={solvedPercent}>
+                <div className="flex w-full items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Problems Solved</span>
+                  <span className="font-medium">
+                    {progress.solvedProblems} / {progress.totalProblems}
+                  </span>
+                </div>
+              </Progress>
+              <Progress value={streakPercent}>
+                <div className="flex w-full items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Current Streak</span>
+                  <span className="inline-flex items-center gap-1.5 font-medium">
+                    {streakLabel}
+                    <Flame className="size-4 text-amber-500" />
+                  </span>
+                </div>
+              </Progress>
+              <Badge variant="outline" className="w-fit">
+                {solvedPercent}% of the problem library
+              </Badge>
+              <div className="pt-1">
+                <LinkButton variant="ghost" size="sm" className="h-auto p-0 text-accent-foreground hover:bg-transparent hover:underline" href="/profile">
+                  View full profile
+                  <ArrowRight data-icon="inline-end" />
+                </LinkButton>
+              </div>
+            </CardContent>
+          </Card>
         </div>
-
-        {/* Featured Image */}
-        <section className="relative overflow-hidden rounded-xl">
-          <div className="relative h-48 w-full md:h-64">
-            <Image
-              src="/images/bluebracket.jpg"
-              alt="Code battle interface"
-              fill
-              className="object-cover"
-              priority
-            />
-            <div className="absolute inset-0 bg-gradient-to-r from-[var(--cr-bg)]/80 via-transparent to-transparent" />
-            <div className="absolute bottom-0 left-0 p-6">
-              <p className="text-xs font-medium uppercase tracking-wider text-[rgb(var(--cr-accent-rgb))]">
-                Live Tournaments
-              </p>
-              <h3 className="mt-1 text-xl font-bold text-[var(--cr-fg)]">
-                Weekly Code Championship
-              </h3>
-              <p className="mt-1 text-sm text-[var(--cr-fg-muted)]">
-                Join 500+ players competing for the top spot
-              </p>
-            </div>
-          </div>
-        </section>
       </div>
     </AppShell>
   );
