@@ -145,7 +145,11 @@ function ProfileContent() {
       const hasFriendConnection = resolvedRelationship === "friends";
       setIsFriendWithViewer(hasFriendConnection);
 
-      const [{ data: userRow, error: profileError }, { data: badgesData }] = await Promise.all([
+      const [
+        { data: userRow, error: profileError },
+        { data: badgesData },
+        clubMembersResult,
+      ] = await Promise.all([
         supabase
           .from("users")
           .select("id, username, rating, wins, losses, team_name")
@@ -162,8 +166,30 @@ function ProfileContent() {
               icon
             )
           `)
+          .eq("user_id", idToLoad),
+        supabase
+          .from("club_members")
+          .select("club_id")
           .eq("user_id", idToLoad)
+          .maybeSingle(),
       ]);
+
+      const clubMembership = clubMembersResult as { data?: { club_id?: string } | null } | null;
+
+      let clubInfo:
+        | { id: string; name: string; logo: string; trophies: number }
+        | null = null;
+
+      if (clubMembership?.data?.club_id) {
+        const { data: clubRow } = await supabase
+          .from("clubs")
+          .select("id, name, logo, trophies")
+          .eq("id", clubMembership.data.club_id)
+          .maybeSingle();
+        if (clubRow) {
+          clubInfo = clubRow as { id: string; name: string; logo: string; trophies: number };
+        }
+      }
 
       if (!mounted) return;
 
@@ -182,7 +208,11 @@ function ProfileContent() {
         
         setProfile({
           ...userRow as UserRow,
-          badges: parsedBadges
+          badges: parsedBadges,
+          club_id: clubInfo?.id ?? null,
+          club_name: clubInfo?.name ?? null,
+          club_logo: clubInfo?.logo ?? null,
+          club_trophies: clubInfo?.trophies ?? null,
         });
       }
 
@@ -417,7 +447,7 @@ function ProfileContent() {
                   {/* Club Badge */}
                   {profile?.club_name && (
                     <Link
-                      href="/clubs"
+                      href={profile.club_id ? `/clubs/${profile.club_id}` : "/clubs"}
                       className="mt-3 inline-flex items-center gap-2 rounded-lg border border-[var(--cr-border)] bg-[var(--cr-bg)] px-3 py-1.5 text-sm transition-colors hover:border-[rgba(var(--cr-accent-rgb),0.3)]"
                     >
                       <span className="text-lg">{profile.club_logo || "🏆"}</span>

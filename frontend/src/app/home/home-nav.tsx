@@ -6,8 +6,9 @@ import { useEffect, useRef, useState } from "react";
 
 const menuItems = [
   { label: "Game Modes", href: "/game-modes" },
-  { label: "Tournaments", href: "#tournaments" },
+  { label: "Clubs", href: "/clubs" },
   { label: "Practice Arena", href: "/practice" },
+  { label: "Tournaments", href: "/tournaments" },
   { label: "Profile", href: "/profile" },
 ];
 

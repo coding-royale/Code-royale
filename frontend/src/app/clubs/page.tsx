@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AppShell } from "../../components/app-shell";
@@ -8,7 +8,7 @@ import { AppShell } from "../../components/app-shell";
 type ClubPrivacy = "public" | "private";
 type MaxMembers = 10 | 20 | 30 | 40;
 
-/* ── Mock data ──────────────────────────────────────────── */
+/* ── Types ──────────────────────────────────────────────── */
 interface ClubMember {
   id: string;
   username: string;
@@ -31,8 +31,6 @@ interface Club {
   topPlayers: ClubMember[];
 }
 
-const topClubs: Club[] = [];
-
 const logoOptions = ["⚔", "🐉", "◎", "⚡", "🔥", "🏆", "💎", "🚀", "👑", "🦁", "🐺", "🦅"];
 const emblemOptions = [
   { id: "sword",     name: "Sword",     color: "from-red-500 to-orange-500" },
@@ -45,60 +43,33 @@ const emblemOptions = [
   { id: "target",    name: "Target",    color: "from-rose-500 to-pink-500" },
 ];
 
-const STORAGE_MY_CLUB_ID = "cr_my_club_id";
-const STORAGE_MY_CUSTOM_CLUB = "cr_my_custom_club";
-const STORAGE_CLUB_LIST = "cr_club_list";
+type ApiClub = {
+  id: string;
+  name: string;
+  logo: string;
+  emblem: string;
+  privacy: ClubPrivacy;
+  max_members: number;
+  trophies: number;
+  owner_id: string;
+  created_at: string;
+  memberCount: number;
+  topPlayers: ClubMember[];
+};
 
-function loadClubList(): Club[] {
-  if (typeof window === "undefined") return [];
-  const raw = window.localStorage.getItem(STORAGE_CLUB_LIST);
-  if (!raw) return [];
-  try {
-    const parsed = JSON.parse(raw) as Club[];
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
-function saveClubList(clubs: Club[]) {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(STORAGE_CLUB_LIST, JSON.stringify(clubs));
-}
-
-function loadMyClubFromStorage(): Club | null {
-  if (typeof window === "undefined") return null;
-  const myClubId = window.localStorage.getItem(STORAGE_MY_CLUB_ID);
-  if (!myClubId) return null;
-
-  const customRaw = window.localStorage.getItem(STORAGE_MY_CUSTOM_CLUB);
-  if (customRaw) {
-    try {
-      const parsed = JSON.parse(customRaw) as Club;
-      if (parsed?.id === myClubId) return parsed;
-    } catch {
-      // ignore
-    }
-  }
-
-  const storedList = loadClubList();
-  return storedList.find((c) => c.id === myClubId) ?? topClubs.find((c) => c.id === myClubId) ?? null;
-}
-
-function persistMyClub(club: Club, source: "custom" | "existing") {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(STORAGE_MY_CLUB_ID, club.id);
-  if (source === "custom") {
-    window.localStorage.setItem(STORAGE_MY_CUSTOM_CLUB, JSON.stringify(club));
-  } else {
-    window.localStorage.removeItem(STORAGE_MY_CUSTOM_CLUB);
-  }
-}
-
-function clearMyClub() {
-  if (typeof window === "undefined") return;
-  window.localStorage.removeItem(STORAGE_MY_CLUB_ID);
-  window.localStorage.removeItem(STORAGE_MY_CUSTOM_CLUB);
+function normalizeClub(club: ApiClub, index: number): Club {
+  return {
+    id: club.id,
+    name: club.name,
+    logo: club.logo,
+    emblem: club.emblem,
+    trophies: club.trophies ?? 0,
+    members: club.memberCount ?? 0,
+    maxMembers: club.max_members ?? 20,
+    privacy: club.privacy ?? "public",
+    rank: index + 1,
+    topPlayers: club.topPlayers ?? [],
+  };
 }
 
 /* ── Hover tooltip component ────────────────────────────── */
@@ -285,24 +256,62 @@ export default function ClubsPage() {
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
 
-  // Mock user's club (null = not in a club)
   const [myClub, setMyClub] = useState<Club | null>(null);
   const [clubList, setClubList] = useState<Club[]>([]);
+  const [myClubMembers, setMyClubMembers] = useState<ClubMember[]>([]);
+  const [viewerId, setViewerId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [actionBusy, setActionBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const storedMyClub = loadMyClubFromStorage();
-    const storedList = loadClubList();
-    const baseList = storedList.length > 0 ? storedList : topClubs;
-    const nextList = storedMyClub && !baseList.some((c) => c.id === storedMyClub.id)
-      ? [storedMyClub, ...baseList]
-      : baseList;
-
-    setMyClub(storedMyClub);
-    setClubList(nextList);
-    if (nextList !== baseList) {
-      saveClubList(nextList);
+  const loadClubs = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch("/api/clubs/list", { cache: "no-store" });
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => ({}))) as { error?: string };
+        throw new Error(payload.error ?? `Failed to load clubs (${response.status})`);
+      }
+      const payload = (await response.json()) as { clubs: ApiClub[]; myClub: ApiClub | null };
+      const clubs = (payload.clubs ?? []).map(normalizeClub);
+      setClubList(clubs);
+      setMyClub(payload.myClub ? normalizeClub(payload.myClub, clubs.findIndex((c) => c.id === payload.myClub?.id)) : null);
+    } catch (err) {
+      console.error(err);
+      setError(err instanceof Error ? err.message : "Unable to load clubs.");
+    } finally {
+      setLoading(false);
     }
   }, []);
+
+  useEffect(() => {
+    void loadClubs();
+  }, [loadClubs]);
+
+  const loadClubMembers = useCallback(async () => {
+    if (!myClub) return;
+    try {
+      const response = await fetch(`/api/clubs/detail?clubId=${encodeURIComponent(myClub.id)}`, { cache: "no-store" });
+      if (!response.ok) return;
+      const payload = (await response.json()) as {
+        club: { members: ClubMember[] };
+        viewer?: { viewerId?: string | null };
+      };
+      setMyClubMembers(payload.club?.members ?? []);
+      if (payload.viewer?.viewerId) {
+        setViewerId(payload.viewer.viewerId);
+      }
+    } catch (err) {
+      console.error("Failed to load club members", err);
+    }
+  }, [myClub]);
+
+  useEffect(() => {
+    if (myClub && !showBrowse) {
+      void loadClubMembers();
+    }
+  }, [myClub, showBrowse, loadClubMembers]);
 
   const filteredClubs = clubList.filter((club) =>
     club.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -311,50 +320,103 @@ export default function ClubsPage() {
   const handleCreateClub = async () => {
     if (!clubName.trim()) return;
     setCreating(true);
-    await new Promise((r) => setTimeout(r, 1000));
+    setError(null);
 
-    const newClub: Club = {
-      id: crypto.randomUUID(),
-      name: clubName,
-      logo: selectedLogo,
-      emblem: selectedEmblem,
-      trophies: 0,
-      members: 1,
-      maxMembers,
-      privacy,
-      rank: 999,
-      description: "A fresh club ready for battle!",
-      topPlayers: [
-        { id: "self", username: "You", avatar: "CR", trophies: 0, role: "host" },
-      ],
-    };
+    try {
+      const response = await fetch("/api/clubs/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: clubName,
+          logo: selectedLogo,
+          emblem: selectedEmblem,
+          privacy,
+          maxMembers,
+        }),
+      });
 
-    const nextList = [newClub, ...clubList];
-    setClubList(nextList);
-    saveClubList(nextList);
-    setMyClub(newClub);
-    persistMyClub(newClub, "custom");
-    setShowCreateModal(false);
-    setCreating(false);
-    setClubName("");
-  };
+      const payload = (await response.json().catch(() => ({}))) as { error?: string; club?: ApiClub };
 
-  const handleJoinClub = (club: Club) => {
-    if (myClub) return; // Already in a club
-    if (club.privacy === "private") {
-      alert(`Request sent to join ${club.name}! The club host will review your request.`);
-    } else {
-      setMyClub(club);
-      persistMyClub(club, "existing");
-      setShowBrowse(false);
+      if (!response.ok) {
+        throw new Error(payload.error ?? "Unable to create club right now.");
+      }
+
+      if (payload.club) {
+        const newClub = normalizeClub(payload.club, 0);
+        setClubList((prev) => [newClub, ...prev.filter((c) => c.id !== newClub.id)]);
+        setMyClub(newClub);
+      }
+      setShowCreateModal(false);
+      setClubName("");
+    } catch (err) {
+      console.error(err);
+      setError(err instanceof Error ? err.message : "Unable to create club.");
+    } finally {
+      setCreating(false);
     }
   };
 
-  const handleLeaveClub = () => {
-    if (confirm("Are you sure you want to leave this club?")) {
-      setMyClub(null);
-      clearMyClub();
+  const handleJoinClub = async (club: Club) => {
+    if (myClub) return; // Already in a club
+    setActionBusy(true);
+    setError(null);
+
+    try {
+      const response = await fetch("/api/clubs/join", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ clubId: club.id }),
+      });
+
+      const payload = (await response.json().catch(() => ({}))) as { error?: string; status?: string };
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? "Unable to join this club right now.");
+      }
+
+      if (payload.status === "request_sent") {
+        alert(`Request sent to join ${club.name}! The club host will review your request.`);
+        return;
+      }
+
+      // Joined successfully — refresh so member counts update
+      await loadClubs();
       setShowBrowse(false);
+    } catch (err) {
+      console.error(err);
+      setError(err instanceof Error ? err.message : "Unable to join this club.");
+    } finally {
+      setActionBusy(false);
+    }
+  };
+
+  const handleLeaveClub = async () => {
+    if (!myClub) return;
+    if (!confirm("Are you sure you want to leave this club?")) return;
+    setActionBusy(true);
+    setError(null);
+
+    try {
+      const response = await fetch("/api/clubs/leave", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+
+      const payload = (await response.json().catch(() => ({}))) as { error?: string };
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? "Unable to leave your club right now.");
+      }
+
+      setMyClub(null);
+      await loadClubs();
+      setShowBrowse(false);
+    } catch (err) {
+      console.error(err);
+      setError(err instanceof Error ? err.message : "Unable to leave your club.");
+    } finally {
+      setActionBusy(false);
     }
   };
 
@@ -595,16 +657,29 @@ export default function ClubsPage() {
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
                     <span className="font-medium text-[var(--cr-fg)]">You</span>
-                    <span className="rounded bg-amber-500/20 px-1.5 py-0.5 text-[10px] font-medium text-amber-400">
-                      HOST
-                    </span>
+                    {(() => {
+                      const myRole = myClubMembers.find((m) => m.id === viewerId)?.role;
+                      if (myRole === "host") {
+                        return (
+                          <span className="rounded bg-amber-500/20 px-1.5 py-0.5 text-[10px] font-medium text-amber-400">HOST</span>
+                        );
+                      }
+                      if (myRole === "elder") {
+                        return (
+                          <span className="rounded bg-cyan-500/20 px-1.5 py-0.5 text-[10px] font-medium text-cyan-400">ELDER</span>
+                        );
+                      }
+                      return null;
+                    })()}
                   </div>
-                  <div className="text-xs text-[var(--cr-fg-muted)]">0 trophies contributed</div>
+                  <div className="text-xs text-[var(--cr-fg-muted)]">
+                    {myClubMembers.find((m) => m.id === viewerId)?.trophies.toLocaleString() ?? 0} trophies contributed
+                  </div>
                 </div>
               </div>
 
               {/* Other members */}
-              {myClub.topPlayers.filter((p) => p.id !== "self").map((player) => (
+              {myClubMembers.filter((p) => p.id !== viewerId).map((player) => (
                 <div key={player.id} className="flex items-center gap-4 p-4">
                   <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--cr-bg-tertiary)] font-bold text-[var(--cr-fg-muted)]">
                     {player.avatar}
@@ -624,7 +699,7 @@ export default function ClubsPage() {
                 </div>
               ))}
 
-              {myClub.topPlayers.length <= 1 && (
+              {myClubMembers.length <= 1 && (
                 <div className="p-8 text-center text-[var(--cr-fg-muted)]">
                   <p className="text-sm">No other members yet</p>
                   <p className="mt-1 text-xs">Invite friends to join your club!</p>
@@ -695,6 +770,15 @@ export default function ClubsPage() {
           </div>
         )}
 
+        {error && (
+          <div className="mb-4 flex items-center gap-3 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-300">
+            <svg className="h-5 w-5 shrink-0 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+            </svg>
+            {error}
+          </div>
+        )}
+
         {/* Search */}
         <div className="relative mb-4">
           <svg className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--cr-fg-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -715,7 +799,14 @@ export default function ClubsPage() {
             <h2 className="font-semibold text-[var(--cr-fg)]">Clubs to Join</h2>
           </div>
           <div className="divide-y divide-[var(--cr-border)]">
-            {filteredClubs.length === 0 ? (
+            {loading ? (
+              <div className="flex items-center justify-center p-10 text-sm text-[var(--cr-fg-muted)]">
+                <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-[var(--cr-border)] border-t-[rgb(var(--cr-accent-rgb))]" />
+                Loading clubs...
+              </div>
+            ) : error ? (
+              <div className="p-8 text-center text-sm text-red-400">{error}</div>
+            ) : filteredClubs.length === 0 ? (
               <div className="p-8 text-center text-sm text-[var(--cr-fg-muted)]">
                 {searchQuery.trim()
                   ? `No clubs found matching "${searchQuery}".`
