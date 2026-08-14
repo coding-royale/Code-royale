@@ -1,125 +1,262 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
-/* Tailwind v4 custom theme */
-@theme {
-  --color-cr-bg: var(--cr-bg);
-  --color-cr-bg-secondary: var(--cr-bg-secondary);
-  --color-cr-bg-tertiary: var(--cr-bg-tertiary);
-  --color-cr-fg: var(--cr-fg);
-  --color-cr-fg-muted: var(--cr-fg-muted);
-  --color-cr-border: var(--cr-border);
-  --color-cr-accent: var(--cr-accent-hex);
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, "SF Mono", Menlo, monospace;
+
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+  --font-serif: serif;
+  --radius: 0.75rem;
+  --tracking-tighter: calc(var(--tracking-normal) - 0.05em);
+  --tracking-tight: calc(var(--tracking-normal) - 0.025em);
+  --tracking-wide: calc(var(--tracking-normal) + 0.025em);
+  --tracking-wider: calc(var(--tracking-normal) + 0.05em);
+  --tracking-widest: calc(var(--tracking-normal) + 0.1em);
+  --tracking-normal: var(--tracking-normal);
+  --shadow-2xl: var(--shadow-2xl);
+  --shadow-xl: var(--shadow-xl);
+  --shadow-lg: var(--shadow-lg);
+  --shadow-md: var(--shadow-md);
+  --shadow: var(--shadow);
+  --shadow-sm: var(--shadow-sm);
+  --shadow-xs: var(--shadow-xs);
+  --shadow-2xs: var(--shadow-2xs);
+  --spacing: var(--spacing);
+  --letter-spacing: var(--letter-spacing);
+  --shadow-offset-y: var(--shadow-offset-y);
+  --shadow-offset-x: var(--shadow-offset-x);
+  --shadow-spread: var(--shadow-spread);
+  --shadow-blur: var(--shadow-blur);
+  --shadow-opacity: var(--shadow-opacity);
+  --color-shadow-color: var(--shadow-color);
+  --color-destructive-foreground: var(--destructive-foreground);
 }
 
 :root {
-  --background: #0a0a0f;
-  --foreground: #e2e8f0;
-
-  /* Theme primitives (RGB vars allow alpha via rgba(var(--*), a)) */
-  --cr-bg: #0a0a0f;
-  --cr-bg-secondary: #111119;
-  --cr-bg-tertiary: #1a1a24;
-  --cr-fg: #e2e8f0;
-  --cr-fg-muted: #94a3b8;
-  --cr-border: #262635;
-  --cr-accent-rgb: 56, 189, 248; /* neon blue */
-  --cr-accent-2-rgb: 14, 165, 233;
-  --cr-accent-hex: #38bdf8;
+  --background: oklch(1.0000 0 0);
+  --foreground: oklch(0.1450 0 0);
+  --card: oklch(1.0000 0 0);
+  --card-foreground: oklch(0.1450 0 0);
+  --popover: oklch(1.0000 0 0);
+  --popover-foreground: oklch(0.1450 0 0);
+  --primary: oklch(0.1450 0 0);
+  --primary-foreground: oklch(0.9850 0 0);
+  --secondary: oklch(0.9670 0.0029 264.5419);
+  --secondary-foreground: oklch(0.2101 0.0318 264.6645);
+  --muted: oklch(0.9670 0.0029 264.5419);
+  --muted-foreground: oklch(0.5510 0.0234 264.3637);
+  --accent: oklch(0.9448 0.0237 262.8816);
+  --accent-foreground: oklch(0.4470 0.1279 262.8816);
+  --destructive: oklch(0.6368 0.2078 25.3313);
+  --border: oklch(0.9276 0.0058 264.5313);
+  --input: oklch(0.9276 0.0058 264.5313);
+  --ring: oklch(0.5510 0.0234 264.3637);
+  --chart-1: oklch(0.5940 0.0443 196.0233);
+  --chart-2: oklch(0.7214 0.1337 49.9802);
+  --chart-3: oklch(0.8721 0.0864 68.5474);
+  --chart-4: oklch(0.6268 0 0);
+  --chart-5: oklch(0.6830 0 0);
+  --radius: 0.75rem;
+  --sidebar: oklch(0.9670 0.0029 264.5419);
+  --sidebar-foreground: oklch(0.1450 0 0);
+  --sidebar-primary: oklch(0.1450 0 0);
+  --sidebar-primary-foreground: oklch(0.9850 0 0);
+  --sidebar-accent: oklch(0.9448 0.0237 262.8816);
+  --sidebar-accent-foreground: oklch(0.4470 0.1279 262.8816);
+  --sidebar-border: oklch(0.9276 0.0058 264.5313);
+  --sidebar-ring: oklch(0.5510 0.0234 264.3637);
+  --destructive-foreground: oklch(0.9851 0 0);
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+  --font-serif: serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, "SF Mono", Menlo, monospace;
+  --shadow-color: #000000;
+  --shadow-opacity: 0.05;
+  --shadow-blur: 4px;
+  --shadow-spread: 0px;
+  --shadow-offset-x: 0px;
+  --shadow-offset-y: 1px;
+  --letter-spacing: 0rem;
+  --spacing: 0.25rem;
+  --shadow-2xs: 0px 1px 4px 0px hsl(0 0% 0% / 0.03);
+  --shadow-xs: 0px 1px 4px 0px hsl(0 0% 0% / 0.03);
+  --shadow-sm: 0px 1px 4px 0px hsl(0 0% 0% / 0.05), 0px 1px 2px -1px hsl(0 0% 0% / 0.05);
+  --shadow: 0px 1px 4px 0px hsl(0 0% 0% / 0.05), 0px 1px 2px -1px hsl(0 0% 0% / 0.05);
+  --shadow-md: 0px 1px 4px 0px hsl(0 0% 0% / 0.05), 0px 2px 4px -1px hsl(0 0% 0% / 0.05);
+  --shadow-lg: 0px 1px 4px 0px hsl(0 0% 0% / 0.05), 0px 4px 6px -1px hsl(0 0% 0% / 0.05);
+  --shadow-xl: 0px 1px 4px 0px hsl(0 0% 0% / 0.05), 0px 8px 10px -1px hsl(0 0% 0% / 0.05);
+  --shadow-2xl: 0px 1px 4px 0px hsl(0 0% 0% / 0.13);
+  --tracking-normal: 0rem;
 }
 
-html[data-theme="neon-blue"],
-:root {
-  --cr-accent-rgb: 56, 189, 248;
-  --cr-accent-2-rgb: 14, 165, 233;
-  --cr-accent-hex: #38bdf8;
+.dark {
+  --background: oklch(0.1410 0 0);
+  --foreground: oklch(0.9850 0 0);
+  --card: oklch(0.2100 0 0);
+  --card-foreground: oklch(0.9850 0 0);
+  --popover: oklch(0.2100 0 0);
+  --popover-foreground: oklch(0.9850 0 0);
+  --primary: oklch(0.9850 0 0);
+  --primary-foreground: oklch(0.1450 0 0);
+  --secondary: oklch(0.2520 0 0);
+  --secondary-foreground: oklch(0.8109 0 0);
+  --muted: oklch(0.2520 0 0);
+  --muted-foreground: oklch(0.7080 0 0);
+  --accent: oklch(0.2727 0.0415 262.8816);
+  --accent-foreground: oklch(0.8658 0.0433 262.8816);
+  --destructive: oklch(0.5940 0.0443 196.0233);
+  --border: oklch(0.2520 0 0);
+  --input: oklch(0.2520 0 0);
+  --ring: oklch(0.6268 0 0);
+  --chart-1: oklch(0.5940 0.0443 196.0233);
+  --chart-2: oklch(0.7214 0.1337 49.9802);
+  --chart-3: oklch(0.8721 0.0864 68.5474);
+  --chart-4: oklch(0.6268 0 0);
+  --chart-5: oklch(0.6830 0 0);
+  --sidebar: oklch(0.2100 0 0);
+  --sidebar-foreground: oklch(0.9850 0 0);
+  --sidebar-primary: oklch(0.9850 0 0);
+  --sidebar-primary-foreground: oklch(0.1450 0 0);
+  --sidebar-accent: oklch(0.2727 0.0415 262.8816);
+  --sidebar-accent-foreground: oklch(0.8658 0.0433 262.8816);
+  --sidebar-border: oklch(0.2520 0 0);
+  --sidebar-ring: oklch(0.6268 0 0);
+  --destructive-foreground: oklch(0.1797 0.0043 308.1928);
+  --radius: 0.75rem;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+  --font-serif: serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, "SF Mono", Menlo, monospace;
+  --shadow-color: #000000;
+  --shadow-opacity: 0.05;
+  --shadow-blur: 4px;
+  --shadow-spread: 0px;
+  --shadow-offset-x: 0px;
+  --shadow-offset-y: 1px;
+  --letter-spacing: 0rem;
+  --spacing: 0.25rem;
+  --shadow-2xs: 0px 1px 4px 0px hsl(0 0% 0% / 0.03);
+  --shadow-xs: 0px 1px 4px 0px hsl(0 0% 0% / 0.03);
+  --shadow-sm: 0px 1px 4px 0px hsl(0 0% 0% / 0.05), 0px 1px 2px -1px hsl(0 0% 0% / 0.05);
+  --shadow: 0px 1px 4px 0px hsl(0 0% 0% / 0.05), 0px 1px 2px -1px hsl(0 0% 0% / 0.05);
+  --shadow-md: 0px 1px 4px 0px hsl(0 0% 0% / 0.05), 0px 2px 4px -1px hsl(0 0% 0% / 0.05);
+  --shadow-lg: 0px 1px 4px 0px hsl(0 0% 0% / 0.05), 0px 4px 6px -1px hsl(0 0% 0% / 0.05);
+  --shadow-xl: 0px 1px 4px 0px hsl(0 0% 0% / 0.05), 0px 8px 10px -1px hsl(0 0% 0% / 0.05);
+  --shadow-2xl: 0px 1px 4px 0px hsl(0 0% 0% / 0.13);
 }
 
-html[data-theme="ember-red"] {
-  --cr-accent-rgb: 248, 113, 113; /* red-400 */
-  --cr-accent-2-rgb: 239, 68, 68; /* red-500 */
-  --cr-accent-hex: #f87171;
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    @apply font-sans;
+  }
+  body {
+    @apply bg-background text-foreground;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    /* Subtle accent veil near the top of every page — depth, not neon */
+    background-image: radial-gradient(
+      ellipse 80% 40% at 50% -5%,
+      color-mix(in oklch, var(--accent) 12%, transparent),
+      transparent 70%
+    );
+    letter-spacing: var(--tracking-normal);
+  }
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
 }
 
-html[data-theme="hazard-orange"] {
-  --cr-accent-rgb: 251, 146, 60; /* orange-400 */
-  --cr-accent-2-rgb: 249, 115, 22; /* orange-500 */
-  --cr-accent-hex: #fb923c;
+::selection {
+  background: color-mix(in oklch, var(--accent) 70%, transparent);
+  color: var(--accent-foreground);
 }
 
-/* Neutral surfaces stay theme-locked; these derive from the accent for hovers */
-:root {
-  --cr-accent-soft: rgba(var(--cr-accent-rgb), 0.10);
-  --cr-accent-softer: rgba(var(--cr-accent-rgb), 0.06);
+/* Subtle accent tint behind hero sections (depth, not neon) */
+.hero-glow {
+  background-image: radial-gradient(
+    ellipse 70% 55% at 50% 0%,
+    color-mix(in oklch, var(--accent) 20%, transparent),
+    transparent 75%
+  );
 }
 
-* {
-  box-sizing: border-box;
-}
-
-body {
-  margin: 0;
-  background: var(--cr-bg);
-  color: var(--cr-fg);
-  font-family: var(--font-geist-sans), system-ui, -apple-system, BlinkMacSystemFont,
-    "Segoe UI", sans-serif;
-  min-height: 100vh;
-  -webkit-font-smoothing: antialiased;
-}
-
-/* Optional subtle pulse you can apply via className if wanted */
-@keyframes neonPulse {
-  0%, 100% { box-shadow: 0 0 20px rgba(var(--cr-accent-rgb), 0.25); }
-  50% { box-shadow: 0 0 35px rgba(var(--cr-accent-rgb), 0.4); }
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.animate-fade-in {
-  animation: fadeIn 0.3s ease-out forwards;
-}
-
-a {
-  color: inherit;
-  text-decoration: none;
-}
-
-/* Clean scrollbar */
+/* Clean monochrome scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--cr-bg-secondary);
+  background: var(--muted);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--cr-border);
+  background: var(--border);
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(var(--cr-accent-rgb), 0.5);
+  background: color-mix(in oklch, var(--border) 70%, var(--foreground));
 }
 
-/* Split pane resizer */
+/* Split pane resizer (practice arena) */
 .split-pane-resizer {
   width: 4px;
-  background: var(--cr-border);
+  background: var(--border);
   cursor: col-resize;
   transition: background 0.2s;
 }
 
 .split-pane-resizer:hover {
-  background: rgba(var(--cr-accent-rgb), 0.5);
+  background: var(--muted-foreground);
 }
 
-/* Code editor styles */
+/* Code editor text surface */
 .code-editor {
-  font-family: var(--font-geist-mono), 'Fira Code', 'Monaco', monospace;
+  font-family: var(--font-mono);
   font-size: 14px;
   line-height: 1.6;
   tab-size: 2;
@@ -128,164 +265,20 @@ a {
 /* Focus ring */
 .focus-ring:focus {
   outline: none;
-  box-shadow: 0 0 0 2px rgba(var(--cr-accent-rgb), 0.4);
+  box-shadow: 0 0 0 2px color-mix(in oklch, var(--ring) 40%, transparent);
 }
 
-/* Selection */
-::selection {
-  background: rgba(var(--cr-accent-rgb), 0.3);
-  color: var(--cr-fg);
-}
-
-/* ─── Tetrio Battle Theme ─── */
-
-@keyframes emberFloat {
-  0% {
-    transform: translateY(0) translateX(0) scale(1);
+@keyframes fadeIn {
+  from {
     opacity: 0;
+    transform: translateY(8px);
   }
-  10% {
+  to {
     opacity: 1;
-  }
-  90% {
-    opacity: 0.6;
-  }
-  100% {
-    transform: translateY(-100vh) translateX(30px) scale(0.3);
-    opacity: 0;
+    transform: translateY(0);
   }
 }
 
-@keyframes fogDrift {
-  0% {
-    transform: translateX(-10%);
-    opacity: 0.03;
-  }
-  50% {
-    transform: translateX(5%);
-    opacity: 0.06;
-  }
-  100% {
-    transform: translateX(-10%);
-    opacity: 0.03;
-  }
-}
-
-@keyframes blockSlideIn {
-  0% {
-    transform: translateY(20px) scale(0.8);
-    opacity: 0;
-  }
-  100% {
-    transform: translateY(0) scale(1);
-    opacity: 1;
-  }
-}
-
-@keyframes blockPulse {
-  0%, 100% {
-    box-shadow: 0 0 6px rgba(var(--cr-accent-rgb), 0.15);
-  }
-  50% {
-    box-shadow: 0 0 14px rgba(var(--cr-accent-rgb), 0.3);
-  }
-}
-
-@keyframes battleGlow {
-  0%, 100% {
-    box-shadow: 0 0 30px rgba(56, 189, 248, 0.15), inset 0 0 30px rgba(56, 189, 248, 0.03);
-  }
-  50% {
-    box-shadow: 0 0 50px rgba(56, 189, 248, 0.25), inset 0 0 40px rgba(56, 189, 248, 0.05);
-  }
-}
-
-@keyframes dungeonPulse {
-  0%, 100% {
-    opacity: 0.04;
-  }
-  50% {
-    opacity: 0.08;
-  }
-}
-
-@keyframes vsPulse {
-  0%, 100% {
-    text-shadow: 0 0 20px rgba(251, 146, 60, 0.6);
-    transform: scale(1);
-  }
-  50% {
-    text-shadow: 0 0 40px rgba(251, 146, 60, 0.9);
-    transform: scale(1.05);
-  }
-}
-
-.battle-bg {
-  position: relative;
-  background:
-    radial-gradient(ellipse at 20% 100%, rgba(180, 60, 20, 0.08) 0%, transparent 50%),
-    radial-gradient(ellipse at 80% 100%, rgba(180, 60, 20, 0.06) 0%, transparent 50%),
-    radial-gradient(ellipse at 50% 0%, rgba(56, 189, 248, 0.03) 0%, transparent 40%),
-    linear-gradient(180deg, #030815 0%, #071024 40%, #0a162b 100%);
-}
-
-.battle-bg::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(1px 1px at 15% 80%, rgba(251, 146, 60, 0.4), transparent),
-    radial-gradient(1px 1px at 35% 90%, rgba(251, 146, 60, 0.3), transparent),
-    radial-gradient(1.5px 1.5px at 55% 85%, rgba(251, 146, 60, 0.5), transparent),
-    radial-gradient(1px 1px at 75% 95%, rgba(251, 146, 60, 0.3), transparent),
-    radial-gradient(1px 1px at 90% 75%, rgba(251, 146, 60, 0.4), transparent);
-  animation: dungeonPulse 4s ease-in-out infinite;
-  pointer-events: none;
-}
-
-.battle-ember {
-  position: absolute;
-  width: 3px;
-  height: 3px;
-  border-radius: 50%;
-  background: rgba(251, 146, 60, 0.7);
-  box-shadow: 0 0 6px rgba(251, 146, 60, 0.5);
-  animation: emberFloat linear infinite;
-  pointer-events: none;
-}
-
-.battle-fog {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(56, 189, 248, 0.02) 20%,
-    rgba(167, 139, 250, 0.02) 50%,
-    rgba(56, 189, 248, 0.02) 80%,
-    transparent 100%
-  );
-  animation: fogDrift 12s ease-in-out infinite;
-  pointer-events: none;
-}
-
-.opponent-block {
-  animation: blockSlideIn 0.3s ease-out forwards;
-  border-radius: 4px;
-  transition: opacity 0.3s ease;
-}
-
-.battle-editor-glow {
-  animation: battleGlow 4s ease-in-out infinite;
-}
-
-.vs-text {
-  animation: vsPulse 2s ease-in-out infinite;
-}
-
-.battle-stone-pattern {
-  background-image:
-    radial-gradient(ellipse at 10% 50%, rgba(56, 189, 248, 0.015) 0%, transparent 50%),
-    radial-gradient(ellipse at 90% 50%, rgba(56, 189, 248, 0.015) 0%, transparent 50%),
-    linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.2) 100%);
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out forwards;
 }

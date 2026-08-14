@@ -2,22 +2,53 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import {
+  AlertCircle,
+  ArrowLeft,
+  ArrowRight,
+  Bot,
+  CheckCircle2,
+  Copy,
+  Dumbbell,
+  Gamepad2,
+  Loader2,
+  Lock,
+  Play,
+  Search,
+  Skull,
+  Sparkles,
+  Swords,
+  Trophy,
+  UserPlus,
+  Users,
+  Zap,
+} from "lucide-react";
 import { AppShell } from "../../components/app-shell";
 import { supabase } from "../../lib/supabase-browser";
 import { useFriendPresence } from "../../lib/use-friend-presence";
-
-const trophyIcon = (
-  <svg
-    aria-hidden
-    viewBox="0 0 24 24"
-    className="h-6 w-6 text-amber-300 drop-shadow-[0_0_18px_rgba(251,191,36,0.55)]"
-  >
-    <path
-      fill="currentColor"
-      d="M19 4h-1V3a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1v1H5a1 1 0 0 0-1 1v2a4 4 0 0 0 3 3.87A6 6 0 0 0 11 14.9V17H8a1 1 0 0 0 0 2h8a1 1 0 1 0 0-2h-3v-2.1a6 6 0 0 0 4-3.99 4 4 0 0 0 3-3.87V5a1 1 0 0 0-1-1Zm-1 3a2 2 0 0 1-2 2 1 1 0 0 0-.94.66A4 4 0 0 1 12 12a4 4 0 0 1-3.06-2.34A1 1 0 0 0 8 9a2 2 0 0 1-2-2V6h2a1 1 0 0 0 1-1V4h6v1a1 1 0 0 0 1 1h2Z"
-    />
-  </svg>
-);
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 
 type ModeCategory = "ranked" | "non-ranked";
 type TrophyImpact = "High Trophy Impact" | "Low Trophy Impact" | "No Trophy Impact";
@@ -94,7 +125,7 @@ const RANKED_MODES: ModeDefinition[] = [
     details: ["Head-to-head ladder play", "Balanced by trophy rating", "Win streak bonuses"],
     badge: "Earn / lose trophies",
     enabled: true,
-    accent: "from-emerald-500/80 to-sky-500/40",
+    accent: "",
     impact: "High Trophy Impact",
     category: "ranked",
   },
@@ -105,7 +136,7 @@ const RANKED_MODES: ModeDefinition[] = [
     details: ["No ladder pressure", "Great for warm ups", "Match with similar skill"],
     badge: "No trophy change",
     enabled: true,
-    accent: "from-sky-400/60 to-indigo-500/40",
+    accent: "",
     impact: "No Trophy Impact",
     category: "ranked",
   },
@@ -116,7 +147,7 @@ const RANKED_MODES: ModeDefinition[] = [
     details: ["Private lobby code", "Spectate others", "Share practice strats"],
     badge: "Invite a friend",
     enabled: true,
-    accent: "from-violet-500/70 to-purple-600/40",
+    accent: "",
     impact: "No Trophy Impact",
     category: "ranked",
   },
@@ -149,7 +180,7 @@ const RANKED_MODES: ModeDefinition[] = [
     details: ["Adaptive AI rivals with 3 difficulty levels", "Earn bot trophies", "Perfect for learning"],
     badge: "Bot Trophies",
     enabled: true,
-    accent: "from-rose-500/70 to-orange-500/40",
+    accent: "",
     impact: "Low Trophy Impact",
     category: "ranked",
   },
@@ -167,7 +198,7 @@ const NON_RANKED_MODES: ModeDefinition[] = [
     ],
     badge: "Low Trophy Impact",
     enabled: true,
-    accent: "from-cyan-500/70 to-sky-500/30",
+    accent: "",
     impact: "Low Trophy Impact",
     category: "non-ranked",
   },
@@ -182,7 +213,7 @@ const NON_RANKED_MODES: ModeDefinition[] = [
     ],
     badge: "Low Trophy Impact",
     enabled: true,
-    accent: "from-rose-500/70 to-orange-500/40",
+    accent: "",
     impact: "Low Trophy Impact",
     category: "non-ranked",
   },
@@ -197,7 +228,7 @@ const NON_RANKED_MODES: ModeDefinition[] = [
     ],
     badge: "Low Trophy Impact",
     enabled: true,
-    accent: "from-indigo-500/70 to-blue-500/35",
+    accent: "",
     impact: "Low Trophy Impact",
     category: "non-ranked",
   },
@@ -212,7 +243,7 @@ const NON_RANKED_MODES: ModeDefinition[] = [
     ],
     badge: "Limited-time",
     enabled: true,
-    accent: "from-fuchsia-500/70 to-purple-500/40",
+    accent: "",
     impact: "No Trophy Impact",
     category: "non-ranked",
     limited: true,
@@ -287,6 +318,19 @@ const MODE_CONFIG_PRESETS: Record<string, ModeConfigPreset> = {
     playerOptions: ["Event lobby", "Invite-only"],
     note: "Rule set rotates weekly. Expect surprises.",
   },
+};
+
+const MODE_ICONS: Record<string, typeof Swords> = {
+  ranked: Trophy,
+  unranked: Dumbbell,
+  friend: UserPlus,
+  "friends-2v2": Users,
+  "battle-royale": Skull,
+  bots: Bot,
+  "rapid-fire": Zap,
+  ffa: Users,
+  duos: Users,
+  events: Sparkles,
 };
 
 export default function GameModesPage() {
@@ -688,72 +732,71 @@ export default function GameModesPage() {
 
   return (
     <AppShell>
-      <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-12 px-6 pt-8 sm:px-10 lg:px-16">
-        <header className="flex flex-col justify-between gap-8 rounded-2xl border border-cr-border bg-cr-bg-secondary p-10 sm:flex-row sm:items-center sm:gap-10">
-          <div className="space-y-4">
-            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-cr-accent">Command Center</p>
-            <h1 className="text-4xl font-bold text-cr-fg sm:text-5xl">
+      <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-10 px-4 pt-6 sm:px-8 lg:px-10">
+        <header className="flex flex-col justify-between gap-8 rounded-xl bg-gradient-to-br from-secondary to-muted/60 p-6 shadow-sm ring-1 ring-foreground/10 sm:flex-row sm:items-center sm:gap-10 sm:p-8">
+          <div className="flex flex-col gap-3">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent-foreground">
+              Arena
+            </p>
+            <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
               Choose your battle mode
             </h1>
-            <p className="max-w-xl text-base text-cr-fg-muted">
+            <p className="max-w-xl text-sm text-muted-foreground sm:text-base">
               Squad up, duel a rival, or warm up with friends. Ranked battles award trophies, while event modes let you experiment without wrecking your ladder standing.
             </p>
           </div>
-          <div className="flex items-center gap-5 rounded-xl border border-amber-400/40 bg-amber-400/10 px-8 py-5 text-amber-200">
-            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-amber-400/20">
-              {trophyIcon}
+          <div className="flex items-center gap-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-6 py-4">
+            <div className="flex size-11 items-center justify-center rounded-full bg-amber-500/15">
+              <Trophy className="size-5 text-amber-600 dark:text-amber-400" />
             </div>
-            <div>
-              <div className="flex items-baseline gap-2 text-4xl font-semibold tracking-tight text-amber-100">
-                <span>{viewerRating.toLocaleString()}</span>
-                <span className="text-base font-medium uppercase tracking-[0.2em] text-amber-200/70">Trophies</span>
+            <div className="flex flex-col">
+              <div className="flex items-baseline gap-2">
+                <span className="text-3xl font-semibold tracking-tight text-amber-700 dark:text-amber-300">
+                  {viewerRating.toLocaleString()}
+                </span>
+                <span className="text-xs font-medium uppercase tracking-[0.15em] text-amber-700/70 dark:text-amber-300/70">
+                  Trophies
+                </span>
               </div>
-              <p className="text-sm uppercase tracking-[0.2em] text-amber-200/80">
-                Rank · {rankedBand.league} League
-              </p>
-              <p className="text-xs uppercase tracking-[0.2em] text-amber-100/75">
-                Ranked question lane: {rankedBand.difficulty}
+              <p className="text-xs uppercase tracking-[0.15em] text-amber-700/80 dark:text-amber-300/80">
+                {rankedBand.league} League · {rankedBand.difficulty} lane
               </p>
             </div>
           </div>
         </header>
 
         {selectedFriend && state === "idle" && (
-          <div className="rounded-2xl border border-violet-400/30 bg-violet-500/10 px-5 py-4 text-sm text-violet-100">
-            Selected friend: <span className="font-semibold">{selectedFriend.username}</span>
+          <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
+            Selected friend: <span className="font-semibold text-foreground">{selectedFriend.username}</span>
           </div>
         )}
 
         {state === "idle" && (
-          <div className="flex flex-col gap-16">
-            <section className="space-y-8">
-              <header className="space-y-3">
-                <h2 className="text-2xl font-semibold uppercase tracking-[0.35em] text-sky-300/80">
-                  Ranked & Core Modes
-                </h2>
-                <p className="text-base text-sky-100/70">
+          <div className="flex flex-col gap-12">
+            <section className="flex flex-col gap-6">
+              <div className="flex flex-col gap-1">
+                <h2 className="text-xl font-semibold tracking-tight">Ranked & Core Modes</h2>
+                <p className="text-sm text-muted-foreground">
                   Climb the ladder, invite friends, or queue up for legacy formats. These affect your season standing.
                 </p>
-              </header>
-              <div className="grid gap-8 md:grid-cols-2 xl:grid-cols-3">
+              </div>
+              <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
                 {rankedCards.map(({ mode, onClick }) => (
                   <ModeCard key={mode.id} mode={mode} onClick={onClick} />
                 ))}
               </div>
             </section>
 
-            <section className="space-y-8">
-              <header className="space-y-4">
-                <h2 className="text-2xl font-semibold uppercase tracking-[0.35em] text-fuchsia-300/80">
-                  Non-Ranked Match Types
-                </h2>
-                <p className="max-w-2xl text-base text-sky-100/75">
+            <section className="flex flex-col gap-6">
+              <div className="flex flex-col gap-1">
+                <h2 className="text-xl font-semibold tracking-tight">Non-Ranked Match Types</h2>
+                <p className="max-w-2xl text-sm text-muted-foreground">
                   Skill-focused formats with reduced or zero trophy impact. Perfect for warming up, experimenting, or casual competition.
                 </p>
-              </header>
-              <div className="grid gap-8 md:grid-cols-2">
+              </div>
+              <div className="grid gap-5 md:grid-cols-2">
                 {nonRankedCards.map(({ mode, onClick }) => (
-                  <ModeCard key={mode.id} mode={mode} onClick={onClick} playful />
+                  <ModeCard key={mode.id} mode={mode} onClick={onClick} />
                 ))}
               </div>
             </section>
@@ -831,6 +874,16 @@ export default function GameModesPage() {
   );
 }
 
+function impactBadgeClass(impact: TrophyImpact) {
+  if (impact === "High Trophy Impact") {
+    return "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300";
+  }
+  if (impact === "Low Trophy Impact") {
+    return "border-border bg-muted text-muted-foreground";
+  }
+  return "border-border text-muted-foreground";
+}
+
 type FriendPickerModalProps = {
   open: boolean;
   loading: boolean;
@@ -842,8 +895,6 @@ type FriendPickerModalProps = {
 };
 
 function FriendPickerModal({ open, loading, error, onlineFriends, offlineFriends, onClose, onSelect }: FriendPickerModalProps) {
-  if (!open) return null;
-
   const hasOnline = onlineFriends.length > 0;
   const hasOffline = offlineFriends.length > 0;
 
@@ -857,90 +908,89 @@ function FriendPickerModal({ open, loading, error, onlineFriends, offlineFriends
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center px-5">
-      <button
-        type="button"
-        aria-label="Close friend picker"
-        className="absolute inset-0 bg-black/60"
-        onClick={onClose}
-      />
-      <div className="relative w-full max-w-lg rounded-3xl border border-violet-400/30 bg-[#050b18] p-7 shadow-[0_0_60px_rgba(139,92,246,0.25)]">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.35em] text-violet-300/80">Play with a friend</p>
-            <h2 className="mt-2 text-2xl font-semibold text-sky-50">Choose who to invite</h2>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-full border border-violet-400/30 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.35em] text-sky-100/80 transition hover:border-violet-200 hover:bg-violet-500/15"
-          >
-            Close
-          </button>
-        </div>
+    <Dialog open={open} onOpenChange={(next) => { if (!next) onClose(); }}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Choose who to invite</DialogTitle>
+          <DialogDescription>
+            Pick a friend to start a private duel. They&apos;ll get a link to jump straight in.
+          </DialogDescription>
+        </DialogHeader>
 
-        <div className="mt-6 space-y-5">
-          {loading && <p className="text-sm text-sky-100/70">Loading friends…</p>}
+        <div className="flex flex-col gap-4">
+          {loading && <p className="text-sm text-muted-foreground">Loading friends…</p>}
           {!loading && error && (
-            <div className="rounded-2xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm text-rose-100">{error}</div>
+            <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+              {error}
+            </div>
           )}
 
           {!loading && !error && !hasOnline && !hasOffline && (
-            <div className="rounded-2xl border border-slate-600/30 bg-slate-950/50 p-4 text-sm text-sky-100/70">
-              No friends yet.
+            <div className="rounded-lg border border-border bg-muted/40 px-4 py-4 text-sm text-muted-foreground">
+              No friends yet. Add players from the Friends tab first.
             </div>
           )}
 
           {!loading && !error && hasOnline && (
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.35em] text-emerald-300/80">Online</p>
-              <div className="mt-3 grid gap-2">
-                {onlineFriends.map((friend) => (
-                  <button
-                    key={friend.id}
-                    type="button"
-                    onClick={() => onSelect(friend)}
-                    className="flex items-center justify-between gap-4 rounded-2xl border border-emerald-400/25 bg-emerald-500/10 px-4 py-3 text-left transition hover:border-emerald-200 hover:bg-emerald-500/15"
-                  >
-                    <div className="flex min-w-0 items-center gap-3">
-                      <span className="flex h-10 w-10 items-center justify-center rounded-full border border-emerald-400/30 bg-emerald-500/15 text-xs font-semibold text-emerald-100">
+            <div className="flex flex-col gap-2">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Online
+              </p>
+              {onlineFriends.map((friend) => (
+                <Button
+                  key={friend.id}
+                  variant="outline"
+                  className="h-auto justify-between px-3 py-2.5"
+                  onClick={() => onSelect(friend)}
+                >
+                  <span className="flex min-w-0 items-center gap-3">
+                    <Avatar className="size-8">
+                      <AvatarFallback className="bg-accent text-xs font-semibold text-accent-foreground">
                         {initials(friend.username)}
-                      </span>
-                      <span className="truncate text-sm font-semibold text-sky-50">{friend.username}</span>
-                    </div>
-                    <span className="text-xs uppercase tracking-[0.35em] text-emerald-200/80">Invite</span>
-                  </button>
-                ))}
-              </div>
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="truncate text-sm font-medium">{friend.username}</span>
+                  </span>
+                  <span className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground">
+                    Invite
+                    <ArrowRight className="size-3.5" />
+                  </span>
+                </Button>
+              ))}
             </div>
           )}
 
           {!loading && !error && hasOffline && (
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.35em] text-sky-300/75">Offline</p>
-              <div className="mt-3 grid gap-2">
-                {offlineFriends.map((friend) => (
-                  <button
-                    key={friend.id}
-                    type="button"
-                    onClick={() => onSelect(friend)}
-                    className="flex items-center justify-between gap-4 rounded-2xl border border-slate-600/35 bg-slate-950/45 px-4 py-3 text-left transition hover:border-violet-300/50 hover:bg-violet-500/10"
-                  >
-                    <div className="flex min-w-0 items-center gap-3">
-                      <span className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-500/40 bg-slate-900/40 text-xs font-semibold text-sky-100/85">
+            <div className="flex flex-col gap-2">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Offline
+              </p>
+              {offlineFriends.map((friend) => (
+                <Button
+                  key={friend.id}
+                  variant="outline"
+                  className="h-auto justify-between px-3 py-2.5"
+                  onClick={() => onSelect(friend)}
+                >
+                  <span className="flex min-w-0 items-center gap-3">
+                    <Avatar className="size-8">
+                      <AvatarFallback className="bg-muted text-xs font-semibold text-muted-foreground">
                         {initials(friend.username)}
-                      </span>
-                      <span className="truncate text-sm font-semibold text-sky-50">{friend.username}</span>
-                    </div>
-                    <span className="text-xs uppercase tracking-[0.35em] text-sky-100/70">Invite</span>
-                  </button>
-                ))}
-              </div>
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="truncate text-sm font-medium">{friend.username}</span>
+                  </span>
+                  <span className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground">
+                    Invite
+                    <ArrowRight className="size-3.5" />
+                  </span>
+                </Button>
+              ))}
             </div>
           )}
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -955,8 +1005,6 @@ type FriendInviteModalProps = {
 };
 
 function FriendInviteModal({ open, creating, error, friend, matchId, onClose, onStart }: FriendInviteModalProps) {
-  if (!open) return null;
-
   const inviteLink =
     typeof window !== "undefined" && matchId ? `${window.location.origin}/match/${matchId}` : matchId ? `/match/${matchId}` : "";
 
@@ -972,164 +1020,124 @@ function FriendInviteModal({ open, creating, error, friend, matchId, onClose, on
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center px-5">
-      <button
-        type="button"
-        aria-label="Close invite modal"
-        className="absolute inset-0 bg-black/60"
-        onClick={onClose}
-      />
-      <div className="relative w-full max-w-lg rounded-3xl border border-violet-400/30 bg-[#050b18] p-7 shadow-[0_0_60px_rgba(139,92,246,0.25)]">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.35em] text-violet-300/80">Invite ready</p>
-            <h2 className="mt-2 text-2xl font-semibold text-sky-50">Send this link to your friend</h2>
-            <p className="mt-2 text-sm text-sky-100/70">
-              {friend ? (
-                <>
-                  Inviting <span className="font-semibold text-sky-50">{friend.username}</span>
-                </>
-              ) : (
-                "Inviting friend"
-              )}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-full border border-violet-400/30 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.35em] text-sky-100/80 transition hover:border-violet-200 hover:bg-violet-500/15"
-          >
-            Close
-          </button>
-        </div>
+    <Dialog open={open} onOpenChange={(next) => { if (!next) onClose(); }}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Invite ready</DialogTitle>
+          <DialogDescription>
+            {friend ? (
+              <>Send this link to <span className="font-medium text-foreground">{friend.username}</span> so they can join the match.</>
+            ) : (
+              "Send this link so your friend can join the match."
+            )}
+          </DialogDescription>
+        </DialogHeader>
 
-        <div className="mt-6 space-y-4">
-          {creating && <p className="text-sm text-sky-100/70">Creating invite…</p>}
+        <div className="flex flex-col gap-4">
+          {creating && <p className="text-sm text-muted-foreground">Creating invite…</p>}
           {!creating && error && (
-            <div className="rounded-2xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm text-rose-100">{error}</div>
+            <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+              {error}
+            </div>
           )}
 
           {!creating && matchId && (
-            <div className="rounded-2xl border border-slate-600/30 bg-slate-950/50 p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.35em] text-sky-300/75">Invite link</p>
-              <p className="mt-2 break-all text-sm text-sky-50">{inviteLink}</p>
-              <div className="mt-4 flex flex-wrap gap-3">
-                <button
-                  type="button"
-                  onClick={handleCopy}
-                  disabled={!canCopy}
-                  className="rounded-full border border-sky-500/35 bg-sky-500/15 px-5 py-2 text-xs font-semibold uppercase tracking-[0.35em] text-sky-50 transition hover:border-sky-200 hover:bg-sky-500/25 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  Copy link
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onStart(matchId)}
-                  className="rounded-full border border-violet-400/70 bg-violet-500/20 px-5 py-2 text-xs font-semibold uppercase tracking-[0.35em] text-violet-50 shadow-[0_0_34px_rgba(139,92,246,0.35)] transition hover:border-violet-200 hover:bg-violet-500/30"
-                >
-                  Start match
-                </button>
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center gap-2">
+                <Input readOnly value={inviteLink} className="font-mono text-xs" />
+                <Button variant="outline" size="icon" onClick={() => void handleCopy()} disabled={!canCopy} aria-label="Copy invite link">
+                  <Copy />
+                </Button>
               </div>
-              <p className="mt-3 text-xs text-sky-100/60">
-                Your friend can open the link and will be able to join instantly.
+              <p className="text-xs text-muted-foreground">
+                Your friend can open the link and join instantly.
               </p>
             </div>
           )}
         </div>
-      </div>
-    </div>
+
+        {!creating && matchId && (
+          <DialogFooter>
+            <Button variant="outline" onClick={onClose}>
+              Close
+            </Button>
+            <Button onClick={() => onStart(matchId)}>
+              <Play data-icon="inline-start" />
+              Start match
+            </Button>
+          </DialogFooter>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }
 
 type ModeCardProps = {
   mode: ModeDefinition;
   onClick?: () => void;
-  playful?: boolean;
 };
 
-function ModeCard({ mode, onClick, playful = false }: ModeCardProps) {
-  const { title, subtitle, badge, details, enabled, accent, impact } = mode;
-  const baseClasses = "group relative flex h-full flex-col justify-between gap-8 rounded-3xl border px-8 py-10 transition";
-  const enabledClasses = enabled
-    ? `border-sky-500/25 bg-gradient-to-br ${accent} hover:-translate-y-1 hover:shadow-[0_0_45px_rgba(56,189,248,0.25)] hover:border-sky-300/60`
-    : "border-slate-700/60 bg-slate-900/60 text-slate-400";
-
-  const impactStyles = playful
-    ? "border-fuchsia-300/60 bg-fuchsia-400/10 text-fuchsia-100"
-    : "border-emerald-300/60 bg-emerald-400/10 text-emerald-200";
-
-  const playNowStyles = playful
-    ? "border-fuchsia-400/60 bg-fuchsia-500/15 text-fuchsia-100 group-hover:border-fuchsia-200 group-hover:bg-fuchsia-500/30 group-hover:text-fuchsia-50"
-    : "border-sky-400/60 bg-sky-500/15 text-sky-100 group-hover:border-sky-200 group-hover:bg-sky-500/30 group-hover:text-sky-50";
+function ModeCard({ mode, onClick }: ModeCardProps) {
+  const { title, subtitle, badge, details, enabled, impact, limited } = mode;
+  const Icon = MODE_ICONS[mode.id] ?? Gamepad2;
 
   const content = (
-    <div className="flex h-full flex-col gap-8">
-      <div className="space-y-4">
-        <h3 className="text-3xl font-semibold text-sky-50">{title}</h3>
-        <p className="text-base text-sky-100/70">{subtitle}</p>
+    <div className="flex h-full flex-col gap-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex size-10 items-center justify-center rounded-lg bg-accent text-accent-foreground">
+          <Icon className="size-5" />
+        </div>
+        {!enabled && (
+          <Badge variant="secondary" className="gap-1">
+            <Lock className="size-3" />
+            {badge ?? "Locked"}
+          </Badge>
+        )}
+      </div>
+      <div className="flex flex-col gap-1">
+        <h3 className="text-lg font-semibold tracking-tight">{title}</h3>
+        <p className="text-sm text-muted-foreground">{subtitle}</p>
       </div>
       {details && (
-        <ul className="space-y-3 text-sm text-sky-100/60">
+        <ul className="flex flex-col gap-1.5 text-sm text-muted-foreground">
           {details.slice(0, 3).map((detail) => (
-            <li key={detail} className="flex items-start gap-3">
-              <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-sky-300/70" />
+            <li key={detail} className="flex items-start gap-2">
+              <span className="mt-1.5 size-1 shrink-0 rounded-full bg-accent-foreground/60" />
               <span>{detail}</span>
             </li>
           ))}
         </ul>
       )}
-      <div className="mt-auto flex flex-wrap items-center gap-4">
-        <span
-          className={`inline-flex items-center gap-2 rounded-full border px-5 py-2 text-[13px] uppercase tracking-[0.35em] ${impactStyles}`}
-        >
+      <div className="mt-auto flex flex-wrap items-center gap-2 pt-2">
+        <Badge variant="outline" className={cn("gap-1", impactBadgeClass(impact))}>
+          <Trophy className="size-3" />
           {impact}
-        </span>
-        {badge && (
-          <span className="inline-flex items-center gap-2 rounded-full border border-sky-500/30 px-4 py-2 text-[12px] uppercase tracking-[0.35em] text-sky-200/80">
-            {badge}
-          </span>
+        </Badge>
+        {badge && enabled && (
+          <Badge variant="secondary">{badge}</Badge>
         )}
+        {limited && <Badge variant="outline">Limited-time</Badge>}
       </div>
-      {enabled && (
-        <span
-          className={`mt-6 inline-flex w-max items-center gap-2 rounded-full border px-6 py-3 text-sm font-semibold uppercase tracking-[0.35em] shadow-[0_0_24px_rgba(56,189,248,0.3)] transition ${playNowStyles}`}
-        >
+      {enabled ? (
+        <Button className="mt-2 w-full" onClick={onClick} disabled={!onClick}>
+          <Play data-icon="inline-start" />
           Play Now
-          <svg
-            aria-hidden
-            viewBox="0 0 24 24"
-            className="h-4 w-4"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.8"
-          >
-            <path d="m8 5 8 7-8 7" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </span>
-      )}
-      {!enabled && (
-        <div className="absolute right-8 top-8 flex items-center gap-2 text-sm uppercase tracking-[0.35em] text-slate-300">
-          <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor" aria-hidden>
-            <path d="M7 10V7a5 5 0 0 1 10 0v3h1.5a1.5 1.5 0 0 1 1.5 1.5V19a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-7.5A1.5 1.5 0 0 1 5.5 10H7Zm2-3a3 3 0 1 1 6 0v3H9Z" />
-          </svg>
-          Locked
-        </div>
-      )}
+        </Button>
+      ) : null}
     </div>
   );
 
-  if (!enabled) {
-    return <div className={`${baseClasses} ${enabledClasses}`}>{content}</div>;
-  }
-
-  if (!onClick) {
-    return <div className={`${baseClasses} ${enabledClasses}`}>{content}</div>;
-  }
+  const cardClasses = cn(
+    "h-full rounded-xl bg-card shadow-sm ring-1 ring-foreground/10 transition-all duration-200",
+    enabled
+      ? "hover:-translate-y-0.5 hover:shadow-md hover:ring-foreground/20"
+      : "opacity-70",
+  );
 
   return (
-    <button type="button" onClick={onClick} className={`${baseClasses} ${enabledClasses}`}>
-      {content}
-    </button>
+    <Card className={cardClasses}>
+      <CardContent className="flex h-full flex-col">{content}</CardContent>
+    </Card>
   );
 }
 
@@ -1146,105 +1154,107 @@ function ModeConfigPanel({ mode, preset, rankedBand, onBack, onStart }: ModeConf
   const [language, setLanguage] = useState<string>(preset.languages[0] ?? DEFAULT_CONFIG_PRESET.languages[0]);
   const [players, setPlayers] = useState<string>(preset.playerOptions[0] ?? DEFAULT_CONFIG_PRESET.playerOptions[0]);
 
-  const gradient = `bg-gradient-to-br ${mode.accent || "from-slate-900/80 to-slate-900/40"}`;
-
   return (
-    <section className={`flex flex-col gap-10 rounded-3xl border border-sky-500/25 ${gradient} p-10 shadow-[0_0_55px_rgba(99,102,241,0.28)] lg:flex-row`}>
-      <div className="flex flex-1 flex-col gap-6">
-        <button
-          type="button"
-          onClick={onBack}
-          className="w-max rounded-full border border-sky-500/40 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.35em] text-sky-100/80 transition hover:border-sky-200 hover:bg-sky-500/20"
-        >
-          Back to modes
-        </button>
-        <div className="space-y-4">
-          <h2 className="text-4xl font-semibold text-sky-50">{mode.title}</h2>
-          <p className="text-sm text-sky-100/75">{mode.subtitle}</p>
+    <Card className="shadow-md ring-foreground/15">
+      <CardContent className="flex flex-col gap-8 p-6 sm:p-8 lg:flex-row">
+        <div className="flex flex-1 flex-col gap-5">
+          <Button variant="ghost" size="sm" className="w-fit -ml-2" onClick={onBack}>
+            <ArrowLeft data-icon="inline-start" />
+            Back to modes
+          </Button>
+          <div className="flex flex-col gap-2">
+            <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">{mode.title}</h2>
+            <p className="text-sm text-muted-foreground">{mode.subtitle}</p>
+          </div>
           {mode.details && (
-            <ul className="space-y-2 text-sm text-sky-100/70">
+            <ul className="flex flex-col gap-1.5 text-sm text-muted-foreground">
               {mode.details.map((detail) => (
                 <li key={detail} className="flex items-start gap-2">
-                  <span className="mt-1 h-2 w-2 rounded-full bg-sky-300" />
+                  <span className="mt-1.5 size-1 shrink-0 rounded-full bg-accent-foreground/60" />
                   <span>{detail}</span>
                 </li>
               ))}
             </ul>
           )}
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="outline" className={cn("gap-1", impactBadgeClass(mode.impact))}>
+              <Trophy className="size-3" />
+              {mode.impact}
+            </Badge>
+            {(mode.id === "ranked" || mode.id === "unranked") && (
+              <Badge variant="secondary">Ranked lane: {rankedBand.difficulty}</Badge>
+            )}
+            {mode.limited && <Badge variant="outline">Limited-time</Badge>}
+            {preset.note && <span className="text-xs text-muted-foreground">{preset.note}</span>}
+          </div>
         </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <span className="rounded-full border border-fuchsia-300/60 bg-fuchsia-400/20 px-4 py-1 text-[10px] font-semibold uppercase tracking-[0.4em] text-fuchsia-50">
-            {mode.impact}
-          </span>
-          {(mode.id === "ranked" || mode.id === "unranked") && (
-            <span className="rounded-full border border-emerald-300/50 bg-emerald-400/10 px-3 py-1 text-[10px] uppercase tracking-[0.3em] text-emerald-100">
-              Ranked lane now: {rankedBand.difficulty}
-            </span>
-          )}
-          {mode.limited && (
-            <span className="rounded-full border border-amber-300/50 bg-amber-400/10 px-3 py-1 text-[10px] uppercase tracking-[0.4em] text-amber-100">
-              Limited-time
-            </span>
-          )}
-          {preset.note && <span className="text-xs text-sky-100/65">{preset.note}</span>}
-        </div>
-      </div>
 
-      <div className="flex flex-1 flex-col gap-6 rounded-2xl border border-sky-500/25 bg-[#050b1c]/70 p-8">
-        <h3 className="text-lg font-semibold text-sky-50">Match setup</h3>
-        <div className="grid gap-5 md:grid-cols-2">
-          <label className="flex flex-col gap-3 text-xs font-semibold uppercase tracking-[0.35em] text-sky-400/70">
-            Timer preset
-            <select
-              value={timer}
-              onChange={(event) => setTimer(event.target.value)}
-              className="rounded-2xl border border-sky-500/30 bg-[#040a16] px-4 py-3 text-sm font-medium text-sky-100 focus:border-sky-300 focus:outline-none"
-            >
-              {(preset.timers.length ? preset.timers : DEFAULT_CONFIG_PRESET.timers).map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="flex flex-col gap-3 text-xs font-semibold uppercase tracking-[0.35em] text-sky-400/70">
-            Preferred language
-            <select
-              value={language}
-              onChange={(event) => setLanguage(event.target.value)}
-              className="rounded-2xl border border-sky-500/30 bg-[#040a16] px-4 py-3 text-sm font-medium text-sky-100 focus:border-sky-300 focus:outline-none"
-            >
-              {(preset.languages.length ? preset.languages : DEFAULT_CONFIG_PRESET.languages).map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="flex flex-col gap-3 text-xs font-semibold uppercase tracking-[0.35em] text-sky-400/70">
-            Players / queue
-            <select
-              value={players}
-              onChange={(event) => setPlayers(event.target.value)}
-              className="rounded-2xl border border-sky-500/30 bg-[#040a16] px-4 py-3 text-sm font-medium text-sky-100 focus:border-sky-300 focus:outline-none"
-            >
-              {(preset.playerOptions.length ? preset.playerOptions : DEFAULT_CONFIG_PRESET.playerOptions).map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
-          </label>
+        <div className="flex flex-1 flex-col gap-5 rounded-xl border border-border bg-muted/30 p-5 sm:p-6">
+          <h3 className="text-sm font-semibold">Match setup</h3>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="config-timer">Timer preset</Label>
+              <Select value={timer} onValueChange={(value) => { if (value !== null) setTimer(value); }}>
+                <SelectTrigger id="config-timer">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    {(preset.timers.length ? preset.timers : DEFAULT_CONFIG_PRESET.timers).map((option) => (
+                      <SelectItem key={option} value={option}>
+                        {option}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="config-language">Preferred language</Label>
+              <Select value={language} onValueChange={(value) => { if (value !== null) setLanguage(value); }}>
+                <SelectTrigger id="config-language">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    {(preset.languages.length ? preset.languages : DEFAULT_CONFIG_PRESET.languages).map((option) => (
+                      <SelectItem key={option} value={option}>
+                        {option}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex flex-col gap-2 md:col-span-2">
+              <Label htmlFor="config-players">Players / queue</Label>
+              <Select value={players} onValueChange={(value) => { if (value !== null) setPlayers(value); }}>
+                <SelectTrigger id="config-players">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    {(preset.playerOptions.length ? preset.playerOptions : DEFAULT_CONFIG_PRESET.playerOptions).map((option) => (
+                      <SelectItem key={option} value={option}>
+                        {option}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <Button
+            className="mt-2 w-full"
+            size="lg"
+            onClick={() => onStart({ timer, language, players })}
+          >
+            <Search data-icon="inline-start" />
+            Start matchmaking
+          </Button>
         </div>
-        <button
-          type="button"
-          onClick={() => onStart({ timer, language, players })}
-          className="mt-4 w-full rounded-full border border-fuchsia-400/70 bg-fuchsia-500/20 px-10 py-3 text-sm font-semibold uppercase tracking-[0.35em] text-fuchsia-50 shadow-[0_0_40px_rgba(217,70,239,0.35)] transition hover:border-fuchsia-200 hover:bg-fuchsia-500/35"
-        >
-          Start matchmaking
-        </button>
-      </div>
-    </section>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -1261,45 +1271,41 @@ function MatchmakingPanel({ mode, config, onCancel, secondsRemaining }: Matchmak
     const secs = seconds % 60;
     return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   };
-  const labelColor = mode.category === "non-ranked" ? "text-fuchsia-300/80" : "text-sky-300/80";
-  const gradient =
-    mode.category === "non-ranked"
-      ? "from-fuchsia-500/20 via-[#0a0d2c] to-[#030611]"
-      : "from-sky-500/20 via-[#051028] to-[#020813]";
 
   return (
-    <section className={`relative flex flex-1 flex-col items-center justify-center gap-10 rounded-3xl border border-sky-500/25 bg-gradient-to-br ${gradient} p-12 text-center shadow-[0_0_55px_rgba(56,189,248,0.28)]`}>
-      <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_center,_rgba(56,189,248,0.25),_transparent_60%)]" />
-      <div className="flex flex-col items-center gap-4">
-        <div className="relative flex h-20 w-20 items-center justify-center">
-          <div className="absolute inset-0 animate-ping rounded-full bg-sky-400/20" />
-          <div className="absolute inset-3 animate-pulse rounded-full bg-sky-400/10" />
-          <div className="relative flex h-full w-full items-center justify-center rounded-full border border-sky-400/70 bg-sky-500/20 text-sky-100 shadow-[0_0_30px_rgba(56,189,248,0.35)]">
-            {trophyIcon}
+    <Card className="shadow-md ring-foreground/15">
+      <CardContent className="flex flex-col items-center gap-8 px-6 py-14 text-center sm:py-16">
+        <div className="relative flex size-20 items-center justify-center">
+          <span className="absolute inset-0 animate-ping rounded-full bg-accent/30" />
+          <div className="relative flex size-16 items-center justify-center rounded-full bg-accent text-accent-foreground shadow-sm">
+            <Loader2 className="size-7 animate-spin" />
           </div>
         </div>
-        <div className="space-y-2">
-          <p className={`text-sm uppercase tracking-[0.45em] ${labelColor}`}>{mode.title}</p>
-          <h2 className="text-3xl font-semibold text-sky-50">Searching for opponent…</h2>
-          <p className="text-sm text-sky-100/70">Time remaining · {formatTime(secondsRemaining)}</p>
-          <p className="text-xs uppercase tracking-[0.35em] text-sky-200/70">{mode.impact}</p>
+        <div className="flex flex-col items-center gap-2">
+          <p className="text-xs font-semibold uppercase tracking-[0.25em] text-muted-foreground">
+            {mode.title}
+          </p>
+          <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">Searching for opponent…</h2>
+          <p className="text-sm text-muted-foreground">
+            Time remaining · <span className="font-mono font-medium text-foreground">{formatTime(secondsRemaining)}</span>
+          </p>
+          <Badge variant="outline" className={cn("mt-1 gap-1", impactBadgeClass(mode.impact))}>
+            <Trophy className="size-3" />
+            {mode.impact}
+          </Badge>
         </div>
         {config && (
-          <div className="mt-2 flex flex-wrap justify-center gap-4 text-xs uppercase tracking-[0.25em] text-sky-200/80">
-            <span>Timer · {config.timer}</span>
-            <span>Queue · {config.players}</span>
-            <span>Language · {config.language}</span>
+          <div className="flex flex-wrap justify-center gap-2 text-xs text-muted-foreground">
+            <Badge variant="secondary">Timer · {config.timer}</Badge>
+            <Badge variant="secondary">Queue · {config.players}</Badge>
+            <Badge variant="secondary">Language · {config.language}</Badge>
           </div>
         )}
-      </div>
-      <button
-        type="button"
-        onClick={onCancel}
-        className="rounded-full border border-sky-400/60 px-10 py-3 text-sm font-semibold uppercase tracking-[0.35em] text-sky-100 transition hover:border-sky-200 hover:bg-sky-500/40"
-      >
-        Cancel search
-      </button>
-    </section>
+        <Button variant="outline" onClick={onCancel}>
+          Cancel search
+        </Button>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -1311,56 +1317,39 @@ type MatchFoundPanelProps = {
 };
 
 function MatchFoundPanel({ mode, config, onEnter, onStay }: MatchFoundPanelProps) {
-  const accentBorder = mode.category === "non-ranked" ? "border-fuchsia-400/40" : "border-emerald-400/40";
-  const accentGlow = mode.category === "non-ranked" ? "shadow-[0_0_60px_rgba(217,70,239,0.4)]" : "shadow-[0_0_60px_rgba(16,185,129,0.35)]";
-  const gradientClass =
-    mode.category === "non-ranked"
-      ? "bg-gradient-to-br from-fuchsia-500/12 via-[#2a0a2f] to-[#090510]"
-      : "bg-gradient-to-br from-emerald-500/15 via-[#04131b] to-[#01080c]";
-  const radialOverlay =
-    mode.category === "non-ranked"
-      ? "bg-[radial-gradient(circle_at_top,_rgba(217,70,239,0.38),_transparent_55%)]"
-      : "bg-[radial-gradient(circle_at_top,_rgba(16,185,129,0.35),_transparent_55%)]";
-  const headlineAccent = mode.category === "non-ranked" ? "text-fuchsia-300/80" : "text-emerald-300/80";
-  const statAccent = mode.category === "non-ranked" ? "text-fuchsia-200/70" : "text-emerald-200/70";
-  const titleColor = mode.category === "non-ranked" ? "text-fuchsia-100" : "text-emerald-100";
-  const bodyColor = mode.category === "non-ranked" ? "text-fuchsia-100/70" : "text-emerald-100/70";
-  const primaryButton =
-    mode.category === "non-ranked"
-      ? "rounded-full border border-fuchsia-300/80 bg-fuchsia-400/20 px-10 py-3 text-sm font-semibold uppercase tracking-[0.35em] text-fuchsia-50 transition hover:border-fuchsia-200 hover:bg-fuchsia-400/35"
-      : "rounded-full border border-emerald-300/80 bg-emerald-400/20 px-10 py-3 text-sm font-semibold uppercase tracking-[0.35em] text-emerald-50 transition hover:border-emerald-200 hover:bg-emerald-400/35";
-  const secondaryButton =
-    mode.category === "non-ranked"
-      ? "rounded-full border border-fuchsia-300/40 px-10 py-3 text-sm font-semibold uppercase tracking-[0.35em] text-fuchsia-100 transition hover:border-fuchsia-200/60 hover:bg-fuchsia-300/10"
-      : "rounded-full border border-emerald-300/40 px-10 py-3 text-sm font-semibold uppercase tracking-[0.35em] text-emerald-100 transition hover:border-emerald-200/60 hover:bg-emerald-300/10";
-
   return (
-    <section className={`relative flex flex-1 flex-col items-center justify-center gap-10 overflow-hidden rounded-3xl ${accentBorder} ${gradientClass} p-12 text-center ${accentGlow}`}>
-      <div className={`absolute inset-0 -z-10 ${radialOverlay}`} />
-      <div className="space-y-3">
-        <p className={`text-xs font-semibold uppercase tracking-[0.45em] ${headlineAccent}`}>Opponent found</p>
-        <h2 className={`text-4xl font-semibold ${titleColor}`}>{mode.title}</h2>
-        <p className={`max-w-lg text-sm ${bodyColor}`}>
-          Match created. Enter the arena to start your duel.
-        </p>
-        <p className={`text-xs uppercase tracking-[0.35em] ${statAccent}`}>{mode.impact}</p>
+    <Card className="shadow-md ring-emerald-500/30">
+      <CardContent className="flex flex-col items-center gap-8 px-6 py-14 text-center sm:py-16">
+        <div className="flex size-16 items-center justify-center rounded-full bg-emerald-500/15">
+          <CheckCircle2 className="size-8 text-emerald-600 dark:text-emerald-400" />
+        </div>
+        <div className="flex flex-col items-center gap-2">
+          <p className="text-xs font-semibold uppercase tracking-[0.25em] text-emerald-700 dark:text-emerald-400">
+            Opponent found
+          </p>
+          <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">{mode.title}</h2>
+          <p className="max-w-lg text-sm text-muted-foreground">
+            Match created. Enter the arena to start your duel.
+          </p>
+        </div>
         {config && (
-          <div className={`flex flex-wrap justify-center gap-4 text-xs uppercase tracking-[0.25em] ${statAccent}`}>
-            <span>Timer · {config.timer}</span>
-            <span>Queue · {config.players}</span>
-            <span>Language · {config.language}</span>
+          <div className="flex flex-wrap justify-center gap-2 text-xs text-muted-foreground">
+            <Badge variant="secondary">Timer · {config.timer}</Badge>
+            <Badge variant="secondary">Queue · {config.players}</Badge>
+            <Badge variant="secondary">Language · {config.language}</Badge>
           </div>
         )}
-      </div>
-      <div className="flex flex-wrap justify-center gap-4">
-        <button type="button" onClick={onEnter} className={primaryButton}>
-          Enter match
-        </button>
-        <button type="button" onClick={onStay} className={secondaryButton}>
-          Back to modes
-        </button>
-      </div>
-    </section>
+        <div className="flex flex-wrap justify-center gap-3">
+          <Button size="lg" onClick={onEnter}>
+            <Play data-icon="inline-start" />
+            Enter match
+          </Button>
+          <Button variant="outline" size="lg" onClick={onStay}>
+            Back to modes
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -1372,39 +1361,28 @@ type NoMatchPanelProps = {
 };
 
 function NoMatchPanel({ mode, message, onBack, onTryAgain }: NoMatchPanelProps) {
-  const accentBorder = mode.category === "non-ranked" ? "border-fuchsia-400/40" : "border-rose-400/40";
-  const accentGlow = mode.category === "non-ranked" ? "shadow-[0_0_60px_rgba(217,70,239,0.28)]" : "shadow-[0_0_60px_rgba(244,63,94,0.22)]";
-  const gradientClass =
-    mode.category === "non-ranked"
-      ? "bg-gradient-to-br from-fuchsia-500/12 via-[#200a2a] to-[#090510]"
-      : "bg-gradient-to-br from-rose-500/10 via-[#18060d] to-[#06020a]";
-  const headlineAccent = mode.category === "non-ranked" ? "text-fuchsia-300/80" : "text-rose-300/80";
-  const titleColor = mode.category === "non-ranked" ? "text-fuchsia-100" : "text-rose-100";
-  const bodyColor = mode.category === "non-ranked" ? "text-fuchsia-100/70" : "text-rose-100/70";
-  const primaryButton =
-    mode.category === "non-ranked"
-      ? "rounded-full border border-fuchsia-300/80 bg-fuchsia-400/20 px-10 py-3 text-sm font-semibold uppercase tracking-[0.35em] text-fuchsia-50 transition hover:border-fuchsia-200 hover:bg-fuchsia-400/35"
-      : "rounded-full border border-rose-300/80 bg-rose-400/15 px-10 py-3 text-sm font-semibold uppercase tracking-[0.35em] text-rose-50 transition hover:border-rose-200 hover:bg-rose-400/25";
-  const secondaryButton =
-    mode.category === "non-ranked"
-      ? "rounded-full border border-fuchsia-300/40 px-10 py-3 text-sm font-semibold uppercase tracking-[0.35em] text-fuchsia-100 transition hover:border-fuchsia-200/60 hover:bg-fuchsia-300/10"
-      : "rounded-full border border-rose-300/40 px-10 py-3 text-sm font-semibold uppercase tracking-[0.35em] text-rose-100 transition hover:border-rose-200/60 hover:bg-rose-300/10";
-
   return (
-    <section className={`relative flex flex-1 flex-col items-center justify-center gap-10 overflow-hidden rounded-3xl ${accentBorder} ${gradientClass} p-12 text-center ${accentGlow}`}>
-      <div className="space-y-3">
-        <p className={`text-xs font-semibold uppercase tracking-[0.45em] ${headlineAccent}`}>Matchmaking</p>
-        <h2 className={`text-4xl font-semibold ${titleColor}`}>No opponent found</h2>
-        <p className={`max-w-lg text-sm ${bodyColor}`}>{message}</p>
-      </div>
-      <div className="flex flex-wrap justify-center gap-4">
-        <button type="button" onClick={onTryAgain} className={primaryButton}>
-          Try again
-        </button>
-        <button type="button" onClick={onBack} className={secondaryButton}>
-          Back
-        </button>
-      </div>
-    </section>
+    <Card className="shadow-md ring-destructive/20">
+      <CardContent className="flex flex-col items-center gap-8 px-6 py-14 text-center sm:py-16">
+        <div className="flex size-16 items-center justify-center rounded-full bg-destructive/10">
+          <AlertCircle className="size-8 text-destructive" />
+        </div>
+        <div className="flex flex-col items-center gap-2">
+          <p className="text-xs font-semibold uppercase tracking-[0.25em] text-muted-foreground">
+            {mode.title}
+          </p>
+          <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">No opponent found</h2>
+          <p className="max-w-lg text-sm text-muted-foreground">{message}</p>
+        </div>
+        <div className="flex flex-wrap justify-center gap-3">
+          <Button size="lg" onClick={onTryAgain}>
+            Try again
+          </Button>
+          <Button variant="outline" size="lg" onClick={onBack}>
+            Back
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

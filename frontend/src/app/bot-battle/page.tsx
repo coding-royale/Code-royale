@@ -6,6 +6,10 @@ type PageProps = {
   searchParams: { difficulty?: string };
 };
 
+function pickRandom<T>(items: T[]): T {
+  return items[Math.floor(Math.random() * items.length)];
+}
+
 export default async function BotBattlePage({ searchParams }: PageProps) {
   const supabase = await createSupabaseServerClient();
   const { data: authData } = await supabase.auth.getUser();
@@ -26,7 +30,7 @@ export default async function BotBattlePage({ searchParams }: PageProps) {
 
   let question;
   if (questions && questions.length > 0) {
-    question = questions[Math.floor(Math.random() * questions.length)];
+    question = pickRandom(questions);
   } else {
     const { data: fallback } = await supabase
       .from("practice_questions")
@@ -36,7 +40,7 @@ export default async function BotBattlePage({ searchParams }: PageProps) {
 
   if (!question) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#030915] text-sky-100">
+      <div className="flex min-h-screen items-center justify-center text-muted-foreground">
         <p>No questions available. Please seed the database first.</p>
       </div>
     );
