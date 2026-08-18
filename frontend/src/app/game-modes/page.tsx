@@ -733,11 +733,8 @@ export default function GameModesPage() {
   return (
     <AppShell>
       <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-10 px-4 pt-6 sm:px-8 lg:px-10">
-        <header className="flex flex-col justify-between gap-8 rounded-xl bg-gradient-to-br from-secondary to-muted/60 p-6 shadow-sm ring-1 ring-foreground/10 sm:flex-row sm:items-center sm:gap-10 sm:p-8">
+        <header className="flex flex-col justify-between gap-8 rounded-xl bg-secondary/40 p-6 shadow-sm ring-1 ring-black/8 dark:ring-white/10 sm:flex-row sm:items-center sm:gap-10 sm:p-8">
           <div className="flex flex-col gap-3">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent-foreground">
-              Arena
-            </p>
             <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
               Choose your battle mode
             </h1>
@@ -745,20 +742,20 @@ export default function GameModesPage() {
               Squad up, duel a rival, or warm up with friends. Ranked battles award trophies, while event modes let you experiment without wrecking your ladder standing.
             </p>
           </div>
-          <div className="flex items-center gap-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-6 py-4">
-            <div className="flex size-11 items-center justify-center rounded-full bg-amber-500/15">
-              <Trophy className="size-5 text-amber-600 dark:text-amber-400" />
+          <div className="flex items-center gap-4 rounded-lg border border-primary/30 bg-primary/10 px-6 py-4">
+            <div className="flex size-11 items-center justify-center rounded-full bg-primary/15">
+              <Trophy className="size-5 text-primary" />
             </div>
             <div className="flex flex-col">
               <div className="flex items-baseline gap-2">
-                <span className="text-3xl font-semibold tracking-tight text-amber-700 dark:text-amber-300">
+                <span className="font-mono text-3xl font-semibold tracking-tight text-primary">
                   {viewerRating.toLocaleString()}
                 </span>
-                <span className="text-xs font-medium uppercase tracking-[0.15em] text-amber-700/70 dark:text-amber-300/70">
+                <span className="font-mono text-xs font-medium uppercase tracking-[0.15em] text-primary/70">
                   Trophies
                 </span>
               </div>
-              <p className="text-xs uppercase tracking-[0.15em] text-amber-700/80 dark:text-amber-300/80">
+              <p className="font-mono text-xs uppercase tracking-[0.15em] text-primary/80">
                 {rankedBand.league} League · {rankedBand.difficulty} lane
               </p>
             </div>

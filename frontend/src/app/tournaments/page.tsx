@@ -33,7 +33,7 @@ export default function TournamentsPage() {
 
         {/* Coming Soon banner */}
         <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-          <div className="hero-glow flex flex-col items-center gap-4 px-6 py-12 text-center md:py-16">
+          <div className="flex flex-col items-center gap-4 px-6 py-12 text-center md:py-16">
             <div className="flex size-14 items-center justify-center rounded-full bg-accent text-accent-foreground">
               <Trophy className="size-7" />
             </div>

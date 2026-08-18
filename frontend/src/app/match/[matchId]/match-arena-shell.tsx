@@ -425,9 +425,9 @@ export function MatchArenaShell({
   const opponentTag = modeLabel.includes("2v2") ? "T2" : modeLabel.includes("FFA") ? "FFA" : "R";
   const timerTone =
     timerSeconds <= 30
-      ? "text-red-500"
+      ? "text-destructive"
       : timerSeconds <= 60
-        ? "text-amber-500"
+        ? "text-primary"
         : "text-foreground";
 
   return (
@@ -439,7 +439,7 @@ export function MatchArenaShell({
           <header className="relative z-20 flex flex-wrap items-center justify-between gap-4 border-b bg-background/80 px-6 py-4 backdrop-blur-md">
             <div className="flex items-center gap-4">
               <div className="flex flex-col">
-                <span className="text-[10px] uppercase tracking-[0.4em] text-amber-500">
+                <span className="font-mono text-[10px] uppercase tracking-[0.4em] text-primary">
                   {modeLabel}
                 </span>
                 <h1 className="text-xl font-bold uppercase tracking-wider md:text-2xl">
@@ -465,7 +465,7 @@ export function MatchArenaShell({
                 <Avatar className="size-10 border-2 text-sm font-bold">
                   <AvatarFallback>You</AvatarFallback>
                 </Avatar>
-                <span className="text-lg font-black uppercase text-amber-500">VS</span>
+                <span className="text-lg font-black uppercase text-primary">VS</span>
                 <Avatar className="size-10 border-2 border-red-500/40 bg-red-500/15 text-sm font-bold">
                   <AvatarFallback className="text-red-500">{opponentTag}</AvatarFallback>
                 </Avatar>

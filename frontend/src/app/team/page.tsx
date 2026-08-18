@@ -3,7 +3,7 @@
 import { Users } from "lucide-react";
 
 import { PracticeScaffold } from "../practice/practice-scaffold";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 
 export default function TeamPage() {
   return (
@@ -11,9 +11,6 @@ export default function TeamPage() {
       <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8 px-6 pt-8 sm:px-10 lg:px-16">
         <Card className="p-8">
           <CardHeader className="gap-3 p-0">
-            <CardDescription className="text-xs font-semibold uppercase tracking-[0.2em]">
-              Clubs &amp; Teams
-            </CardDescription>
             <CardTitle className="text-4xl tracking-tight sm:text-5xl">
               Join a club or team
             </CardTitle>

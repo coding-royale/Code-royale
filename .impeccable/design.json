@@ -1,0 +1,119 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-08-18T00:00:00.000Z",
+  "title": "Design System: Code Royale",
+  "extensions": {
+    "colorMeta": {
+      "desk-bg": { "role": "neutral", "displayName": "Night Desk", "canonical": "oklch(15.5% 0.008 55)", "tonalRamp": ["oklch(95% 0.006 90)", "oklch(78% 0.008 70)", "oklch(60% 0.009 62)", "oklch(45% 0.009 58)", "oklch(33% 0.009 56)", "oklch(23% 0.009 55)", "oklch(15.5% 0.008 55)", "oklch(9% 0.006 50)"] },
+      "ink": { "role": "neutral", "displayName": "Desk Ink (Paper White)", "canonical": "oklch(96% 0.006 90)", "tonalRamp": ["oklch(96% 0.006 90)", "oklch(84% 0.007 85)", "oklch(70% 0.008 80)", "oklch(55% 0.009 75)", "oklch(42% 0.010 70)", "oklch(30% 0.011 65)", "oklch(20% 0.012 60)", "oklch(12% 0.012 58)"] },
+      "paper": { "role": "neutral", "displayName": "Matte Paper", "canonical": "oklch(95.2% 0.007 90)", "tonalRamp": ["oklch(95.2% 0.007 90)", "oklch(89% 0.008 88)", "oklch(81% 0.009 85)", "oklch(72% 0.010 82)", "oklch(60% 0.011 78)", "oklch(48% 0.012 74)", "oklch(36% 0.013 70)", "oklch(26% 0.014 66)"] },
+      "paper-ink": { "role": "neutral", "displayName": "Paper Ink", "canonical": "oklch(18% 0.014 62)", "tonalRamp": ["oklch(95% 0.006 88)", "oklch(80% 0.008 82)", "oklch(64% 0.010 76)", "oklch(50% 0.012 70)", "oklch(36% 0.013 66)", "oklch(26% 0.014 64)", "oklch(18% 0.014 62)", "oklch(10% 0.012 58)"] },
+      "gold": { "role": "primary", "displayName": "Gold Foil", "canonical": "oklch(79% 0.11 80)", "tonalRamp": ["oklch(94% 0.06 80)", "oklch(88% 0.09 80)", "oklch(83% 0.11 80)", "oklch(79% 0.11 80)", "oklch(72% 0.11 78)", "oklch(65% 0.11 76)", "oklch(58% 0.11 74)", "oklch(52% 0.11 72)"] },
+      "bronze": { "role": "primary", "displayName": "Bronze Foil (gold ink on paper)", "canonical": "oklch(52% 0.11 72)", "tonalRamp": ["oklch(90% 0.05 76)", "oklch(80% 0.07 75)", "oklch(70% 0.09 74)", "oklch(62% 0.10 73)", "oklch(52% 0.11 72)", "oklch(45% 0.11 70)", "oklch(38% 0.10 68)", "oklch(30% 0.09 66)"] },
+      "gold-ink": { "role": "primary", "displayName": "Gold Ink (on plates)", "canonical": "oklch(20% 0.03 60)", "tonalRamp": ["oklch(88% 0.01 70)", "oklch(72% 0.015 68)", "oklch(55% 0.02 65)", "oklch(40% 0.025 63)", "oklch(28% 0.028 62)", "oklch(20% 0.03 60)", "oklch(14% 0.03 58)", "oklch(9% 0.028 56)"] },
+      "valley": { "role": "secondary", "displayName": "Valley Blue", "canonical": "oklch(88% 0.022 230)", "tonalRamp": ["oklch(95% 0.01 230)", "oklch(91% 0.015 230)", "oklch(88% 0.022 230)", "oklch(80% 0.03 232)", "oklch(70% 0.04 233)", "oklch(58% 0.05 233)", "oklch(44% 0.05 233)", "oklch(30% 0.045 233)"] },
+      "valley-deep": { "role": "secondary", "displayName": "Valley Deep", "canonical": "oklch(26% 0.045 235)", "tonalRamp": ["oklch(92% 0.02 235)", "oklch(80% 0.03 235)", "oklch(66% 0.04 235)", "oklch(52% 0.05 234)", "oklch(40% 0.05 234)", "oklch(26% 0.045 235)", "oklch(18% 0.04 233)", "oklch(12% 0.035 231)"] },
+      "mountain": { "role": "neutral", "displayName": "Mountain Crease", "canonical": "oklch(26% 0.012 58)", "tonalRamp": ["oklch(90% 0.008 60)", "oklch(80% 0.010 60)", "oklch(68% 0.012 60)", "oklch(55% 0.013 60)", "oklch(42% 0.013 60)", "oklch(33% 0.012 59)", "oklch(26% 0.012 58)", "oklch(18% 0.011 56)"] },
+      "muted-ink": { "role": "neutral", "displayName": "Muted Ink (desk)", "canonical": "oklch(70% 0.016 75)", "tonalRamp": ["oklch(95% 0.008 80)", "oklch(87% 0.012 78)", "oklch(80% 0.014 77)", "oklch(70% 0.016 75)", "oklch(58% 0.018 73)", "oklch(48% 0.018 72)", "oklch(38% 0.018 71)", "oklch(28% 0.017 70)"] },
+      "paper-muted": { "role": "neutral", "displayName": "Muted Ink (paper)", "canonical": "oklch(44% 0.02 70)", "tonalRamp": ["oklch(95% 0.008 80)", "oklch(85% 0.012 78)", "oklch(72% 0.016 76)", "oklch(60% 0.018 74)", "oklch(44% 0.02 70)", "oklch(36% 0.02 69)", "oklch(28% 0.019 68)", "oklch(20% 0.018 67)"] },
+      "destructive": { "role": "primary", "displayName": "Error Red", "canonical": "oklch(62% 0.18 30)", "tonalRamp": ["oklch(95% 0.02 30)", "oklch(85% 0.08 30)", "oklch(75% 0.14 30)", "oklch(62% 0.18 30)", "oklch(55% 0.18 30)", "oklch(48% 0.17 30)", "oklch(40% 0.16 30)", "oklch(30% 0.14 30)"] },
+      "ring": { "role": "primary", "displayName": "Focus Ring", "canonical": "oklch(74% 0.10 80)", "tonalRamp": ["oklch(95% 0.05 80)", "oklch(88% 0.08 80)", "oklch(82% 0.10 80)", "oklch(74% 0.10 80)", "oklch(65% 0.10 78)", "oklch(56% 0.10 76)", "oklch(47% 0.10 74)", "oklch(38% 0.09 72)"] }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Aerospace Mono Display", "purpose": "Hero headlines, page h1/h2. JetBrains Mono 700, tracking -0.03em." },
+      "body": { "displayName": "Rulebook Sans", "purpose": "Reading copy, 65-75ch max width." },
+      "label": { "displayName": "Spec Label", "purpose": "Ratings, match ids, timers, crease ids; uppercase 10-13px with wide tracking." }
+    },
+    "shadows": [
+      { "name": "card", "value": "0 3px 6px -1px hsl(38 60% 12% / 0.10), 0 2px 4px -2px hsl(38 60% 12% / 0.08)", "purpose": "Resting paper sheets on the desk." },
+      { "name": "lifted", "value": "0 14px 28px -4px rgb(0 0 0 / 0.44), 0 6px 12px -4px rgb(0 0 0 / 0.28)", "purpose": "Deployed hero sheet and hovered cards." },
+      { "name": "foil-plate", "value": "inset 0 1px 0 rgb(255 255 255 / 0.40), 0 1px 2px -1px rgb(58 42 18 / 0.50)", "purpose": "Gold plate top-edge light catch." }
+    ],
+    "motion": [
+      { "name": "deploy", "value": "cubic-bezier(0.22, 1, 0.36, 1)", "purpose": "Sheet deploy: clip-path unfold 0.7s on load; the one authored moment. Disabled under prefers-reduced-motion." },
+      { "name": "fold-in", "value": "ease-out", "purpose": "Small fold-in 0.35s for lists." }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The gold foil plate: the primary action. Bright foil on the dark desk or on paper.",
+      "html": "<button class=\"ds-btn-primary\">Find a Match</button>",
+      "css": ".ds-btn-primary { background: #e0b364; color: #201308; padding: 12px 16px; border-radius: 14px; border: none; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; font-size: 14px; font-weight: 500; cursor: pointer; box-shadow: inset 0 1px 0 rgba(255,255,255,0.40), 0 2px 4px -2px rgba(0,0,0,0.28); transition: background 0.2s, box-shadow 0.2s; } .ds-btn-primary:hover { background: #cfa354; box-shadow: inset 0 1px 0 rgba(255,255,255,0.40), 0 8px 16px -2px rgba(0,0,0,0.38); } .ds-btn-primary:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(204,164,94,0.5); }"
+    },
+    {
+      "name": "Outline Button",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "Secondary action: transparent, desk-muted, darkens on hover.",
+      "html": "<button class=\"ds-btn-outline\">See Game Modes</button>",
+      "css": ".ds-btn-outline { background: transparent; color: #f3f2ed; padding: 12px 16px; border-radius: 14px; border: 1px solid #29231e; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; font-size: 14px; font-weight: 500; cursor: pointer; transition: background 0.2s; } .ds-btn-outline:hover { background: #1c1714; } .ds-btn-outline:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(204,164,94,0.5); }"
+    },
+    {
+      "name": "Paper Card",
+      "kind": "card",
+      "refersTo": "card-sheet",
+      "description": "A deployed sheet of matte paper: the content surface of the world.",
+      "html": "<div class=\"ds-card\"><h3 class=\"ds-card-title\">Ranked Duel</h3><p class=\"ds-card-body\">Go 1v1 against friends or rivals in ranked matches. First correct submission wins.</p></div>",
+      "css": ".ds-card { background: #f1efea; color: #16100b; border-radius: 20px; padding: 24px; box-shadow: 0 3px 6px -1px rgba(0,0,0,0.38), 0 2px 4px -2px rgba(0,0,0,0.28); box-shadow: 0 14px 28px -4px rgba(0,0,0,0.44), 0 6px 12px -4px rgba(0,0,0,0.28); } .ds-card-title { font-family: 'JetBrains Mono', ui-monospace, monospace; font-weight: 700; font-size: 16px; margin: 0 0 8px; letter-spacing: -0.03em; } .ds-card-body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; font-size: 14px; line-height: 1.6; color: #5a5147; margin: 0; }"
+    },
+    {
+      "name": "Fold Mark Logo",
+      "kind": "custom",
+      "refersTo": "logo-fold-mark",
+      "description": "The CR mark: a parallelogram fold plate in valley blue with a gold-adjacent treatment.",
+      "html": "<span class=\"ds-logo\">CR</span>",
+      "css": ".ds-logo { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; background: #cadbe3; color: #132c3a; font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 14px; font-weight: 700; clip-path: polygon(8px 0, 100% 0, calc(100% - 8px) 100%, 0 100%); }"
+    },
+    {
+      "name": "Spec Label",
+      "kind": "custom",
+      "refersTo": "spec-label",
+      "description": "Crease/sheet id in aerospace mono: sheet 01 · 1v1 · rating ±32.",
+      "html": "<p class=\"ds-label\">sheet 01 · 1v1 · rating ±32</p>",
+      "css": ".ds-label { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: #5a5147; margin: 0; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Miura Fold",
+    "overview": "Code Royale is one sheet of paper on a night desk. Every screen surface is a fold of the same deployed Miura sheet — never a generic dark dashboard. The desk is near-black and warm, ruled by a faint diagonal crease grid (mountain folds in warm gray, valley folds in pale blue). Content deploys onto matte paper sheets: cards, panels, dialogs, popovers, and tables all read as paper catching the light. Gold foil is reserved for what the product values — rating, trophies, streaks, and the primary action. Ratings, match ids, timers, and technical labels are printed in aerospace spec-mono. The mood is a competitive game table at night: sharp, legible, high-stakes, and materially honest. Nothing glows, nothing is glass, nothing is neon-on-black. A sheet deploys once on load (exponential ease-out, clip-path unfold); everything else sits still and lets the content speak.",
+    "keyCharacteristics": [
+      "Dark warm desk ground, paper-white deployed sheets, gold foil accents — three materials, no gradients-as-decoration.",
+      "Aerospace spec-mono (JetBrains Mono) is the display voice; system sans is the reading voice.",
+      "Geometry is the language of folding: parallelogram edges, diagonal crease rules, valley fold lines.",
+      "Rarity of gold: it carries rank, streak, and the single primary action, never broad fills.",
+      "The desk is the chrome; .sheet scopes paper values to content surfaces."
+    ],
+    "rules": [
+      { "name": "The One Sheet Rule", "body": "Every content surface is paper. If it holds content, it is a .sheet (cards, panels, popovers, dialogs, tables); if it is chrome, it is the desk. No third material, no glass, no glow.", "section": "colors" },
+      { "name": "The Two Golds Rule", "body": "On paper, gold text uses bronze (--primary); gold plates use the bright foil (--primary-plate). A bright gold text on paper is a defect, not a style.", "section": "colors" },
+      { "name": "The Rarity of Gold Rule", "body": "Gold carries rank, streak, and the one primary action. It is not a broad fill; its rarity is the point.", "section": "colors" },
+      { "name": "The One Voice Rule", "body": "Mono is the display voice for all h1/h2. A sans-serif display face is not part of this world.", "section": "typography" },
+      { "name": "The Desk Rule", "body": "The crease grid is the ground, painted on body. A diagonal fold line or crease texture on top of an already-papered surface is doubling the material — don't.", "section": "layout" },
+      { "name": "The Paper-Over-Desk Rule", "body": "A sheet casts its shadow onto the desk; it never glows. Depth comes from the ground receding, not from the surface emitting light.", "section": "elevation" },
+      { "name": "The Fold Geometry Rule", "body": "Any strong silhouette must be a fold: a parallelogram edge, a diagonal crease. Circles are for small controls and avatars only; a sheet does not become a circle.", "section": "shapes" }
+    ],
+    "dos": [
+      "Do scope paper values with the .sheet class for any content surface; keep the desk dark.",
+      "Do use gold for rank, streak, and the single primary action — and use the bright foil (--primary-plate) for plates, bronze (--primary) for gold text on paper.",
+      "Do print match ids, ratings, timers, and technical labels in JetBrains Mono.",
+      "Do label illustrative or demo data honestly (e.g. DEMO FEED).",
+      "Do let headings stand alone; keep crease-id labels below or inside the sheet, never as an eyebrow above the heading."
+    ],
+    "donts": [
+      "Don't use purple/violet or cyan-on-dark palettes — the AI-generative tells this world deliberately refuses.",
+      "Don't put gold as bright text on paper; use bronze.",
+      "Don't add a sans-serif display face; h1/h2 are mono.",
+      "Don't use hard offset shadows (4px 4px 0) or zero-blur blocks outside this world — shadows are soft and offset.",
+      "Don't use gradient text, glass-blur decoration, or side stripes; the sheet and its folds carry the design.",
+      "Don't use emoji or unicode glyphs as interface icons; icons come from lucide-react in one consistent stroke."
+    ]
+  }
+}

@@ -132,7 +132,7 @@ export default function LoginPage() {
         {/* Logo */}
         <div className="mb-8 flex justify-center">
           <Link href="/" className="flex items-center gap-3">
-            <span className="flex size-12 items-center justify-center overflow-hidden rounded-xl bg-muted ring-1 ring-foreground/10">
+            <span className="parallelogram-sm flex size-12 items-center justify-center overflow-hidden bg-accent shadow-sm shadow-black/10">
               <Image
                 src="/images/logo-icon.svg"
                 alt="Code Royale logo"

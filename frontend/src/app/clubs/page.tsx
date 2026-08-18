@@ -77,17 +77,17 @@ function normalizeClub(club: ApiClub, index: number): Club {
 const logoOptions = ["⚔", "🐉", "◎", "⚡", "🔥", "🏆", "💎", "🚀", "👑", "🦁", "🐺", "🦅"];
 const emblemOptions = [
   { id: "sword",     name: "Sword",     color: "from-red-500 to-orange-500" },
-  { id: "shield",    name: "Shield",    color: "from-blue-500 to-cyan-500" },
+  { id: "shield",    name: "Shield",    color: "from-slate-500 to-slate-400" },
   { id: "crown",     name: "Crown",     color: "from-amber-500 to-yellow-500" },
-  { id: "star",      name: "Star",      color: "from-purple-500 to-pink-500" },
-  { id: "lightning", name: "Lightning", color: "from-cyan-500 to-blue-500" },
+  { id: "star",      name: "Star",      color: "from-blue-600 to-sky-500" },
+  { id: "lightning", name: "Lightning", color: "from-amber-400 to-orange-500" },
   { id: "fire",      name: "Fire",      color: "from-orange-500 to-red-500" },
-  { id: "dragon",    name: "Dragon",    color: "from-emerald-500 to-teal-500" },
-  { id: "target",    name: "Target",    color: "from-rose-500 to-pink-500" },
+  { id: "dragon",    name: "Dragon",    color: "from-emerald-600 to-teal-500" },
+  { id: "target",    name: "Target",    color: "from-rose-500 to-red-400" },
 ];
 
 function emblemColor(emblem: string) {
-  return emblemOptions.find((e) => e.id === emblem)?.color ?? "from-blue-500 to-cyan-500";
+  return emblemOptions.find((e) => e.id === emblem)?.color ?? "from-slate-500 to-slate-400";
 }
 
 /* ── Hover tooltip component ────────────────────────────── */

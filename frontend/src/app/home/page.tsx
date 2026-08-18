@@ -161,10 +161,11 @@ export default function HomePage() {
     <AppShell>
       <div className="flex flex-col gap-8 p-4 sm:p-6 lg:p-8">
         {/* Primary action */}
-        <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-secondary via-muted/50 to-background p-8 shadow-sm ring-1 ring-foreground/10 sm:p-10">
+        <section className="sheet-deploy sheet relative overflow-hidden rounded-xl bg-card p-8 shadow-md ring-1 ring-black/8 dark:ring-white/10 sm:p-10">
+          <div aria-hidden="true" className="parallelogram absolute -top-px right-8 hidden h-1 w-24 bg-primary sm:block" />
           <div className="relative z-10 flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
             <div className="max-w-xl">
-              <h1 className="text-3xl font-bold tracking-tight md:text-4xl">
+              <h1 className="text-3xl font-semibold tracking-tight text-card-foreground md:text-4xl">
                 Ready to battle {welcomeName}?
               </h1>
             </div>
@@ -175,25 +176,24 @@ export default function HomePage() {
               </LinkButton>
             </div>
           </div>
-          <div className="relative z-10 mt-6 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-foreground/10 pt-4 text-sm text-muted-foreground">
-            <span className="inline-flex items-center gap-1.5">
+          <div className="relative z-10 mt-6 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-border pt-4 text-sm text-muted-foreground">
+            <span className="inline-flex items-center gap-1.5 font-mono text-[13px]">
               <Swords className="size-3.5" />
               {telemetry.matchesToday.toLocaleString()} matches today
             </span>
-            <span className="inline-flex items-center gap-1.5">
+            <span className="inline-flex items-center gap-1.5 font-mono text-[13px]">
               <Users className="size-3.5" />
               {telemetry.activePlayers.toLocaleString()} online now
             </span>
-            <span className="inline-flex items-center gap-1.5">
+            <span className="inline-flex items-center gap-1.5 font-mono text-[13px]">
               <CheckCircle2 className="size-3.5" />
               {progress.solvedProblems}/{progress.totalProblems} problems solved
             </span>
-            <span className="inline-flex items-center gap-1.5 font-semibold text-amber-600 dark:text-amber-400">
+            <span className="inline-flex items-center gap-1.5 font-mono text-[13px] font-semibold text-primary">
               <Flame className="size-3.5" />
               {progress.streakDays} day streak
             </span>
           </div>
-          <div className="pointer-events-none absolute right-0 top-0 h-full w-1/2 bg-gradient-to-l from-accent/20 to-transparent" />
         </section>
 
         {/* Quick mode shortcuts */}
@@ -299,9 +299,9 @@ export default function HomePage() {
               </div>
               <div className="flex flex-col gap-2">
                 {[
-                  { label: "Easy", problems: "20 problems", textClass: "text-emerald-600 dark:text-emerald-400" },
-                  { label: "Medium", problems: "35 problems", textClass: "text-amber-600 dark:text-amber-400" },
-                  { label: "Hard", problems: "15 problems", textClass: "text-rose-600 dark:text-rose-400" },
+                  { label: "Easy", problems: "20 problems", textClass: "text-[var(--chart-3)]" },
+                  { label: "Medium", problems: "35 problems", textClass: "text-[var(--chart-1)]" },
+                  { label: "Hard", problems: "15 problems", textClass: "text-[var(--chart-4)]" },
                 ].map((tier) => (
                   <Link
                     key={tier.label}

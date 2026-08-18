@@ -43,17 +43,17 @@ type ViewerState = {
 
 const emblemOptions = [
   { id: "sword",     color: "from-red-500 to-orange-500" },
-  { id: "shield",    color: "from-blue-500 to-cyan-500" },
+  { id: "shield",    color: "from-slate-500 to-slate-400" },
   { id: "crown",     color: "from-amber-500 to-yellow-500" },
-  { id: "star",      color: "from-purple-500 to-pink-500" },
-  { id: "lightning", color: "from-cyan-500 to-blue-500" },
+  { id: "star",      color: "from-blue-600 to-sky-500" },
+  { id: "lightning", color: "from-amber-400 to-orange-500" },
   { id: "fire",      color: "from-orange-500 to-red-500" },
-  { id: "dragon",    color: "from-emerald-500 to-teal-500" },
-  { id: "target",    color: "from-rose-500 to-pink-500" },
+  { id: "dragon",    color: "from-emerald-600 to-teal-500" },
+  { id: "target",    color: "from-rose-500 to-red-400" },
 ];
 
 function emblemColor(emblem: string) {
-  return emblemOptions.find((e) => e.id === emblem)?.color ?? "from-blue-500 to-cyan-500";
+  return emblemOptions.find((e) => e.id === emblem)?.color ?? "from-slate-500 to-slate-400";
 }
 
 export default function ClubDetailPage() {

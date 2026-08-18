@@ -237,7 +237,7 @@ export function AppShell({ children, showSidebar = true }: AppShellProps) {
       <header className="sticky top-0 z-40 flex h-14 w-full shrink-0 items-center gap-2 border-b border-border bg-background/80 px-4 backdrop-blur-xl sm:px-6">
         <SidebarTrigger />
         <Link href="/home" className="flex shrink-0 items-center gap-2.5 pr-1">
-          <span className="flex size-7 items-center justify-center overflow-hidden rounded-md bg-muted ring-1 ring-foreground/10">
+          <span className="parallelogram-sm flex size-7 items-center justify-center overflow-hidden bg-accent shadow-sm shadow-black/10">
             <Image
               src="/images/logo-icon.svg"
               alt="Code Royale logo"

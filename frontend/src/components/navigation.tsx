@@ -96,7 +96,7 @@ export function Navigation() {
             "rounded-md px-3.5 py-2 text-sm font-medium transition-colors duration-200",
             mobile && "w-full",
             isActive
-              ? "bg-accent text-accent-foreground"
+              ? "bg-accent text-accent-foreground shadow-sm shadow-black/10"
               : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
           )}
         >
@@ -109,7 +109,7 @@ export function Navigation() {
     <header className="fixed inset-x-0 top-0 z-50 border-b border-border bg-background/80 backdrop-blur-xl">
       <div className="mx-auto flex h-16 w-full max-w-7xl items-center gap-4 px-4 sm:px-6">
         <Link href="/" className="group inline-flex shrink-0 items-center gap-3">
-          <span className="flex size-9 items-center justify-center overflow-hidden rounded-lg bg-muted ring-1 ring-foreground/10 transition group-hover:ring-foreground/20">
+          <span className="parallelogram-sm flex size-9 items-center justify-center overflow-hidden bg-accent shadow-sm shadow-black/10 transition group-hover:shadow-md">
             <Image
               src="/images/logo-icon.svg"
               alt="Code Royale logo"

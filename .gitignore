@@ -31,3 +31,7 @@ out/
 *.swn
 .DS_Store
 Thumbs.db
+
+# Impeccable review evidence (regenerable)
+.impeccable/review/
+frontend/.impeccable/review/
