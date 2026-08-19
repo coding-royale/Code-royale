@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { JetBrains_Mono, Space_Grotesk } from "next/font/google";
+import Script from "next/script";
 import { ThemeProvider } from "../components/theme-provider";
 import "./globals.css";
 
@@ -30,12 +31,10 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        {/* Apply the saved accent before first paint so there is no flash. */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `try{if(localStorage.getItem("cr_settings_accent")==="indigo")document.documentElement.dataset.accent="indigo"}catch(e){}`,
-          }}
-        />
+        {/* Apply the saved accent before hydration so there is no flash. */}
+        <Script id="accent-init" strategy="beforeInteractive">
+          {`try{if(localStorage.getItem("cr_settings_accent")==="indigo")document.documentElement.dataset.accent="indigo"}catch(e){}`}
+        </Script>
       </head>
       <body className={`${spaceGrotesk.variable} ${jetbrainsMono.variable} antialiased`}>
         <ThemeProvider>
