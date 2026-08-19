@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { JetBrains_Mono, Space_Grotesk } from "next/font/google";
 import { ThemeProvider } from "../components/theme-provider";
-import { Navigation } from "../components/navigation";
 import "./globals.css";
 
 const spaceGrotesk = Space_Grotesk({
@@ -30,9 +29,16 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        {/* Apply the saved accent before first paint so there is no flash. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{if(localStorage.getItem("cr_settings_accent")==="indigo")document.documentElement.dataset.accent="indigo"}catch(e){}`,
+          }}
+        />
+      </head>
       <body className={`${spaceGrotesk.variable} ${jetbrainsMono.variable} antialiased`}>
         <ThemeProvider>
-          <Navigation />
           {children}
         </ThemeProvider>
       </body>

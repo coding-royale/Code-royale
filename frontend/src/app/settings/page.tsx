@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useTheme } from "next-themes";
-import { Monitor, Moon, Sun } from "lucide-react";
+import { ImageUp, Loader2, Monitor, Moon, Sun } from "lucide-react";
 
 import { AppShell } from "../../components/app-shell";
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
-import { Avatar, AvatarFallback } from "../../components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "../../components/ui/avatar";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
@@ -15,12 +15,28 @@ import { RadioGroup, RadioGroupItem } from "../../components/ui/radio-group";
 import { Switch } from "../../components/ui/switch";
 import { Textarea } from "../../components/ui/textarea";
 import { supabase } from "../../lib/supabase-browser";
+import { getStoredAccent, applyAccent, setStoredAccent, type Accent } from "../../lib/accent";
+import { clearCachedProfile, getFreshCachedProfile, writeCachedProfile, subscribeProfileCache } from "../../lib/user-profile-cache";
 
 const themeOptions = [
   { id: "light", name: "Light", description: "Bright and airy", icon: Sun },
   { id: "dark", name: "Dark", description: "Easy on the eyes", icon: Moon },
   { id: "system", name: "System", description: "Follow your device", icon: Monitor },
 ] as const;
+
+const accentOptions: Array<{ id: Accent; name: string; description: string; swatch: string }> = [
+  { id: "mono", name: "Monochrome", description: "Neutral grays (default)", swatch: "#9aa0a6" },
+  { id: "indigo", name: "Indigo", description: "Cool arena blue", swatch: "#6366f1" },
+];
+
+function initialsFromName(name: string) {
+  const trimmed = name.trim();
+  if (!trimmed) return "CR";
+  const parts = trimmed.split(/\s+/).filter(Boolean);
+  const first = parts[0]?.[0] ?? "C";
+  const second = parts.length > 1 ? parts[1]?.[0] : parts[0]?.[1];
+  return `${first}${second ?? "R"}`.toUpperCase();
+}
 
 type StoredPrefs = {
   spectateEnabled: boolean;
@@ -69,6 +85,32 @@ export default function SettingsPage() {
     () => defaultPrefs,
   );
   const [spectateEnabled, setSpectateEnabled] = useState(storedPrefs.spectateEnabled);
+  const [accent, setAccent] = useState<Accent>(() => getStoredAccent());
+
+  useEffect(() => {
+    applyAccent(accent);
+  }, [accent]);
+
+  const handleAccentChange = (value: string) => {
+    const next = value === "indigo" ? "indigo" : "mono";
+    setAccent(next);
+    setStoredAccent(next);
+  };
+
+  // Live viewer identity from the shared profile cache (same as the header).
+  const viewerAvatar = useSyncExternalStore(
+    subscribeProfileCache,
+    () => getFreshCachedProfile()?.avatarUrl ?? null,
+    () => null,
+  );
+  const viewerName = useSyncExternalStore(
+    subscribeProfileCache,
+    () => getFreshCachedProfile()?.username ?? "Player",
+    () => "Player",
+  );
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
 
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -157,8 +199,64 @@ export default function SettingsPage() {
       return;
     }
 
+    // Username changed — the cached profile must refresh on next paint.
+    clearCachedProfile();
+
     setSuccess("Settings saved successfully.");
     setSaving(false);
+  };
+
+  const handleUpload = async (file: File) => {
+    if (uploading) return;
+    if (!file.type.startsWith("image/")) {
+      setError("Only image files are allowed.");
+      return;
+    }
+    if (file.size > 4 * 1024 * 1024) {
+      setError("Image must be 4MB or smaller.");
+      return;
+    }
+
+    setUploading(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/avatar/upload", { method: "POST", body: formData });
+      const json = (await res.json()) as { url?: string; error?: string };
+
+      if (!res.ok || !json.url) {
+        throw new Error(json.error ?? "Upload failed");
+      }
+
+      // Refresh the shared cache so the header and all surfaces update now.
+      const cached = getFreshCachedProfile();
+      if (cached) {
+        writeCachedProfile({ ...cached, avatarUrl: json.url, cachedAt: Date.now() });
+      } else {
+        const { data: authData } = await supabase.auth.getUser();
+        writeCachedProfile({
+          userId: authData.user?.id ?? "unknown",
+          username: viewerName,
+          avatarUrl: json.url,
+          cachedAt: Date.now(),
+        });
+      }
+
+      setSuccess("Profile photo updated.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Upload failed.");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (file) void handleUpload(file);
   };
 
   return (
@@ -183,14 +281,36 @@ export default function SettingsPage() {
             <CardContent className="flex flex-col gap-5">
               <div className="flex items-center gap-4">
                 <Avatar className="size-16 text-lg font-bold">
-                  <AvatarFallback>CR</AvatarFallback>
+                  {viewerAvatar ? (
+                    <AvatarImage src={viewerAvatar} alt={viewerName} className="size-full rounded-full" />
+                  ) : (
+                    <AvatarFallback>{initialsFromName(viewerName)}</AvatarFallback>
+                  )}
                 </Avatar>
                 <div>
                   <Label className="text-sm text-muted-foreground">Profile photo</Label>
-                  <div>
-                    <Button type="button" variant="outline" size="sm" className="mt-1">
-                      Upload new
+                  <div className="mt-1 flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploading}
+                    >
+                      {uploading ? (
+                        <Loader2 className="size-4 animate-spin" />
+                      ) : (
+                        <ImageUp className="size-4" />
+                      )}
+                      {uploading ? "Uploading…" : "Upload new"}
                     </Button>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleFileChange}
+                    />
                   </div>
                 </div>
               </div>
@@ -255,6 +375,41 @@ export default function SettingsPage() {
                   </label>
                 ))}
               </RadioGroup>
+
+              <div className="mt-6 border-t border-border pt-6">
+                <p className="text-sm font-medium">Accent color</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  The accent marks active states, selections, and highlights across the arena.
+                </p>
+                <RadioGroup
+                  value={accent}
+                  onValueChange={handleAccentChange}
+                  className="mt-3 grid gap-3 sm:grid-cols-2"
+                >
+                  {accentOptions.map((option) => (
+                    <label
+                      key={option.id}
+                      className={`flex cursor-pointer items-start gap-3 rounded-lg border p-4 transition-all hover:shadow-sm ${
+                        accent === option.id
+                          ? "border-primary/40 bg-accent/60 shadow-sm"
+                          : "border-border hover:bg-muted/60"
+                      }`}
+                    >
+                      <RadioGroupItem value={option.id} className="mt-0.5" />
+                      <span className="flex flex-col gap-1">
+                        <span className="flex items-center gap-2 text-sm font-medium">
+                          <span
+                            className="size-3.5 rounded-full border border-border"
+                            style={{ backgroundColor: option.swatch }}
+                          />
+                          {option.name}
+                        </span>
+                        <span className="text-xs text-muted-foreground">{option.description}</span>
+                      </span>
+                    </label>
+                  ))}
+                </RadioGroup>
+              </div>
             </CardContent>
           </Card>
 

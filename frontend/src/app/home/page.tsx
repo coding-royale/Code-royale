@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { ArrowRight, Bot, CheckCircle2, Flame, Swords, Users } from "lucide-react";
 
 import { AppShell } from "../../components/app-shell";
-import { supabase } from "../../lib/supabase-browser";
 import { useFriendPresence } from "../../lib/use-friend-presence";
+import { cachedFetch } from "../../lib/cached-fetch";
+import { getFreshCachedProfile, subscribeProfileCache } from "../../lib/user-profile-cache";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { LinkButton } from "@/components/ui/link-button";
@@ -58,7 +59,13 @@ function initialsFromName(name: string) {
 
 export default function HomePage() {
   const { friends, loading: friendsLoading } = useFriendPresence();
-  const [welcomeName, setWelcomeName] = useState("Coder");
+  // Read the cached identity synchronously on the client — the greeting never
+  // flashes an empty "Coder" on refresh (app-shell keeps the cache fresh).
+  const welcomeName = useSyncExternalStore(
+    subscribeProfileCache,
+    () => getFreshCachedProfile()?.username ?? "Coder",
+    () => "Coder",
+  );
 
   const [telemetry, setTelemetry] = useState<TelemetrySummary>({
     activePlayers: 0,
@@ -75,76 +82,34 @@ export default function HomePage() {
     let alive = true;
 
     const fetchTelemetry = async () => {
-      try {
-        const res = await fetch("/api/telemetry/summary", { cache: "no-store" });
-        if (!res.ok) return;
-        const json = (await res.json()) as Partial<TelemetrySummary>;
-        if (!alive) return;
-        setTelemetry((prev) => ({
-          activePlayers: typeof json.activePlayers === "number" ? json.activePlayers : prev.activePlayers,
-          currentVisits: typeof json.currentVisits === "number" ? json.currentVisits : prev.currentVisits,
-          matchesToday: typeof json.matchesToday === "number" ? json.matchesToday : prev.matchesToday,
-        }));
-      } catch {
-        // ignore
-      }
+      const json = await cachedFetch<Partial<TelemetrySummary>>("/api/telemetry/summary", {
+        ttlMs: 60_000,
+      });
+      if (!alive || !json) return;
+      setTelemetry((prev) => ({
+        activePlayers: typeof json.activePlayers === "number" ? json.activePlayers : prev.activePlayers,
+        currentVisits: typeof json.currentVisits === "number" ? json.currentVisits : prev.currentVisits,
+        matchesToday: typeof json.matchesToday === "number" ? json.matchesToday : prev.matchesToday,
+      }));
     };
 
     const fetchProgress = async () => {
-      try {
-        const res = await fetch("/api/profile/progress", { cache: "no-store" });
-        if (!res.ok) return;
-        const json = (await res.json()) as Partial<ProgressSummary>;
-        if (!alive) return;
-        setProgress((prev) => ({
-          solvedProblems: typeof json.solvedProblems === "number" ? json.solvedProblems : prev.solvedProblems,
-          totalProblems: typeof json.totalProblems === "number" ? json.totalProblems : prev.totalProblems,
-          streakDays: typeof json.streakDays === "number" ? json.streakDays : prev.streakDays,
-        }));
-      } catch {
-        // ignore
-      }
+      const json = await cachedFetch<Partial<ProgressSummary>>("/api/profile/progress", {
+        ttlMs: 120_000,
+      });
+      if (!alive || !json) return;
+      setProgress((prev) => ({
+        solvedProblems: typeof json.solvedProblems === "number" ? json.solvedProblems : prev.solvedProblems,
+        totalProblems: typeof json.totalProblems === "number" ? json.totalProblems : prev.totalProblems,
+        streakDays: typeof json.streakDays === "number" ? json.streakDays : prev.streakDays,
+      }));
     };
 
     void fetchTelemetry();
     void fetchProgress();
 
-    const fetchWelcomeName = async () => {
-      try {
-        const { data, error } = await supabase.auth.getUser();
-        if (!alive || error || !data.user) return;
-
-        const fallbackName =
-          (data.user.user_metadata?.display_name as string | undefined)?.trim() ||
-          (data.user.email ? data.user.email.split("@")[0] : "") ||
-          "Coder";
-
-        const { data: userRow, error: userError } = await supabase
-          .from("users")
-          .select("username")
-          .eq("id", data.user.id)
-          .maybeSingle();
-
-        if (!alive) return;
-
-        if (userError) {
-          setWelcomeName(fallbackName);
-          return;
-        }
-
-        const resolvedName =
-          (typeof userRow?.username === "string" ? userRow.username.trim() : "") || fallbackName;
-
-        setWelcomeName(resolvedName);
-      } catch {
-        // ignore
-      }
-    };
-
-    void fetchWelcomeName();
-
-    const interval = window.setInterval(fetchTelemetry, 10_000);
-    const progressInterval = window.setInterval(fetchProgress, 20_000);
+    const interval = window.setInterval(fetchTelemetry, 30_000);
+    const progressInterval = window.setInterval(fetchProgress, 60_000);
 
     return () => {
       alive = false;
@@ -202,30 +167,26 @@ export default function HomePage() {
         {/* Quick mode shortcuts */}
         <section className="flex flex-col gap-3">
           <h2 className="font-heading text-lg font-semibold">Quick Play</h2>
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-3 md:grid-cols-3">
             {battleModes.map((mode) => {
               const Icon = mode.icon;
               return (
                 <Card
                   key={mode.title}
-                  className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
+                  className="group h-fit transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
                 >
-                  <CardContent className="flex flex-col gap-3">
-                    <div className="flex size-10 items-center justify-center rounded-lg bg-accent text-accent-foreground">
-                      <Icon className="size-5" />
+                  <Link
+                    href={mode.href}
+                    className="flex items-center gap-2.5 py-2 pl-3 pr-3.5"
+                  >
+                    <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted text-foreground">
+                      <Icon className="size-4" />
                     </div>
-                    <h3 className="text-base font-semibold">{mode.title}</h3>
-                    <p className="text-sm text-muted-foreground">{mode.description}</p>
-                    <LinkButton
-                      variant="ghost"
-                      size="sm"
-                      className="mt-1 w-fit pl-0 text-accent-foreground hover:bg-transparent hover:underline"
-                      href={mode.href}
-                    >
-                      Play now
-                      <ArrowRight data-icon="inline-end" />
-                    </LinkButton>
-                  </CardContent>
+                    <h3 className="min-w-0 flex-1 truncate text-lg font-semibold">
+                      {mode.title}
+                    </h3>
+                    <ArrowRight className="size-4 shrink-0 text-muted-foreground transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-foreground" />
+                  </Link>
                 </Card>
               );
             })}

@@ -2,6 +2,7 @@ export const runtime = "nodejs";
 
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { serverCached } from "@/lib/server-cache";
 
 type TelemetryState = {
   activeByClient: Map<string, number>;
@@ -43,15 +44,17 @@ export async function GET(request: NextRequest) {
 
   const currentVisits = state.activeByClient.size;
 
-  // Query real data from Supabase
-  let activePlayers = 0;
-  let matchesToday = 0;
+  // Query real data from Supabase, cached for 60s per instance — the numbers
+  // change slowly and the dashboard polls on an interval.
+  const { activePlayers, matchesToday } = await serverCached("telemetry-db-stats", 60_000, async () => {
+    try {
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-  try {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+      if (!supabaseUrl || !supabaseKey) {
+        return { activePlayers: 0, matchesToday: 0 };
+      }
 
-    if (supabaseUrl && supabaseKey) {
       const supabase = createClient(supabaseUrl, supabaseKey, {
         auth: { autoRefreshToken: false, persistSession: false },
       });
@@ -61,8 +64,6 @@ export async function GET(request: NextRequest) {
         .from("users")
         .select("id", { count: "exact", head: true })
         .gt("wins", 0);
-
-      activePlayers = ratedPlayers ?? 0;
 
       // Count matches completed today
       const todayStart = new Date();
@@ -74,11 +75,12 @@ export async function GET(request: NextRequest) {
         .select("id", { count: "exact", head: true })
         .gte("created_at", todayIso);
 
-      matchesToday = todayMatches ?? 0;
+      return { activePlayers: ratedPlayers ?? 0, matchesToday: todayMatches ?? 0 };
+    } catch {
+      // Fall back to 0s if Supabase is unavailable
+      return { activePlayers: 0, matchesToday: 0 };
     }
-  } catch {
-    // Fall back to 0s if Supabase is unavailable
-  }
+  });
 
   const response = NextResponse.json(
     {

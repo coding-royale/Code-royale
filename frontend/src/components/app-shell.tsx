@@ -1,9 +1,8 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ReactNode, useEffect, useState } from "react";
+import { ReactNode, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import {
   Bell,
   Code2,
@@ -20,7 +19,9 @@ import {
   Users,
 } from "lucide-react";
 import { supabase } from "../lib/supabase-browser";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { getFreshCachedProfile, writeCachedProfile, clearCachedProfile, subscribeProfileCache } from "../lib/user-profile-cache";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { LinkButton } from "@/components/ui/link-button";
 import {
@@ -34,7 +35,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
 import {
   Sidebar,
   SidebarContent,
@@ -46,7 +46,6 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarProvider,
-  SidebarRail,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 
@@ -99,19 +98,74 @@ function formatNotificationTime(isoDate: string) {
   return date.toLocaleDateString();
 }
 
+function initialsFromName(name: string) {
+  const trimmed = name.trim();
+  if (!trimmed) return "CR";
+  const parts = trimmed.split(/\s+/).filter(Boolean);
+  const first = parts[0]?.[0] ?? "C";
+  const second = parts.length > 1 ? parts[1]?.[0] : parts[0]?.[1];
+  return `${first}${second ?? "R"}`.toUpperCase();
+}
+
+function ViewerAvatar({
+  avatarUrl,
+  name,
+  className,
+}: {
+  avatarUrl: string | null;
+  name: string;
+  className?: string;
+}) {
+  return (
+    <Avatar className={cn("size-8 rounded-full", className)}>
+      {avatarUrl ? (
+        <AvatarImage src={avatarUrl} alt={name} className="rounded-full" />
+      ) : (
+        <AvatarFallback className="rounded-full bg-accent font-semibold text-accent-foreground">
+          {initialsFromName(name)}
+        </AvatarFallback>
+      )}
+    </Avatar>
+  );
+}
+
 export function AppShell({ children, showSidebar = true }: AppShellProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [viewerId, setViewerId] = useState<string | null>(null);
-  const [viewerName, setViewerName] = useState("Player");
+  // Read the cached identity synchronously on the client so a refresh never
+  // flashes the empty "Player" placeholder while auth+profile resolve.
+  const viewerName = useSyncExternalStore(
+    subscribeProfileCache,
+    () => getFreshCachedProfile()?.username ?? "Player",
+    () => "Player",
+  );
+  const viewerAvatar = useSyncExternalStore(
+    subscribeProfileCache,
+    () => getFreshCachedProfile()?.avatarUrl ?? null,
+    () => null,
+  );
   const [incomingRequestCount, setIncomingRequestCount] = useState(0);
   const [pendingNotifications, setPendingNotifications] = useState<PendingNotification[]>([]);
   const [acceptingRequesterIds, setAcceptingRequesterIds] = useState<Set<string>>(new Set());
 
+  // Cache the notification inbox per user so the poll does not hit the DB
+  // on every tick.
+  const notificationCacheRef = useRef<Map<string, { count: number; notifications: PendingNotification[]; expiresAt: number }>>(new Map());
+  const NOTIFICATION_TTL_MS = 20_000;
+
   useEffect(() => {
     let mounted = true;
+    const cachedUserIdRef = { current: null as string | null };
 
     const refreshIncomingRequests = async (userId: string) => {
+      const cachedInbox = notificationCacheRef.current.get(userId);
+      if (cachedInbox && cachedInbox.expiresAt > Date.now()) {
+        setIncomingRequestCount(cachedInbox.count);
+        setPendingNotifications(cachedInbox.notifications);
+        return;
+      }
+
       const { data: rows, count, error } = await supabase
         .from("connections")
         .select("user_id,created_at", { count: "exact" })
@@ -129,6 +183,11 @@ export function AppShell({ children, showSidebar = true }: AppShellProps) {
       const requesterIds = Array.from(new Set((rows ?? []).map((row) => row.user_id as string).filter(Boolean)));
 
       if (requesterIds.length === 0) {
+        notificationCacheRef.current.set(userId, {
+          count: count ?? 0,
+          notifications: [],
+          expiresAt: Date.now() + NOTIFICATION_TTL_MS,
+        });
         setPendingNotifications([]);
         return;
       }
@@ -154,41 +213,91 @@ export function AppShell({ children, showSidebar = true }: AppShellProps) {
         timeLabel: formatNotificationTime(row.created_at as string),
       }));
 
+      notificationCacheRef.current.set(userId, {
+        count: count ?? 0,
+        notifications,
+        expiresAt: Date.now() + NOTIFICATION_TTL_MS,
+      });
+
       setPendingNotifications(notifications);
     };
 
-    const bootstrap = async () => {
+    const loadProfile = async () => {
       const { data, error } = await supabase.auth.getUser();
 
       if (!mounted || error || !data.user?.id) {
+        clearCachedProfile();
         setViewerId(null);
         setIncomingRequestCount(0);
         return;
       }
 
       setViewerId(data.user.id);
+      cachedUserIdRef.current = data.user.id;
 
-      const { data: userRow } = await supabase
-        .from("users")
-        .select("username")
-        .eq("id", data.user.id)
-        .maybeSingle();
+      // Paint from cache is handled by useSyncExternalStore above — here we
+      // just skip the server round trip when the cached profile is fresh.
+      const cached = getFreshCachedProfile();
+      if (cached && cached.userId === data.user.id) {
+        await refreshIncomingRequests(data.user.id);
+        return;
+      }
+
+      const [userRow, statsRow] = await Promise.all([
+        supabase
+          .from("users")
+          .select("username")
+          .eq("id", data.user.id)
+          .maybeSingle(),
+        supabase
+          .from("player_stats")
+          .select("avatar_url")
+          .eq("user_id", data.user.id)
+          .maybeSingle(),
+      ]);
 
       if (!mounted) return;
 
       const fallback = data.user.email?.split("@")[0]?.trim() || "Player";
       const name =
-        (typeof userRow?.username === "string" && userRow.username.trim()) || fallback;
-      setViewerName(name);
+        (typeof userRow?.data?.username === "string" && userRow.data.username.trim()) || fallback;
+
+      // Priority: OAuth provider picture, then the profile picture on file.
+      const metadataAvatar =
+        (data.user.user_metadata?.avatar_url as string | undefined) ??
+        (data.user.user_metadata?.picture as string | undefined) ??
+        null;
+      const storedAvatar =
+        (typeof statsRow?.data?.avatar_url === "string" && statsRow.data.avatar_url) || null;
+      const avatarUrl = metadataAvatar ?? storedAvatar;
+
+      writeCachedProfile({
+        userId: data.user.id,
+        username: name,
+        avatarUrl,
+        cachedAt: Date.now(),
+      });
 
       await refreshIncomingRequests(data.user.id);
     };
 
-    void bootstrap();
+    void loadProfile();
 
+    // Poll only the inbox count, not the full profile — the profile is
+    // fetched once per page load and served from the cache from then on.
     const timer = window.setInterval(() => {
-      void bootstrap();
-    }, 8000);
+      void (async () => {
+        const { data } = await supabase.auth.getUser();
+        if (!mounted || !data.user?.id) return;
+        // Session changed? Reload the profile so the UI follows the new user.
+        if (data.user.id !== cachedUserIdRef.current) {
+          cachedUserIdRef.current = data.user.id;
+          await loadProfile();
+          return;
+        }
+        await refreshIncomingRequests(data.user.id);
+      })();
+    }, 20000);
 
     return () => {
       mounted = false;
@@ -224,6 +333,7 @@ export function AppShell({ children, showSidebar = true }: AppShellProps) {
   };
 
   const handleSignOut = async () => {
+    clearCachedProfile();
     await supabase.auth.signOut().catch(() => {});
     router.push("/");
   };
@@ -235,23 +345,10 @@ export function AppShell({ children, showSidebar = true }: AppShellProps) {
   return (
     <SidebarProvider className="flex-col">
       <header className="sticky top-0 z-40 flex h-14 w-full shrink-0 items-center gap-2 border-b border-border bg-background/80 px-4 backdrop-blur-xl sm:px-6">
-        <SidebarTrigger />
-        <Link href="/home" className="flex shrink-0 items-center gap-2.5 pr-1">
-          <span className="flex size-7 items-center justify-center overflow-hidden rounded-md bg-muted ring-1 ring-foreground/10">
-            <Image
-              src="/images/logo-icon.svg"
-              alt="Code Royale logo"
-              width={28}
-              height={28}
-              className="object-contain p-0.5"
-              priority
-            />
-          </span>
-          <span className="hidden text-[15px] font-semibold tracking-tight sm:inline">
-            Code Royale
-          </span>
-        </Link>
-        <Separator orientation="vertical" className="h-6 max-md:hidden" />
+        <SidebarTrigger className="md:hidden" />
+        <span className="hidden text-[15px] font-semibold tracking-tight md:inline">
+          Code Royale
+        </span>
         <div className="pointer-events-none absolute inset-x-0 flex justify-center max-md:hidden">
           <div className="pointer-events-auto relative w-full max-w-sm">
             <Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -282,9 +379,11 @@ export function AppShell({ children, showSidebar = true }: AppShellProps) {
               }
             />
             <DropdownMenuContent align="end" className="w-80 p-0">
-              <DropdownMenuLabel className="border-b border-border px-4 py-3 text-sm font-semibold">
-                Notifications
-              </DropdownMenuLabel>
+              <DropdownMenuGroup>
+                <DropdownMenuLabel className="border-b border-border px-4 py-3 text-sm font-semibold">
+                  Notifications
+                </DropdownMenuLabel>
+              </DropdownMenuGroup>
               <ScrollArea className="max-h-80">
                 {pendingNotifications.length === 0 ? (
                   <div className="px-4 py-8 text-center text-sm text-muted-foreground">
@@ -330,9 +429,15 @@ export function AppShell({ children, showSidebar = true }: AppShellProps) {
             </DropdownMenuContent>
           </DropdownMenu>
 
-          <LinkButton variant="outline" size="icon" href="/profile" aria-label="Profile">
-            <User />
-          </LinkButton>
+          <Link href="/profile" className="shrink-0" aria-label="Profile">
+            <Avatar className="size-8 ring-1 ring-border transition hover:ring-2 hover:ring-ring">
+              {viewerAvatar ? (
+                <AvatarImage src={viewerAvatar} alt={viewerName} />
+              ) : (
+                <AvatarFallback>{initialsFromName(viewerName)}</AvatarFallback>
+              )}
+            </Avatar>
+          </Link>
         </div>
       </header>
 
@@ -369,11 +474,7 @@ export function AppShell({ children, showSidebar = true }: AppShellProps) {
                   <DropdownMenuTrigger
                     render={
                       <SidebarMenuButton size="lg">
-                        <Avatar className="size-8 rounded-full">
-                          <AvatarFallback className="rounded-full bg-accent font-semibold text-accent-foreground">
-                            CR
-                          </AvatarFallback>
-                        </Avatar>
+                        <ViewerAvatar avatarUrl={viewerAvatar} name={viewerName} />
                         <span className="grid flex-1 text-left text-sm leading-tight">
                           <span className="truncate font-semibold">{viewerName}</span>
                           <span className="truncate text-xs text-muted-foreground">Signed in</span>
@@ -386,11 +487,7 @@ export function AppShell({ children, showSidebar = true }: AppShellProps) {
                     <DropdownMenuGroup>
                       <DropdownMenuLabel className="p-0 font-normal">
                         <div className="flex items-center gap-2 px-1 py-1.5 text-sm">
-                          <Avatar className="size-8 rounded-full">
-                            <AvatarFallback className="rounded-full bg-accent font-semibold text-accent-foreground">
-                              CR
-                            </AvatarFallback>
-                          </Avatar>
+                          <ViewerAvatar avatarUrl={viewerAvatar} name={viewerName} />
                           <div className="grid flex-1 text-left leading-tight">
                             <span className="truncate font-semibold">{viewerName}</span>
                             <span className="truncate text-xs text-muted-foreground">Code Royale</span>
@@ -417,7 +514,6 @@ export function AppShell({ children, showSidebar = true }: AppShellProps) {
               </SidebarMenuItem>
             </SidebarMenu>
           </SidebarFooter>
-          <SidebarRail />
         </Sidebar>
 
         <SidebarInset>

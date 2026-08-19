@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase";
+import { serverCached } from "@/lib/server-cache";
 
 type ProgressSummary = {
   solvedProblems: number;
@@ -51,41 +52,44 @@ export async function GET() {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
 
-  const [{ count: totalProblemsCount, error: totalProblemsError }, { data: solvedRows, error: solvedError }] = await Promise.all([
-    supabase.from("practice_questions").select("id", { count: "exact", head: true }),
-    supabase
-      .from("practice_submissions")
-      .select("question_id,created_at")
-      .eq("user_id", user.id)
-      .eq("passed", true)
-      .order("created_at", { ascending: false }),
-  ]);
+  // Keep the DB queries off Postgres for 60s per user — progress changes
+  // slowly and the dashboard polls on an interval.
+  const payload = await serverCached(`progress:${user.id}`, 60_000, async () => {
+    const [{ count: totalProblemsCount, error: totalProblemsError }, { data: solvedRows, error: solvedError }] = await Promise.all([
+      supabase.from("practice_questions").select("id", { count: "exact", head: true }),
+      supabase
+        .from("practice_submissions")
+        .select("question_id,created_at")
+        .eq("user_id", user.id)
+        .eq("passed", true)
+        .order("created_at", { ascending: false }),
+    ]);
 
-  if (totalProblemsError) {
-    console.error("Failed to count practice questions", totalProblemsError);
-    return NextResponse.json({ error: "Failed to load progress" }, { status: 500 });
-  }
+    if (totalProblemsError) {
+      console.error("Failed to count practice questions", totalProblemsError);
+      throw new Error("Failed to load progress");
+    }
 
-  // If progress table is not yet created, keep API functional with zero progress.
-  if (solvedError) {
-    const fallback: ProgressSummary = {
-      solvedProblems: 0,
+    // If progress table is not yet created, keep API functional with zero progress.
+    if (solvedError) {
+      return {
+        solvedProblems: 0,
+        totalProblems: totalProblemsCount ?? 0,
+        streakDays: 0,
+      } satisfies ProgressSummary;
+    }
+
+    const rows = solvedRows ?? [];
+    const solvedProblems = new Set(rows.map((row) => row.question_id)).size;
+    const uniqueSolvedDaysDesc = Array.from(new Set(rows.map((row) => toIsoDay(row.created_at))));
+    const streakDays = computeConsecutiveDayStreak(uniqueSolvedDaysDesc);
+
+    return {
+      solvedProblems,
       totalProblems: totalProblemsCount ?? 0,
-      streakDays: 0,
-    };
-    return NextResponse.json(fallback, { headers: { "cache-control": "no-store" } });
-  }
+      streakDays,
+    } satisfies ProgressSummary;
+  });
 
-  const rows = solvedRows ?? [];
-  const solvedProblems = new Set(rows.map((row) => row.question_id)).size;
-  const uniqueSolvedDaysDesc = Array.from(new Set(rows.map((row) => toIsoDay(row.created_at))));
-  const streakDays = computeConsecutiveDayStreak(uniqueSolvedDaysDesc);
-
-  const payload: ProgressSummary = {
-    solvedProblems,
-    totalProblems: totalProblemsCount ?? 0,
-    streakDays,
-  };
-
-  return NextResponse.json(payload, { headers: { "cache-control": "no-store" } });
+  return NextResponse.json(payload, { headers: { "cache-control": "private, max-age=60" } });
 }

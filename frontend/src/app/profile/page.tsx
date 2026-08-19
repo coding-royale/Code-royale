@@ -7,7 +7,7 @@ import { Clock, Flag, Loader2, MoreVertical, Settings, Shield, Trophy, UserPlus 
 
 import { AppShell } from "../../components/app-shell";
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
-import { Avatar, AvatarFallback } from "../../components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "../../components/ui/avatar";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { LinkButton } from "../../components/ui/link-button";
@@ -41,6 +41,7 @@ type Badge = {
 type UserRow = {
   id: string;
   username: string | null;
+  avatarUrl?: string | null;
   rating: number | null;
   wins: number | null;
   losses: number | null;
@@ -167,25 +168,31 @@ function ProfileContent() {
       const hasFriendConnection = resolvedRelationship === "friends";
       setIsFriendWithViewer(hasFriendConnection);
 
-      const [{ data: userRow, error: profileError }, { data: badgesData }] = await Promise.all([
-        supabase
-          .from("users")
-          .select("id, username, rating, wins, losses, team_name")
-          .eq("id", idToLoad)
-          .maybeSingle(),
-        supabase
-          .from("user_badges")
-          .select(`
-            awarded_at,
-            badge:badges (
-              id,
-              name,
-              description,
-              icon
-            )
-          `)
-          .eq("user_id", idToLoad)
-      ]);
+      const [{ data: userRow, error: profileError }, { data: badgesData }, { data: statsRow }] =
+          await Promise.all([
+            supabase
+              .from("users")
+              .select("id, username, rating, wins, losses, team_name")
+              .eq("id", idToLoad)
+              .maybeSingle(),
+            supabase
+              .from("user_badges")
+              .select(`
+                awarded_at,
+                badge:badges (
+                  id,
+                  name,
+                  description,
+                  icon
+                )
+              `)
+              .eq("user_id", idToLoad),
+            supabase
+              .from("player_stats")
+              .select("avatar_url")
+              .eq("user_id", idToLoad)
+              .maybeSingle(),
+          ]);
 
       if (!mounted) return;
 
@@ -211,6 +218,8 @@ function ProfileContent() {
         
         setProfile({
           ...userRow as UserRow,
+          avatarUrl:
+            (typeof statsRow?.avatar_url === "string" && statsRow.avatar_url) || null,
           badges: parsedBadges
         });
       }
@@ -359,7 +368,11 @@ function ProfileContent() {
             <Card>
               <CardContent className="flex flex-wrap items-start gap-6 p-6">
                 <Avatar className="size-24 text-2xl font-bold">
-                  <AvatarFallback>{initials}</AvatarFallback>
+                  {profile?.avatarUrl ? (
+                    <AvatarImage src={profile.avatarUrl} alt={displayName} className="rounded-full" />
+                  ) : (
+                    <AvatarFallback>{initials}</AvatarFallback>
+                  )}
                 </Avatar>
                 <div className="min-w-0 flex-1">
                   {!isSelf && (

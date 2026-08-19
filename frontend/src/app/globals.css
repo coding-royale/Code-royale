@@ -87,8 +87,8 @@
   --secondary-foreground: oklch(0.2101 0.0318 264.6645);
   --muted: oklch(0.9670 0.0029 264.5419);
   --muted-foreground: oklch(0.5510 0.0234 264.3637);
-  --accent: oklch(0.9448 0.0237 262.8816);
-  --accent-foreground: oklch(0.4470 0.1279 262.8816);
+  --accent: oklch(0.94 0 0);
+  --accent-foreground: oklch(0.40 0 0);
   --destructive: oklch(0.6368 0.2078 25.3313);
   --border: oklch(0.9276 0.0058 264.5313);
   --input: oklch(0.9276 0.0058 264.5313);
@@ -103,8 +103,8 @@
   --sidebar-foreground: oklch(0.1450 0 0);
   --sidebar-primary: oklch(0.1450 0 0);
   --sidebar-primary-foreground: oklch(0.9850 0 0);
-  --sidebar-accent: oklch(0.9448 0.0237 262.8816);
-  --sidebar-accent-foreground: oklch(0.4470 0.1279 262.8816);
+  --sidebar-accent: var(--accent);
+  --sidebar-accent-foreground: var(--accent-foreground);
   --sidebar-border: oklch(0.9276 0.0058 264.5313);
   --sidebar-ring: oklch(0.5510 0.0234 264.3637);
   --destructive-foreground: oklch(0.9851 0 0);
@@ -143,8 +143,8 @@
   --secondary-foreground: oklch(0.8109 0 0);
   --muted: oklch(0.2520 0 0);
   --muted-foreground: oklch(0.7080 0 0);
-  --accent: oklch(0.2727 0.0415 262.8816);
-  --accent-foreground: oklch(0.8658 0.0433 262.8816);
+  --accent: oklch(0.35 0 0);
+  --accent-foreground: oklch(0.90 0 0);
   --destructive: oklch(0.5940 0.0443 196.0233);
   --border: oklch(0.2520 0 0);
   --input: oklch(0.2520 0 0);
@@ -158,8 +158,8 @@
   --sidebar-foreground: oklch(0.9850 0 0);
   --sidebar-primary: oklch(0.9850 0 0);
   --sidebar-primary-foreground: oklch(0.1450 0 0);
-  --sidebar-accent: oklch(0.2727 0.0415 262.8816);
-  --sidebar-accent-foreground: oklch(0.8658 0.0433 262.8816);
+  --sidebar-accent: var(--accent);
+  --sidebar-accent-foreground: var(--accent-foreground);
   --sidebar-border: oklch(0.2520 0 0);
   --sidebar-ring: oklch(0.6268 0 0);
   --destructive-foreground: oklch(0.1797 0.0043 308.1928);
@@ -183,6 +183,21 @@
   --shadow-lg: 0px 1px 4px 0px hsl(0 0% 0% / 0.05), 0px 4px 6px -1px hsl(0 0% 0% / 0.05);
   --shadow-xl: 0px 1px 4px 0px hsl(0 0% 0% / 0.05), 0px 8px 10px -1px hsl(0 0% 0% / 0.05);
   --shadow-2xl: 0px 1px 4px 0px hsl(0 0% 0% / 0.13);
+}
+
+/* Optional indigo accent — enabled from Settings. Default is monochrome. */
+[data-accent="indigo"] {
+  --accent: oklch(0.9448 0.0237 262.8816);
+  --accent-foreground: oklch(0.4470 0.1279 262.8816);
+  --sidebar-accent: oklch(0.9448 0.0237 262.8816);
+  --sidebar-accent-foreground: oklch(0.4470 0.1279 262.8816);
+}
+
+.dark[data-accent="indigo"] {
+  --accent: oklch(0.2727 0.0415 262.8816);
+  --accent-foreground: oklch(0.8658 0.0433 262.8816);
+  --sidebar-accent: oklch(0.2727 0.0415 262.8816);
+  --sidebar-accent-foreground: oklch(0.8658 0.0433 262.8816);
 }
 
 @layer base {
