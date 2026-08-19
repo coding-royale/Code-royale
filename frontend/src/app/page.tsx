@@ -1,6 +1,8 @@
 import Link from "next/link";
+import Image from "next/image";
 import { CheckIcon, SwordsIcon, TargetIcon, TrophyIcon } from "lucide-react";
 
+import { createSupabaseServerClient } from "@/lib/supabase";
 import { LinkButton } from "@/components/ui/link-button";
 import {
   Card,
@@ -9,24 +11,31 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
+// Hero background. Flickr serves only the 6k original for this photo;
+// next/image re-serves it at the viewport's actual width and quality.
+const HERO_IMAGE =
+  "https://live.staticflickr.com/8497/8308573411_7d12b44e12_6k.jpg";
+const HERO_IMAGE_BLUR =
+  "data:image/jpeg;base64,/9j/2wBDABQODxIPDRQSEBIXFRQYHjIhHhwcHj0sLiQySUBMS0dARkVQWnNiUFVtVkVGZIhlbXd7gYKBTmCNl4x9lnN+gXz/2wBDARUXFx4aHjshITt8U0ZTfHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHz/wAARCAAQABgDASIAAhEBAxEB/8QAFwABAQEBAAAAAAAAAAAAAAAABQAEBv/EAB8QAAIBBAMBAQAAAAAAAAAAAAEDAgAEESESIkFRE//EABQBAQAAAAAAAAAAAAAAAAAAAAD/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwDjKTQmbxGKh0jjJPu90cqPJkY/TTdlaPu4cZSCl9SB8wc0GS4StS5hMxPgczHoqpK4tU2ynNA/SbNziToDPlVB/9k=";
+
 const features = [
   {
     icon: SwordsIcon,
     title: "Duel Your Friends",
     description:
-      "Go head-to-head in lightning 1v1 battles or jump into chaotic 4-player brawls. Winner takes the bragging rights.",
+      "Fight head-to-head in 1v1 duels or join 4-player brawls. The winner takes the bragging rights.",
   },
   {
     icon: TrophyIcon,
     title: "Climb the Ranks",
     description:
-      "Every win pushes you up the Royale ladder. Watch your rating climb on the live leaderboard and chase the top spot.",
+      "Every win moves you up the Royale ladder. The live leaderboard shows your rating. Aim for the top spot.",
   },
   {
     icon: TargetIcon,
     title: "Practice to Get Faster",
     description:
-      "Warm up with practice problems that level with you. The more you play, the sharper — and faster — you get.",
+      "Warm up with practice problems that match your level. The more you play, the faster you get.",
   },
 ];
 
@@ -37,30 +46,49 @@ const checklist = [
   "Practice arena",
 ];
 
-export default function Home() {
+export default async function Home() {
+  const supabase = await createSupabaseServerClient();
+  const { data: authData } = await supabase.auth.getUser();
+  const isSignedIn = Boolean(authData.user);
+
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="h-dvh snap-y snap-mandatory overflow-y-auto">
       {/* Hero */}
-      <section className="hero-glow pt-32 pb-24">
-        <div className="mx-auto max-w-7xl px-6">
-          <div className="mx-auto max-w-3xl text-center">
-            <h1 className="text-5xl font-semibold tracking-tight text-foreground md:text-6xl lg:text-7xl">
+      <section className="relative flex min-h-dvh snap-start snap-always flex-col justify-center overflow-hidden bg-black">
+        <Image
+          src={HERO_IMAGE}
+          alt=""
+          fill
+          priority
+          sizes="100vw"
+          placeholder="blur"
+          blurDataURL={HERO_IMAGE_BLUR}
+          className="object-cover object-left"
+        />
+        {/* Scrim: keeps the left text zone readable over any part of the image */}
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-black/70 via-black/35 to-transparent" />
+        <div className="relative mx-auto w-full max-w-7xl px-6 py-16">
+          <div className="max-w-md text-left">
+            <h1 className="font-heading text-5xl font-semibold tracking-tight text-white md:text-6xl">
               Think fast.
-              <span className="block text-muted-foreground">Code faster.</span>
+              <span className="block text-white/70">Code faster.</span>
             </h1>
-            <p className="mx-auto mt-6 max-w-2xl text-lg text-muted-foreground md:text-xl">
-              Code Royale is a real-time coding battleground. Duel your friends,
-              smash the leaderboard, and prove you&apos;re the sharpest coder in
-              the room — one keystroke at a time.
+            <p className="mt-6 text-lg text-white/70 md:text-xl">
+              Multiplayer game where you program to kill.
             </p>
-            <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
-              <LinkButton size="lg" href="/auth/signup">
-                Start Playing
+            <div className="mt-12 flex flex-wrap items-center gap-5">
+              <LinkButton
+                size="lg"
+                href={isSignedIn ? "/home" : "/auth/signup"}
+                className="h-12 rounded-xl bg-white px-8 text-base font-semibold text-black hover:bg-white/85"
+              >
+                {isSignedIn ? "Enter Arena" : "Start Playing"}
               </LinkButton>
               <LinkButton
                 variant="outline"
                 size="lg"
                 href="/game-modes"
+                className="h-12 rounded-xl border-white/30 px-8 text-base font-semibold text-white hover:bg-white/10"
               >
                 See Game Modes
               </LinkButton>
@@ -70,19 +98,18 @@ export default function Home() {
       </section>
 
       {/* Features */}
-      <section className="border-y border-border bg-muted/30 py-20">
-        <div className="mx-auto max-w-7xl px-6">
+      <section className="flex min-h-dvh snap-start snap-always flex-col justify-center border-y border-border bg-muted/30 py-16">
+        <div className="mx-auto w-full max-w-7xl px-6">
           <div className="text-center">
-            <h2 className="text-3xl font-semibold tracking-tight text-foreground md:text-4xl">
+            <h2 className="font-heading text-3xl font-semibold tracking-tight text-foreground md:text-4xl">
               One arena. Every way to win.
             </h2>
             <p className="mt-4 text-muted-foreground">
-              Queue up solo, squad up with friends, or grind the practice arena
-              to sharpen your edge.
+              Play solo. Play with friends. Train in the practice arena.
             </p>
           </div>
 
-          <div className="mt-16 grid gap-4 md:grid-cols-3">
+          <div className="mt-14 grid gap-4 md:grid-cols-3">
             {features.map((feature) => (
               <Card
                 key={feature.title}
@@ -106,17 +133,16 @@ export default function Home() {
       </section>
 
       {/* Match preview */}
-      <section className="py-20">
-        <div className="mx-auto max-w-7xl px-6">
+      <section className="flex min-h-dvh snap-start snap-always flex-col justify-center py-16">
+        <div className="mx-auto w-full max-w-7xl px-6">
           <div className="grid gap-12 lg:grid-cols-2 lg:items-center">
             <div>
-              <h2 className="text-3xl font-semibold tracking-tight text-foreground md:text-4xl">
-                Every match is a test of speed and smarts
+              <h2 className="font-heading text-3xl font-semibold tracking-tight text-foreground md:text-4xl">
+                Every match tests speed and smarts
               </h2>
               <p className="mt-4 text-muted-foreground">
-                Jump straight into a battle — no setup, no waiting. Read the
-                prompt, write the solution, and hit submit before the clock
-                runs out.
+                Start a battle in seconds. No setup. No waiting. Read the
+                prompt. Write the solution. Submit before the clock runs out.
               </p>
               <div className="mt-8 grid gap-3 sm:grid-cols-2">
                 {checklist.map((item) => (
@@ -138,6 +164,9 @@ export default function Home() {
                   <span className="size-3 rounded-full bg-muted-foreground/30" />
                   <span className="size-3 rounded-full bg-muted-foreground/30" />
                   <span className="size-3 rounded-full bg-muted-foreground/30" />
+                  <span className="ml-auto font-mono text-xs tracking-[0.15em] text-muted-foreground">
+                    MATCH · 0x4A3F
+                  </span>
                 </div>
                 <div className="flex flex-col gap-3 p-6 font-mono text-sm">
                   <div className="text-muted-foreground">
@@ -165,33 +194,63 @@ export default function Home() {
       {/* CTA */}
       <section
         id="get-started"
-        className="border-t border-border bg-muted/30 py-20"
+        className="flex min-h-dvh snap-start snap-always flex-col justify-center border-t border-border bg-muted/30 py-16"
       >
         <div className="mx-auto max-w-3xl px-6 text-center">
-          <h2 className="text-3xl font-semibold tracking-tight text-foreground md:text-4xl">
-            Your first duel is one click away
+          <h2 className="font-heading text-3xl font-semibold tracking-tight text-foreground md:text-4xl">
+            {isSignedIn
+              ? "Your next duel starts now"
+              : "Start your first duel with one click"}
           </h2>
           <p className="mt-4 text-muted-foreground">
-            Create a free account and step into the arena. No setup, no
-            waiting — just you versus the best.
+            {isSignedIn
+              ? "No setup. No waiting. You versus the best."
+              : "Create a free account. Enter the arena. No setup. No waiting. You versus the best."}
           </p>
-          <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
-            <LinkButton size="lg" href="/auth/signup">
-              Create Account
-            </LinkButton>
-            <LinkButton
-              variant="outline"
-              size="lg"
-              href="/auth/login"
-            >
-              Sign In
-            </LinkButton>
+          <div className="mt-12 flex flex-wrap items-center justify-center gap-5">
+            {isSignedIn ? (
+              <>
+                <LinkButton
+                  size="lg"
+                  href="/home"
+                  className="h-12 rounded-xl px-8 text-base font-semibold"
+                >
+                  Enter Arena
+                </LinkButton>
+                <LinkButton
+                  variant="outline"
+                  size="lg"
+                  href="/practice"
+                  className="h-12 rounded-xl px-8 text-base font-semibold"
+                >
+                  Practice
+                </LinkButton>
+              </>
+            ) : (
+              <>
+                <LinkButton
+                  size="lg"
+                  href="/auth/signup"
+                  className="h-12 rounded-xl px-8 text-base font-semibold"
+                >
+                  Create Account
+                </LinkButton>
+                <LinkButton
+                  variant="outline"
+                  size="lg"
+                  href="/auth/login"
+                  className="h-12 rounded-xl px-8 text-base font-semibold"
+                >
+                  Sign In
+                </LinkButton>
+              </>
+            )}
           </div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-border py-12">
+      <footer className="snap-start snap-always border-t border-border py-12">
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-6 px-6 sm:flex-row">
           <div className="flex items-center gap-3">
             <span className="flex size-8 items-center justify-center rounded-lg bg-muted ring-1 ring-foreground/10">
@@ -213,10 +272,10 @@ export default function Home() {
               Practice
             </Link>
             <Link
-              href="/auth/login"
+              href={isSignedIn ? "/home" : "/auth/login"}
               className="transition-colors hover:text-foreground"
             >
-              Sign In
+              {isSignedIn ? "Dashboard" : "Sign In"}
             </Link>
           </div>
           <div className="text-sm text-muted-foreground">

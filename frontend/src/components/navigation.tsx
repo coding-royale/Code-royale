@@ -83,6 +83,11 @@ export function Navigation() {
     return null;
   }
 
+  // The landing page is intentionally header-free: a clean, minimal hero.
+  if (pathname === "/") {
+    return null;
+  }
+
   const isDark = mounted && resolvedTheme === "dark";
 
   const renderLinks = (mobile = false) =>
