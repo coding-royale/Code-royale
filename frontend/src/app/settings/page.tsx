@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { useTheme } from "next-themes";
 import { ImageUp, Loader2, Monitor, Moon, Sun } from "lucide-react";
 
 import { AppShell } from "../../components/app-shell";
+import { useTheme } from "../../components/theme-provider";
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
 import { Avatar, AvatarFallback, AvatarImage } from "../../components/ui/avatar";
 import { Button } from "../../components/ui/button";
