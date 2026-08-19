@@ -164,7 +164,7 @@ export default function HomePage() {
         <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-secondary via-muted/50 to-background p-8 shadow-sm ring-1 ring-foreground/10 sm:p-10">
           <div className="relative z-10 flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
             <div className="max-w-xl">
-              <h1 className="text-3xl font-bold tracking-tight md:text-4xl">
+              <h1 className="font-heading text-3xl font-bold tracking-tight md:text-4xl">
                 Ready to battle {welcomeName}?
               </h1>
             </div>
@@ -178,15 +178,18 @@ export default function HomePage() {
           <div className="relative z-10 mt-6 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-foreground/10 pt-4 text-sm text-muted-foreground">
             <span className="inline-flex items-center gap-1.5">
               <Swords className="size-3.5" />
-              {telemetry.matchesToday.toLocaleString()} matches today
+              <span className="font-mono">{telemetry.matchesToday.toLocaleString()}</span> matches today
             </span>
             <span className="inline-flex items-center gap-1.5">
               <Users className="size-3.5" />
-              {telemetry.activePlayers.toLocaleString()} online now
+              <span className="font-mono">{telemetry.activePlayers.toLocaleString()}</span> online now
             </span>
             <span className="inline-flex items-center gap-1.5">
               <CheckCircle2 className="size-3.5" />
-              {progress.solvedProblems}/{progress.totalProblems} problems solved
+              <span className="font-mono">
+                {progress.solvedProblems}/{progress.totalProblems}
+              </span>{" "}
+              problems solved
             </span>
             <span className="inline-flex items-center gap-1.5 font-semibold text-amber-600 dark:text-amber-400">
               <Flame className="size-3.5" />
@@ -198,7 +201,7 @@ export default function HomePage() {
 
         {/* Quick mode shortcuts */}
         <section className="flex flex-col gap-3">
-          <h2 className="text-lg font-semibold">Quick Play</h2>
+          <h2 className="font-heading text-lg font-semibold">Quick Play</h2>
           <div className="grid gap-4 md:grid-cols-3">
             {battleModes.map((mode) => {
               const Icon = mode.icon;

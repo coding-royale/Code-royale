@@ -165,7 +165,7 @@ export default function SettingsPage() {
     <AppShell>
       <div className="mx-auto w-full max-w-3xl p-6">
         <header className="mb-8">
-          <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
+          <h1 className="font-heading text-2xl font-bold tracking-tight">Settings</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Manage your account preferences and appearance.
           </p>

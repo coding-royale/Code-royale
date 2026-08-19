@@ -1,8 +1,13 @@
 import type { Metadata } from "next";
-import { JetBrains_Mono } from "next/font/google";
+import { JetBrains_Mono, Space_Grotesk } from "next/font/google";
 import { ThemeProvider } from "../components/theme-provider";
 import { Navigation } from "../components/navigation";
 import "./globals.css";
+
+const spaceGrotesk = Space_Grotesk({
+  variable: "--font-space-grotesk",
+  subsets: ["latin"],
+});
 
 const jetbrainsMono = JetBrains_Mono({
   variable: "--font-jetbrains-mono",
@@ -25,7 +30,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${jetbrainsMono.variable} antialiased`}>
+      <body className={`${spaceGrotesk.variable} ${jetbrainsMono.variable} antialiased`}>
         <ThemeProvider>
           <Navigation />
           {children}

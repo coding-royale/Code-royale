@@ -60,7 +60,7 @@ export default function TournamentsPage() {
             <div className="flex size-11 items-center justify-center rounded-xl bg-accent text-accent-foreground">
               <Trophy className="size-6" />
             </div>
-            <h1 className="text-3xl font-bold tracking-tight text-foreground">
+            <h1 className="font-heading text-3xl font-bold tracking-tight text-foreground">
               Tournaments
             </h1>
             <Badge variant="secondary" className="ml-1">COMING SOON</Badge>

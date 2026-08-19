@@ -402,7 +402,7 @@ function ProfileContent() {
                     </div>
                   )}
                   <div className="flex flex-wrap items-center gap-3">
-                    <h1 className="text-2xl font-bold tracking-tight">{displayName}</h1>
+                    <h1 className="font-heading text-2xl font-bold tracking-tight">{displayName}</h1>
                     <span className={`rounded px-2 py-0.5 text-xs font-medium ${rank.color}`}>
                       {rank.name}
                     </span>

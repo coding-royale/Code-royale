@@ -31,3 +31,7 @@ out/
 *.swn
 .DS_Store
 Thumbs.db
+
+# Local tool state
+/.claude/
+**/.impeccable/

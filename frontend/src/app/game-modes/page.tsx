@@ -738,7 +738,7 @@ export default function GameModesPage() {
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent-foreground">
               Arena
             </p>
-            <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
+            <h1 className="font-heading text-3xl font-bold tracking-tight sm:text-4xl">
               Choose your battle mode
             </h1>
             <p className="max-w-xl text-sm text-muted-foreground sm:text-base">
@@ -751,7 +751,7 @@ export default function GameModesPage() {
             </div>
             <div className="flex flex-col">
               <div className="flex items-baseline gap-2">
-                <span className="text-3xl font-semibold tracking-tight text-amber-700 dark:text-amber-300">
+                <span className="font-mono text-3xl font-semibold tracking-tight text-amber-700 dark:text-amber-300">
                   {viewerRating.toLocaleString()}
                 </span>
                 <span className="text-xs font-medium uppercase tracking-[0.15em] text-amber-700/70 dark:text-amber-300/70">
@@ -775,7 +775,7 @@ export default function GameModesPage() {
           <div className="flex flex-col gap-12">
             <section className="flex flex-col gap-6">
               <div className="flex flex-col gap-1">
-                <h2 className="text-xl font-semibold tracking-tight">Ranked & Core Modes</h2>
+                <h2 className="font-heading text-xl font-semibold tracking-tight">Ranked & Core Modes</h2>
                 <p className="text-sm text-muted-foreground">
                   Climb the ladder, invite friends, or queue up for legacy formats. These affect your season standing.
                 </p>
@@ -789,7 +789,7 @@ export default function GameModesPage() {
 
             <section className="flex flex-col gap-6">
               <div className="flex flex-col gap-1">
-                <h2 className="text-xl font-semibold tracking-tight">Non-Ranked Match Types</h2>
+                <h2 className="font-heading text-xl font-semibold tracking-tight">Non-Ranked Match Types</h2>
                 <p className="max-w-2xl text-sm text-muted-foreground">
                   Skill-focused formats with reduced or zero trophy impact. Perfect for warming up, experimenting, or casual competition.
                 </p>
