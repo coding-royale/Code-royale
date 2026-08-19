@@ -351,7 +351,7 @@ export function BotBattleArenaClient({
               <span className="text-[10px] uppercase tracking-[0.4em] text-amber-500">
                 Bot Battle · {botDifficulty.toUpperCase()}
               </span>
-              <h1 className="text-xl font-bold uppercase tracking-wider md:text-2xl">
+              <h1 className="font-heading text-xl font-bold uppercase tracking-wider md:text-2xl">
                 {question.title}
               </h1>
             </div>

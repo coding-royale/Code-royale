@@ -6,7 +6,7 @@ export default function PracticePage() {
     <AppShell>
       <div className="p-6">
         <header className="mb-8">
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Practice Arena</h1>
+          <h1 className="font-heading text-2xl font-bold tracking-tight text-foreground">Practice Arena</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Browse the problem set and pick any challenge to solve. Filter by difficulty or go random.
           </p>

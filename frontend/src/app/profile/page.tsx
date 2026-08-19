@@ -7,7 +7,7 @@ import { Clock, Flag, Loader2, MoreVertical, Settings, Shield, Trophy, UserPlus 
 
 import { AppShell } from "../../components/app-shell";
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
-import { Avatar, AvatarFallback } from "../../components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "../../components/ui/avatar";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { LinkButton } from "../../components/ui/link-button";
@@ -41,6 +41,7 @@ type Badge = {
 type UserRow = {
   id: string;
   username: string | null;
+  avatarUrl?: string | null;
   rating: number | null;
   wins: number | null;
   losses: number | null;
@@ -171,6 +172,7 @@ function ProfileContent() {
         { data: userRow, error: profileError },
         { data: badgesData },
         clubMembership,
+        { data: statsRow },
       ] = await Promise.all([
         supabase
           .from("users")
@@ -192,6 +194,11 @@ function ProfileContent() {
         supabase
           .from("club_members")
           .select("club_id")
+          .eq("user_id", idToLoad)
+          .maybeSingle(),
+        supabase
+          .from("player_stats")
+          .select("avatar_url")
           .eq("user_id", idToLoad)
           .maybeSingle(),
       ]);
@@ -236,6 +243,8 @@ function ProfileContent() {
         
         setProfile({
           ...userRow as UserRow,
+          avatarUrl:
+            (typeof statsRow?.avatar_url === "string" && statsRow.avatar_url) || null,
           badges: parsedBadges,
           club_id: clubInfo?.id ?? null,
           club_name: clubInfo?.name ?? null,
@@ -388,7 +397,11 @@ function ProfileContent() {
             <Card>
               <CardContent className="flex flex-wrap items-start gap-6 p-6">
                 <Avatar className="size-24 text-2xl font-bold">
-                  <AvatarFallback>{initials}</AvatarFallback>
+                  {profile?.avatarUrl ? (
+                    <AvatarImage src={profile.avatarUrl} alt={displayName} className="rounded-full" />
+                  ) : (
+                    <AvatarFallback>{initials}</AvatarFallback>
+                  )}
                 </Avatar>
                 <div className="min-w-0 flex-1">
                   {!isSelf && (
@@ -431,7 +444,7 @@ function ProfileContent() {
                     </div>
                   )}
                   <div className="flex flex-wrap items-center gap-3">
-                    <h1 className="text-2xl font-bold tracking-tight">{displayName}</h1>
+                    <h1 className="font-heading text-2xl font-bold tracking-tight">{displayName}</h1>
                     <span className={`rounded px-2 py-0.5 text-xs font-medium ${rank.color}`}>
                       {rank.name}
                     </span>

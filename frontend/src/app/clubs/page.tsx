@@ -79,8 +79,9 @@ const emblemOptions = [
   { id: "sword",     name: "Sword",     color: "from-red-500 to-orange-500" },
   { id: "shield",    name: "Shield",    color: "from-slate-500 to-slate-400" },
   { id: "crown",     name: "Crown",     color: "from-amber-500 to-yellow-500" },
-  { id: "star",      name: "Star",      color: "from-blue-600 to-sky-500" },
-  { id: "lightning", name: "Lightning", color: "from-amber-400 to-orange-500" },
+  { id: "star",      name: "Star",      color: "from-amber-400 to-orange-500" },
+  { id: "lightning", name: "Lightning", color: "from-cyan-500 to-blue-500" },
+
   { id: "fire",      name: "Fire",      color: "from-orange-500 to-red-500" },
   { id: "dragon",    name: "Dragon",    color: "from-emerald-600 to-teal-500" },
   { id: "target",    name: "Target",    color: "from-rose-500 to-red-400" },
@@ -473,7 +474,7 @@ export default function ClubsPage() {
         <div className="mx-auto w-full max-w-5xl p-6">
           <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h1 className="text-2xl font-bold tracking-tight">My Club</h1>
+              <h1 className="font-heading text-2xl font-bold tracking-tight">My Club</h1>
               <p className="mt-1 text-sm text-muted-foreground">
                 Manage your club and compete with teammates
               </p>
@@ -703,7 +704,7 @@ export default function ClubsPage() {
       <div className="mx-auto w-full max-w-5xl p-6">
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">Clubs</h1>
+            <h1 className="font-heading text-2xl font-bold tracking-tight">Clubs</h1>
             <p className="mt-1 text-sm text-muted-foreground">
               {myClub
                 ? "Browse other clubs (leave your current club first to join another)"

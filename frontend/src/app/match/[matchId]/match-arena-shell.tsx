@@ -442,7 +442,7 @@ export function MatchArenaShell({
                 <span className="font-mono text-[10px] uppercase tracking-[0.4em] text-primary">
                   {modeLabel}
                 </span>
-                <h1 className="text-xl font-bold uppercase tracking-wider md:text-2xl">
+                <h1 className="font-heading text-xl font-bold uppercase tracking-wider md:text-2xl">
                   {question.title}
                 </h1>
               </div>
@@ -456,7 +456,7 @@ export function MatchArenaShell({
                 <span className="text-[10px] uppercase tracking-[0.35em] text-muted-foreground">
                   Time
                 </span>
-                <span className={`text-2xl font-bold tabular-nums ${timerTone}`}>
+                <span className={`font-mono text-2xl font-bold tabular-nums ${timerTone}`}>
                   {timerState}
                 </span>
               </div>

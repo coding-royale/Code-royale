@@ -7,6 +7,7 @@
 @theme inline {
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
   --font-mono: var(--font-jetbrains-mono), ui-monospace, "SF Mono", Menlo, monospace;
+  --font-heading: var(--font-space-grotesk), -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
 
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
@@ -33,7 +34,6 @@
   --color-secondary: var(--secondary);
   --color-primary-foreground: var(--primary-foreground);
   --color-primary: var(--primary);
-  --color-primary-plate: var(--primary-plate);
   --color-popover-foreground: var(--popover-foreground);
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
@@ -48,7 +48,7 @@
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
   --font-serif: serif;
-  --radius: 0.875rem;
+  --radius: 0.75rem;
   --tracking-tighter: calc(var(--tracking-normal) - 0.05em);
   --tracking-tight: calc(var(--tracking-normal) - 0.025em);
   --tracking-wide: calc(var(--tracking-normal) + 0.025em);
@@ -74,162 +74,130 @@
   --color-destructive-foreground: var(--destructive-foreground);
 }
 
-/* ── Miura fold world ────────────────────────────────────────────────
-   Near-black warm desk ground; matte paper sheets (cards, panels,
-   popovers) as deployed content; gold foil for rating/trophies/primary
-   action; warm-gray mountain creases and pale-blue valley creases as the
-   border and grid language. The desk is the chrome; .sheet scopes paper
-   values to content surfaces. */
-
 :root {
-  /* warm paper-white desk, bright use */
-  --background: oklch(0.9600 0.006 88);
-  --foreground: oklch(0.1600 0.012 60);
-  --card: oklch(0.9850 0.004 90);
-  --card-foreground: oklch(0.1600 0.012 60);
-  --popover: oklch(0.9850 0.004 90);
-  --popover-foreground: oklch(0.1600 0.012 60);
-  --primary: oklch(0.7400 0.1100 80);
-  --primary-foreground: oklch(0.2000 0.0300 60);
-  --primary-plate: oklch(0.7400 0.1100 80);
-  --secondary: oklch(0.9300 0.0100 85);
-  --secondary-foreground: oklch(0.2400 0.0140 65);
-  --muted: oklch(0.9400 0.0080 85);
-  --muted-foreground: oklch(0.4600 0.0180 70);
-  --accent: oklch(0.8800 0.0220 230);
-  --accent-foreground: oklch(0.2800 0.0400 235);
-  --destructive: oklch(0.5600 0.1900 28);
-  --destructive-foreground: oklch(0.9800 0.0040 90);
-  --border: oklch(0.8200 0.0120 80);
-  --input: oklch(0.8200 0.0120 80);
-  --ring: oklch(0.7200 0.1000 80);
-  --chart-1: oklch(0.7400 0.1100 80);
-  --chart-2: oklch(0.6800 0.0500 235);
-  --chart-3: oklch(0.6600 0.1300 150);
-  --chart-4: oklch(0.6200 0.1200 45);
-  --chart-5: oklch(0.5800 0.0400 70);
-  --radius: 0.875rem;
-  --sidebar: oklch(0.9450 0.0070 86);
-  --sidebar-foreground: oklch(0.1800 0.0120 62);
-  --sidebar-primary: oklch(0.7400 0.1100 80);
-  --sidebar-primary-foreground: oklch(0.2000 0.0300 60);
-  --sidebar-accent: oklch(0.9000 0.0120 88);
-  --sidebar-accent-foreground: oklch(0.2000 0.0160 62);
-  --sidebar-border: oklch(0.8400 0.0100 82);
-  --sidebar-ring: oklch(0.7200 0.1000 80);
-  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
-  --font-serif: serif;
-  --font-mono: var(--font-jetbrains-mono), ui-monospace, "SF Mono", Menlo, monospace;
-  --shadow-color: #3a2a12;
-  --shadow-opacity: 0.14;
-  --shadow-blur: 12px;
-  --shadow-spread: -2px;
-  --shadow-offset-x: 0px;
-  --shadow-offset-y: 3px;
-  --letter-spacing: 0rem;
-  --spacing: 0.25rem;
-  --shadow-2xs: 0px 1px 2px 0px hsl(38 60% 12% / 0.06);
-  --shadow-xs: 0px 1px 2px 0px hsl(38 60% 12% / 0.06);
-  --shadow-sm: 0px 1px 3px 0px hsl(38 60% 12% / 0.08), 0px 1px 2px -1px hsl(38 60% 12% / 0.06);
-  --shadow: 0px 2px 4px 0px hsl(38 60% 12% / 0.09), 0px 1px 2px -1px hsl(38 60% 12% / 0.06);
-  --shadow-md: 0px 3px 6px -1px hsl(38 60% 12% / 0.10), 0px 2px 4px -2px hsl(38 60% 12% / 0.08);
-  --shadow-lg: 0px 8px 16px -2px hsl(38 60% 12% / 0.12), 0px 4px 8px -2px hsl(38 60% 12% / 0.08);
-  --shadow-xl: 0px 14px 28px -4px hsl(38 60% 12% / 0.16), 0px 6px 12px -4px hsl(38 60% 12% / 0.10);
-  --shadow-2xl: 0px 24px 48px -8px hsl(38 60% 12% / 0.20);
-  --tracking-normal: 0rem;
-}
-
-.dark {
-  /* near-black warm desk, night play */
-  --background: oklch(0.1550 0.0080 55);
-  --foreground: oklch(0.9600 0.0060 90);
-  --card: oklch(0.1850 0.0090 56);
-  --card-foreground: oklch(0.9600 0.0060 90);
-  --popover: oklch(0.2000 0.0100 58);
-  --popover-foreground: oklch(0.9600 0.0060 90);
-  --primary: oklch(0.7900 0.1100 80);
-  --primary-foreground: oklch(0.2000 0.0300 60);
-  --primary-plate: oklch(0.7900 0.1100 80);
-  --secondary: oklch(0.2200 0.0100 57);
-  --secondary-foreground: oklch(0.9200 0.0080 88);
-  --muted: oklch(0.2100 0.0100 56);
-  --muted-foreground: oklch(0.7000 0.0160 75);
-  --accent: oklch(0.2600 0.0180 232);
-  --accent-foreground: oklch(0.8500 0.0300 232);
-  --destructive: oklch(0.6200 0.1800 30);
-  --destructive-foreground: oklch(0.9800 0.0040 90);
-  --border: oklch(0.2600 0.0120 58);
-  --input: oklch(0.2600 0.0120 58);
-  --ring: oklch(0.7400 0.1000 80);
-  --chart-1: oklch(0.7900 0.1100 80);
-  --chart-2: oklch(0.7000 0.0500 235);
-  --chart-3: oklch(0.6800 0.1300 150);
-  --chart-4: oklch(0.6600 0.1200 45);
-  --chart-5: oklch(0.6200 0.0400 70);
-  --radius: 0.875rem;
-  --sidebar: oklch(0.1700 0.0090 56);
-  --sidebar-foreground: oklch(0.9200 0.0080 88);
-  --sidebar-primary: oklch(0.7900 0.1100 80);
-  --sidebar-primary-foreground: oklch(0.2000 0.0300 60);
-  --sidebar-accent: oklch(0.2500 0.0140 60);
-  --sidebar-accent-foreground: oklch(0.9600 0.0060 90);
-  --sidebar-border: oklch(0.2500 0.0120 58);
-  --sidebar-ring: oklch(0.7400 0.1000 80);
-  --destructive-foreground: oklch(0.9800 0.0040 90);
-  --radius: 0.875rem;
+  --background: oklch(1.0000 0 0);
+  --foreground: oklch(0.1450 0 0);
+  --card: oklch(1.0000 0 0);
+  --card-foreground: oklch(0.1450 0 0);
+  --popover: oklch(1.0000 0 0);
+  --popover-foreground: oklch(0.1450 0 0);
+  --primary: oklch(0.1450 0 0);
+  --primary-foreground: oklch(0.9850 0 0);
+  --secondary: oklch(0.9670 0.0029 264.5419);
+  --secondary-foreground: oklch(0.2101 0.0318 264.6645);
+  --muted: oklch(0.9670 0.0029 264.5419);
+  --muted-foreground: oklch(0.5510 0.0234 264.3637);
+  --accent: oklch(0.94 0 0);
+  --accent-foreground: oklch(0.40 0 0);
+  --destructive: oklch(0.6368 0.2078 25.3313);
+  --border: oklch(0.9276 0.0058 264.5313);
+  --input: oklch(0.9276 0.0058 264.5313);
+  --ring: oklch(0.5510 0.0234 264.3637);
+  --chart-1: oklch(0.5940 0.0443 196.0233);
+  --chart-2: oklch(0.7214 0.1337 49.9802);
+  --chart-3: oklch(0.8721 0.0864 68.5474);
+  --chart-4: oklch(0.6268 0 0);
+  --chart-5: oklch(0.6830 0 0);
+  --radius: 0.75rem;
+  --sidebar: oklch(0.9670 0.0029 264.5419);
+  --sidebar-foreground: oklch(0.1450 0 0);
+  --sidebar-primary: oklch(0.1450 0 0);
+  --sidebar-primary-foreground: oklch(0.9850 0 0);
+  --sidebar-accent: var(--accent);
+  --sidebar-accent-foreground: var(--accent-foreground);
+  --sidebar-border: oklch(0.9276 0.0058 264.5313);
+  --sidebar-ring: oklch(0.5510 0.0234 264.3637);
+  --destructive-foreground: oklch(0.9851 0 0);
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
   --font-serif: serif;
   --font-mono: var(--font-jetbrains-mono), ui-monospace, "SF Mono", Menlo, monospace;
   --shadow-color: #000000;
-  --shadow-opacity: 0.35;
-  --shadow-blur: 16px;
-  --shadow-spread: -2px;
+  --shadow-opacity: 0.05;
+  --shadow-blur: 4px;
+  --shadow-spread: 0px;
   --shadow-offset-x: 0px;
-  --shadow-offset-y: 4px;
+  --shadow-offset-y: 1px;
   --letter-spacing: 0rem;
   --spacing: 0.25rem;
-  --shadow-2xs: 0px 1px 2px 0px hsl(0 0% 0% / 0.20);
-  --shadow-xs: 0px 1px 2px 0px hsl(0 0% 0% / 0.20);
-  --shadow-sm: 0px 1px 3px 0px hsl(0 0% 0% / 0.24), 0px 1px 2px -1px hsl(0 0% 0% / 0.20);
-  --shadow: 0px 2px 4px 0px hsl(0 0% 0% / 0.28), 0px 1px 2px -1px hsl(0 0% 0% / 0.20);
-  --shadow-md: 0px 3px 6px -1px hsl(0 0% 0% / 0.32), 0px 2px 4px -2px hsl(0 0% 0% / 0.24);
-  --shadow-lg: 0px 8px 16px -2px hsl(0 0% 0% / 0.38), 0px 4px 8px -2px hsl(0 0% 0% / 0.26);
-  --shadow-xl: 0px 14px 28px -4px hsl(0 0% 0% / 0.44), 0px 6px 12px -4px hsl(0 0% 0% / 0.28);
-  --shadow-2xl: 0px 24px 48px -8px hsl(0 0% 0% / 0.50);
+  --shadow-2xs: 0px 1px 4px 0px hsl(0 0% 0% / 0.03);
+  --shadow-xs: 0px 1px 4px 0px hsl(0 0% 0% / 0.03);
+  --shadow-sm: 0px 1px 4px 0px hsl(0 0% 0% / 0.05), 0px 1px 2px -1px hsl(0 0% 0% / 0.05);
+  --shadow: 0px 1px 4px 0px hsl(0 0% 0% / 0.05), 0px 1px 2px -1px hsl(0 0% 0% / 0.05);
+  --shadow-md: 0px 1px 4px 0px hsl(0 0% 0% / 0.05), 0px 2px 4px -1px hsl(0 0% 0% / 0.05);
+  --shadow-lg: 0px 1px 4px 0px hsl(0 0% 0% / 0.05), 0px 4px 6px -1px hsl(0 0% 0% / 0.05);
+  --shadow-xl: 0px 1px 4px 0px hsl(0 0% 0% / 0.05), 0px 8px 10px -1px hsl(0 0% 0% / 0.05);
+  --shadow-2xl: 0px 1px 4px 0px hsl(0 0% 0% / 0.13);
+  --tracking-normal: 0rem;
 }
 
-/* ── Paper sheet scope ────────────────────────────────────────────────
-   Applied to deployed content surfaces (Card, dialogs, popovers, sheets,
-   tables). Carries matte-paper values so ink reads on paper while the
-   desk around it stays dark. */
+.dark {
+  --background: oklch(0.1410 0 0);
+  --foreground: oklch(0.9850 0 0);
+  --card: oklch(0.2100 0 0);
+  --card-foreground: oklch(0.9850 0 0);
+  --popover: oklch(0.2100 0 0);
+  --popover-foreground: oklch(0.9850 0 0);
+  --primary: oklch(0.9850 0 0);
+  --primary-foreground: oklch(0.1450 0 0);
+  --secondary: oklch(0.2520 0 0);
+  --secondary-foreground: oklch(0.8109 0 0);
+  --muted: oklch(0.2520 0 0);
+  --muted-foreground: oklch(0.7080 0 0);
+  --accent: oklch(0.35 0 0);
+  --accent-foreground: oklch(0.90 0 0);
+  --destructive: oklch(0.5940 0.0443 196.0233);
+  --border: oklch(0.2520 0 0);
+  --input: oklch(0.2520 0 0);
+  --ring: oklch(0.6268 0 0);
+  --chart-1: oklch(0.5940 0.0443 196.0233);
+  --chart-2: oklch(0.7214 0.1337 49.9802);
+  --chart-3: oklch(0.8721 0.0864 68.5474);
+  --chart-4: oklch(0.6268 0 0);
+  --chart-5: oklch(0.6830 0 0);
+  --sidebar: oklch(0.2100 0 0);
+  --sidebar-foreground: oklch(0.9850 0 0);
+  --sidebar-primary: oklch(0.9850 0 0);
+  --sidebar-primary-foreground: oklch(0.1450 0 0);
+  --sidebar-accent: var(--accent);
+  --sidebar-accent-foreground: var(--accent-foreground);
+  --sidebar-border: oklch(0.2520 0 0);
+  --sidebar-ring: oklch(0.6268 0 0);
+  --destructive-foreground: oklch(0.1797 0.0043 308.1928);
+  --radius: 0.75rem;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+  --font-serif: serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, "SF Mono", Menlo, monospace;
+  --shadow-color: #000000;
+  --shadow-opacity: 0.05;
+  --shadow-blur: 4px;
+  --shadow-spread: 0px;
+  --shadow-offset-x: 0px;
+  --shadow-offset-y: 1px;
+  --letter-spacing: 0rem;
+  --spacing: 0.25rem;
+  --shadow-2xs: 0px 1px 4px 0px hsl(0 0% 0% / 0.03);
+  --shadow-xs: 0px 1px 4px 0px hsl(0 0% 0% / 0.03);
+  --shadow-sm: 0px 1px 4px 0px hsl(0 0% 0% / 0.05), 0px 1px 2px -1px hsl(0 0% 0% / 0.05);
+  --shadow: 0px 1px 4px 0px hsl(0 0% 0% / 0.05), 0px 1px 2px -1px hsl(0 0% 0% / 0.05);
+  --shadow-md: 0px 1px 4px 0px hsl(0 0% 0% / 0.05), 0px 2px 4px -1px hsl(0 0% 0% / 0.05);
+  --shadow-lg: 0px 1px 4px 0px hsl(0 0% 0% / 0.05), 0px 4px 6px -1px hsl(0 0% 0% / 0.05);
+  --shadow-xl: 0px 1px 4px 0px hsl(0 0% 0% / 0.05), 0px 8px 10px -1px hsl(0 0% 0% / 0.05);
+  --shadow-2xl: 0px 1px 4px 0px hsl(0 0% 0% / 0.13);
+}
 
-.sheet {
-  --card: oklch(0.9520 0.0070 90);
-  --card-foreground: oklch(0.1800 0.0140 62);
-  --popover: oklch(0.9600 0.0070 92);
-  --popover-foreground: oklch(0.1800 0.0140 62);
-  --background: oklch(0.9520 0.0070 90);
-  --foreground: oklch(0.1800 0.0140 62);
-  --muted: oklch(0.9200 0.0080 88);
-  --muted-foreground: oklch(0.4400 0.0200 70);
-  --accent: oklch(0.8800 0.0220 230);
-  --accent-foreground: oklch(0.2600 0.0450 235);
-  --border: oklch(0.8100 0.0140 80);
-  --input: oklch(0.8100 0.0140 80);
-  --secondary: oklch(0.9200 0.0080 88);
-  --secondary-foreground: oklch(0.2400 0.0160 62);
-  --primary: oklch(0.5200 0.1100 72);
-  --primary-foreground: oklch(0.1800 0.0140 62);
-  --primary-plate: oklch(0.7900 0.1100 80);
-  --ring: oklch(0.5200 0.1100 72);
-  --sidebar: oklch(0.9400 0.0070 90);
-  --sidebar-foreground: oklch(0.2000 0.0140 62);
-  --sidebar-accent: oklch(0.9000 0.0100 88);
-  --sidebar-accent-foreground: oklch(0.2000 0.0160 62);
-  --sidebar-border: oklch(0.8300 0.0100 82);
-  --sidebar-ring: oklch(0.5200 0.1100 72);
-  --shadow-color: #4a3a20;
-  --shadow-opacity: 0.18;
+/* Optional indigo accent — enabled from Settings. Default is monochrome. */
+[data-accent="indigo"] {
+  --accent: oklch(0.9448 0.0237 262.8816);
+  --accent-foreground: oklch(0.4470 0.1279 262.8816);
+  --sidebar-accent: oklch(0.9448 0.0237 262.8816);
+  --sidebar-accent-foreground: oklch(0.4470 0.1279 262.8816);
+}
+
+.dark[data-accent="indigo"] {
+  --accent: oklch(0.2727 0.0415 262.8816);
+  --accent-foreground: oklch(0.8658 0.0433 262.8816);
+  --sidebar-accent: oklch(0.2727 0.0415 262.8816);
+  --sidebar-accent-foreground: oklch(0.8658 0.0433 262.8816);
 }
 
 @layer base {
@@ -243,18 +211,13 @@
     @apply bg-background text-foreground;
     min-height: 100vh;
     -webkit-font-smoothing: antialiased;
+    /* Subtle accent veil near the top of every page — depth, not neon */
+    background-image: radial-gradient(
+      ellipse 80% 40% at 50% -5%,
+      color-mix(in oklch, var(--accent) 12%, transparent),
+      transparent 70%
+    );
     letter-spacing: var(--tracking-normal);
-    /* The desk is ruled by a diagonal crease grid — mountain and valley folds. */
-    background-image:
-      repeating-linear-gradient(-6deg, transparent 0 46px, oklch(0.5 0.02 70 / 0.05) 46px 47px),
-      repeating-linear-gradient(84deg, transparent 0 74px, oklch(0.6 0.05 232 / 0.045) 74px 75px);
-  }
-  /* Display voice: aerospace spec-mono, the world's lettering. */
-  h1,
-  h2 {
-    font-family: var(--font-jetbrains-mono), ui-monospace, "SF Mono", Menlo, monospace;
-    font-weight: 700;
-    letter-spacing: calc(var(--tracking-normal) - 0.03em);
   }
   a {
     color: inherit;
@@ -262,120 +225,81 @@
   }
 }
 
-/* Selection is gold ink on paper. */
 ::selection {
-  background: color-mix(in oklch, var(--primary) 85%, white 8%);
-  color: var(--primary-foreground);
+  background: color-mix(in oklch, var(--accent) 70%, transparent);
+  color: var(--accent-foreground);
 }
 
-/* Thin crease-gray scrollbar. */
+/* Caret follows the interaction voice, like the ring on focus */
+html {
+  caret-color: var(--accent-foreground);
+}
+
+/* The stage: a precise VS divisor for head-to-head moments */
+.vs-divisor {
+  display: inline-flex;
+  height: 2.25rem;
+  min-width: 2.25rem;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: 9999px;
+  background: var(--card);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--accent-foreground);
+}
+
+/* Hairline chip for micro meta data (ratings, match ids) */
+.meta-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  border: 1px solid color-mix(in oklch, var(--border) 85%, transparent);
+  background: color-mix(in oklch, var(--muted) 40%, transparent);
+  border-radius: 9999px;
+  padding: 0.125rem 0.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  color: var(--muted-foreground);
+}
+
+/* Subtle accent tint behind hero sections (depth, not neon) */
+.hero-glow {
+  background-image:
+    radial-gradient(
+      ellipse 75% 60% at 50% -5%,
+      color-mix(in oklch, var(--accent) 30%, transparent),
+      transparent 72%
+    ),
+    radial-gradient(
+      ellipse 45% 30% at 50% 110%,
+      color-mix(in oklch, var(--accent) 10%, transparent),
+      transparent 70%
+    );
+}
+
+/* Clean monochrome scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: transparent;
+  background: var(--muted);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: color-mix(in oklch, var(--border) 70%, var(--background));
+  background: var(--border);
   border-radius: 9999px;
-  border: 2px solid transparent;
-  background-clip: padding-box;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: color-mix(in oklch, var(--muted-foreground) 80%, transparent);
-  background-clip: padding-box;
-  border: 2px solid transparent;
-}
-
-/* Caret in gold. */
-input, textarea, [contenteditable="true"] {
-  caret-color: var(--ring);
-}
-
-/* Tabular numerals in data stay aligned. */
-table, .tabular-nums {
-  font-feature-settings: "tnum" 1, "cv03" 1;
-}
-
-/* ── World utilities ───────────────────────────────────────────────── */
-
-/* A gold foil plate — a parallelogram fold carrying the primary action or a rank. */
-.foil-plate {
-  background: linear-gradient(
-    180deg,
-    color-mix(in oklch, var(--primary) 92%, white 8%) 0%,
-    var(--primary) 45%,
-    color-mix(in oklch, var(--primary) 88%, oklch(0.35 0.10 60) 12%) 100%
-  );
-  color: var(--primary-foreground);
-  box-shadow:
-    inset 0 1px 0 color-mix(in oklch, white 40%, transparent),
-    0 1px 2px -1px color-mix(in oklch, var(--shadow-color) 50%, transparent);
-}
-
-/* Diagonal crease rule under headings — a valley fold scored in pale blue. */
-.fold-rule {
-  position: relative;
-}
-.fold-rule::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: -0.5rem;
-  height: 1px;
-  background: linear-gradient(
-    90deg,
-    color-mix(in oklch, var(--accent) 80%, transparent) 0%,
-    color-mix(in oklch, var(--accent) 25%, transparent) 62%,
-    transparent 100%
-  );
-}
-
-/* A parallelogram sheet edge — content blocks land on the tessellation diagonal. */
-.parallelogram {
-  clip-path: polygon(14px 0, 100% 0, calc(100% - 14px) 100%, 0 100%);
-}
-.parallelogram-sm {
-  clip-path: polygon(8px 0, 100% 0, calc(100% - 8px) 100%, 0 100%);
-}
-
-/* ── Deploy: the sheet unfolds ─────────────────────────────────────── */
-
-@keyframes deploy {
-  0% {
-    opacity: 0;
-    transform: translateY(14px) scale(0.985);
-    clip-path: polygon(0 0, 100% 0, 100% 0, 0 0);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-    clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
-  }
-}
-
-.sheet-deploy {
-  animation: deploy 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-@keyframes foldIn {
-  from {
-    opacity: 0;
-    transform: translateX(-6px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-.fold-in {
-  animation: foldIn 0.35s ease-out both;
+  background: color-mix(in oklch, var(--border) 70%, var(--foreground));
 }
 
 /* Split pane resizer (practice arena) */
@@ -404,9 +328,17 @@ table, .tabular-nums {
   box-shadow: 0 0 0 2px color-mix(in oklch, var(--ring) 40%, transparent);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .sheet-deploy,
-  .fold-in {
-    animation: none;
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
   }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out forwards;
 }

@@ -4,7 +4,8 @@ import { useState, useMemo, useEffect } from "react";
 import { Trophy } from "lucide-react";
 import { AppShell } from "../../components/app-shell";
 import { supabase } from "../../lib/supabase-browser";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { fetchAvatarMap } from "@/lib/avatars";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -59,6 +60,7 @@ function getTierConfig(league: League) {
 type LeaderboardPlayer = {
   id: string;
   username: string;
+  avatarUrl: string | null;
   rating: number;
   wins: number;
   losses: number;
@@ -79,6 +81,7 @@ export default function LeaderboardPage() {
   const [players, setPlayers] = useState<LeaderboardPlayer[]>([]);
   const [loading, setLoading] = useState(true);
   const [myUserId, setMyUserId] = useState<string | null>(null);
+  const [myAvatar, setMyAvatar] = useState<string | null>(null);
   const [myRating, setMyRating] = useState(0);
   const [myWins, setMyWins] = useState(0);
   const [myLosses, setMyLosses] = useState(0);
@@ -115,9 +118,15 @@ export default function LeaderboardPage() {
           .limit(100);
 
         if (alive && allPlayers) {
+          const playerIds = (allPlayers as Array<{ id: string }>).map((p) => p.id as string);
+          const avatarMap = await fetchAvatarMap([...playerIds, ...(myUserId ? [myUserId] : [])]);
+          const currentAvatar = myUserId ? avatarMap[myUserId] ?? null : null;
+          if (alive && currentAvatar) setMyAvatar(currentAvatar);
+
           const mapped: LeaderboardPlayer[] = allPlayers.map((p) => ({
             id: p.id as string,
             username: (p.username as string) ?? "Anonymous",
+            avatarUrl: avatarMap[p.id as string] ?? null,
             rating: typeof p.rating === "number" ? p.rating : 0,
             wins: typeof p.wins === "number" ? p.wins : 0,
             losses: typeof p.losses === "number" ? p.losses : 0,
@@ -179,7 +188,7 @@ export default function LeaderboardPage() {
         {/* Header */}
         <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">Leaderboard</h1>
+            <h1 className="font-heading text-2xl font-bold tracking-tight text-foreground">Leaderboard</h1>
             <p className="mt-1 text-sm text-muted-foreground">
               Compete, climb ranks, and dominate the leagues
             </p>
@@ -196,7 +205,11 @@ export default function LeaderboardPage() {
           <CardContent className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <Avatar className="size-14 bg-accent text-accent-foreground">
-                <AvatarFallback className="text-lg font-bold">{myUserId ? "You" : "?"}</AvatarFallback>
+                {myAvatar ? (
+                  <AvatarImage src={myAvatar} alt="You" className="size-full rounded-full" />
+                ) : (
+                  <AvatarFallback className="text-lg font-bold">{myUserId ? "You" : "?"}</AvatarFallback>
+                )}
               </Avatar>
               <div>
                 <div className="text-sm text-muted-foreground">Your Status</div>
@@ -342,17 +355,25 @@ export default function LeaderboardPage() {
                       <TableCell>
                         <div className="flex items-center gap-3">
                           <Avatar className="size-9 bg-accent text-accent-foreground">
+                          {player.avatarUrl ? (
+                            <AvatarImage
+                              src={player.avatarUrl}
+                              alt={player.username}
+                              className="size-full rounded-full"
+                            />
+                          ) : (
                             <AvatarFallback className="text-xs font-bold">
                               {initialsFromName(player.username)}
                             </AvatarFallback>
-                          </Avatar>
+                          )}
+                        </Avatar>
                           <span className={cn("font-medium", isMe && "text-primary")}>
                             {player.username} {isMe && <span className="text-xs opacity-60">(you)</span>}
                           </span>
                         </div>
                       </TableCell>
                       <TableCell className="text-right">
-                        <span className="inline-flex items-center gap-1 font-semibold text-amber-500">
+                        <span className="inline-flex items-center gap-1 font-mono font-semibold text-amber-500">
                           <Trophy className="size-3.5" />
                           {player.rating.toLocaleString()}
                         </span>
@@ -404,16 +425,24 @@ export default function LeaderboardPage() {
                       {idx + 1}
                     </span>
                     <Avatar className="size-9 bg-accent text-accent-foreground">
-                      <AvatarFallback className="text-xs font-bold">
-                        {initialsFromName(player.username)}
-                      </AvatarFallback>
+                      {player.avatarUrl ? (
+                        <AvatarImage
+                          src={player.avatarUrl}
+                          alt={player.username}
+                          className="size-full rounded-full"
+                        />
+                      ) : (
+                        <AvatarFallback className="text-xs font-bold">
+                          {initialsFromName(player.username)}
+                        </AvatarFallback>
+                      )}
                     </Avatar>
                     <div className="flex-1">
                       <span className={cn("font-medium", isMe && "text-primary")}>
                         {player.username} {isMe && <span className="text-xs opacity-60">(you)</span>}
                       </span>
                     </div>
-                    <span className="inline-flex items-center gap-1 text-sm font-semibold text-amber-500">
+                    <span className="inline-flex items-center gap-1 font-mono text-sm font-semibold text-amber-500">
                       <Trophy className="size-3.5" />
                       {player.rating.toLocaleString()}
                     </span>

@@ -45,8 +45,9 @@ const emblemOptions = [
   { id: "sword",     color: "from-red-500 to-orange-500" },
   { id: "shield",    color: "from-slate-500 to-slate-400" },
   { id: "crown",     color: "from-amber-500 to-yellow-500" },
-  { id: "star",      color: "from-blue-600 to-sky-500" },
-  { id: "lightning", color: "from-amber-400 to-orange-500" },
+  { id: "star",      color: "from-amber-400 to-orange-500" },
+  { id: "lightning", color: "from-cyan-500 to-blue-500" },
+
   { id: "fire",      color: "from-orange-500 to-red-500" },
   { id: "dragon",    color: "from-emerald-600 to-teal-500" },
   { id: "target",    color: "from-rose-500 to-red-400" },
@@ -243,7 +244,7 @@ export default function ClubDetailPage() {
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-3">
-                <h1 className="text-2xl font-bold tracking-tight">{club.name}</h1>
+                <h1 className="font-heading text-2xl font-bold tracking-tight">{club.name}</h1>
                 {club.privacy === "private" && (
                   <Badge variant="outline" className="border-amber-500/30 text-amber-600 dark:text-amber-400">
                     <Lock data-icon="inline-start" />

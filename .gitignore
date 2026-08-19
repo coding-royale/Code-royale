@@ -35,3 +35,7 @@ Thumbs.db
 # Impeccable review evidence (regenerable)
 .impeccable/review/
 frontend/.impeccable/review/
+
+# Local tool state
+/.claude/
+**/.impeccable/

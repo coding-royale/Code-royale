@@ -1,10 +1,9 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Loader2Icon } from "lucide-react";
+import { ArrowLeftIcon, Loader2Icon } from "lucide-react";
 
 import { supabase } from "../../../lib/supabase-browser";
 import { formatOAuthError, getOAuthRedirectTo } from "../../../lib/oauth";
@@ -127,25 +126,16 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4 py-24">
+    <div className="flex min-h-screen items-center justify-center px-4 py-12">
       <div className="w-full max-w-md">
-        {/* Logo */}
-        <div className="mb-8 flex justify-center">
-          <Link href="/" className="flex items-center gap-3">
-            <span className="parallelogram-sm flex size-12 items-center justify-center overflow-hidden bg-accent shadow-sm shadow-black/10">
-              <Image
-                src="/images/logo-icon.svg"
-                alt="Code Royale logo"
-                width={48}
-                height={48}
-                className="object-contain p-2"
-              />
-            </span>
-            <span className="text-2xl font-semibold tracking-tight text-foreground">
-              Code Royale
-            </span>
-          </Link>
-        </div>
+        <Link
+          href="/"
+          className="mb-5 inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <ArrowLeftIcon className="size-4" />
+          Back to home
+        </Link>
+
 
         {/* Card */}
         <Card>
