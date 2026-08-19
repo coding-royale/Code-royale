@@ -1,25 +1,18 @@
 import Image from "next/image";
 
 import { HeroCta } from "@/components/hero-cta";
-
-// Hero background. Flickr serves only the 6k original for this photo;
-// next/image re-serves it at the viewport's actual width and quality.
-const HERO_IMAGE =
-  "https://live.staticflickr.com/8497/8308573411_7d12b44e12_6k.jpg";
-const HERO_IMAGE_BLUR =
-  "data:image/jpeg;base64,/9j/2wBDABQODxIPDRQSEBIXFRQYHjIhHhwcHj0sLiQySUBMS0dARkVQWnNiUFVtVkVGZIhlbXd7gYKBTmCNl4x9lnN+gXz/2wBDARUXFx4aHjshITt8U0ZTfHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHz/wAARCAAQABgDASIAAhEBAxEB/8QAFwABAQEBAAAAAAAAAAAAAAAABQAEBv/EAB8QAAIBBAMBAQAAAAAAAAAAAAEDAgAEESESIkFRE//EABQBAQAAAAAAAAAAAAAAAAAAAAD/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwDjKTQmbxGKh0jjJPu90cqPJkY/TTdlaPu4cZSCl9SB8wc0GS4StS5hMxPgczHoqpK4tU2ynNA/SbNziToDPlVB/9k=";
+import heroImage from "@/assets/hero.jpg";
 
 export default function Home() {
   return (
     <section className="relative flex min-h-dvh flex-col justify-center overflow-hidden bg-black">
       <Image
-        src={HERO_IMAGE}
+        src={heroImage}
         alt=""
         fill
         priority
         sizes="100vw"
         placeholder="blur"
-        blurDataURL={HERO_IMAGE_BLUR}
         className="object-cover object-left"
       />
       {/* Scrim: keeps the left text zone readable over any part of the image */}

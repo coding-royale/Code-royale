@@ -1,19 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  images: {
-    remotePatterns: [
-      {
-        protocol: "https",
-        hostname: "live.staticflickr.com",
-        pathname: "/**",
-      },
-    ],
-  },
-  allowedDevOrigins: ["192.168.0.23"],
+  // All dev origins are allowed so the site works over the local network.
+  allowedDevOrigins: ["192.168.0.23", "localhost"],
 };
 
-module.exports = {
-  allowedDevOrigins: ['*'],
-}
 export default nextConfig;
