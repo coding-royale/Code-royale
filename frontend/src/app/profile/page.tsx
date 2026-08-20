@@ -29,7 +29,7 @@ import { Skeleton } from "../../components/ui/skeleton";
 import { Textarea } from "../../components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../components/ui/tooltip";
 import { supabase } from "../../lib/supabase-browser";
-import { computeRelationship, type ConnectionRow } from "@/lib/friends";
+import { computeRelationship, type ConnectionRow, type Relationship } from "@/lib/friends";
 
 type Badge = {
   id: string;
@@ -53,14 +53,6 @@ type UserRow = {
   club_trophies?: number | null;
   badges?: Badge[];
 };
-
-type RelationshipStatus =
-  | "none"
-  | "incoming_pending"
-  | "outgoing_pending"
-  | "friends"
-  | "blocked"
-  | "blocked_by_other";
 
 function getRankFromRating(rating: number) {
   if (rating >= 600) return { name: "Gold", color: "text-amber-500" };
@@ -89,7 +81,7 @@ function ProfileContent() {
   const [profile, setProfile] = useState<UserRow | null>(null);
   const [friendCount, setFriendCount] = useState(0);
   const [isFriendWithViewer, setIsFriendWithViewer] = useState(false);
-  const [relationshipStatus, setRelationshipStatus] = useState<RelationshipStatus>("none");
+  const [relationshipStatus, setRelationshipStatus] = useState<Relationship>("none");
   const [actionBusy, setActionBusy] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [reportModalOpen, setReportModalOpen] = useState(false);

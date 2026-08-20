@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Lock, Trophy } from "lucide-react";
@@ -70,7 +70,7 @@ export default function ClubDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [actionBusy, setActionBusy] = useState(false);
 
-  const loadClub = async () => {
+  const loadClub = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -89,13 +89,13 @@ export default function ClubDetailPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [clubId]);
 
   useEffect(() => {
     if (clubId) {
       void loadClub();
     }
-  }, [clubId]);
+  }, [clubId, loadClub]);
 
   if (loading) {
     return (

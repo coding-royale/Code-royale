@@ -150,7 +150,7 @@ export default function LeaderboardPage() {
       alive = false;
       clearInterval(interval);
     };
-  }, []);
+  }, [myUserId]);
 
   const isUnranked = myRating === 0 && myWins === 0 && myLosses === 0;
   const myLeague = isUnranked ? null : getLeague(myRating);

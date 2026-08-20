@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "../../../../lib/supabase";
 import { createSupabaseServiceClient } from "../../../../lib/supabase-service";
 
 // POST /api/clubs/leave — leave a club
-export async function POST(req: NextRequest) {
+export async function POST() {
   const supabaseAuth = await createSupabaseServerClient();
   const { data: authData, error: authError } = await supabaseAuth.auth.getUser();
 

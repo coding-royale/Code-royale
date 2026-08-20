@@ -47,6 +47,7 @@ create table public.users (
 create or replace function public.set_updated_at()
 returns trigger
 language plpgsql
+set search_path = ''
 as $$
 begin
   new.updated_at = now();
@@ -62,6 +63,7 @@ create or replace function public.handle_new_user_profile()
 returns trigger
 language plpgsql
 security definer
+set search_path = ''
 as $$
 begin
   insert into public.users (id, username, rating, wins, losses, team_name)
@@ -84,6 +86,9 @@ begin
   return new;
 end;
 $$;
+
+revoke execute on function public.handle_new_user_profile() from public;
+grant execute on function public.handle_new_user_profile() to service_role;
 
 create trigger on_auth_user_created_profile
 after insert on auth.users
@@ -161,6 +166,7 @@ create table public.player_stats (
 );
 
 create index idx_clubs_trophies on public.clubs (trophies desc);
+create index clubs_owner_id_idx on public.clubs (owner_id);
 create index idx_club_members_user on public.club_members (user_id);
 create index idx_club_members_club on public.club_members (club_id);
 create index idx_join_requests_club on public.club_join_requests (club_id);
@@ -172,6 +178,7 @@ create index idx_player_stats_league_1v1 on public.player_stats (league, trophie
 create or replace function public.get_club_member_count(p_club_id uuid)
 returns int
 language sql
+set search_path = ''
 stable
 as $$
   select count(*)::int from public.club_members where club_id = p_club_id;
@@ -235,8 +242,10 @@ create table public.practice_submissions (
 create index idx_practice_questions_difficulty on public.practice_questions (difficulty);
 create index idx_practice_questions_slug on public.practice_questions (slug);
 create index idx_matchmaking_queue_mode on public.matchmaking_queue (mode, created_at);
+create index matchmaking_queue_user_id_idx on public.matchmaking_queue (user_id);
 create index idx_practice_submissions_user_created on public.practice_submissions (user_id, created_at desc);
 create index idx_practice_submissions_user_question_passed on public.practice_submissions (user_id, question_id, passed);
+create index practice_submissions_question_id_idx on public.practice_submissions (question_id);
 
 -- ------------------------------------------------------------
 -- 5) RLS + policies (idempotent after reset)
