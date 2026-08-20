@@ -29,6 +29,7 @@ import { Skeleton } from "../../components/ui/skeleton";
 import { Textarea } from "../../components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../components/ui/tooltip";
 import { supabase } from "../../lib/supabase-browser";
+import { computeRelationship, type ConnectionRow } from "@/lib/friends";
 
 type Badge = {
   id: string;
@@ -143,25 +144,15 @@ function ProfileContent() {
         setFriendCount(0);
       }
 
-      const connectionRows = (relationshipResult.data ?? []) as Array<{
-        user_id: string;
-        connection_id: string;
-        status: "pending" | "accepted" | "blocked";
-      }>;
+      const connectionRows = (relationshipResult.data ?? []) as ConnectionRow[];
 
-      const outgoing = connectionRows.find(
-        (row) => row.user_id === authData.user?.id && row.connection_id === idToLoad,
+      // When the viewer is unauthenticated the relationship query resolves to
+      // empty rows, so passing a placeholder viewer id is behavior-identical.
+      const resolvedRelationship = computeRelationship(
+        authData.user?.id ?? "",
+        idToLoad,
+        connectionRows,
       );
-      const incoming = connectionRows.find(
-        (row) => row.user_id === idToLoad && row.connection_id === authData.user?.id,
-      );
-
-      let resolvedRelationship: RelationshipStatus = "none";
-      if (outgoing?.status === "blocked") resolvedRelationship = "blocked";
-      else if (incoming?.status === "blocked") resolvedRelationship = "blocked_by_other";
-      else if (outgoing?.status === "accepted" || incoming?.status === "accepted") resolvedRelationship = "friends";
-      else if (outgoing?.status === "pending") resolvedRelationship = "outgoing_pending";
-      else if (incoming?.status === "pending") resolvedRelationship = "incoming_pending";
 
       setRelationshipStatus(resolvedRelationship);
 
