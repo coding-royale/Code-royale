@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { tournamentGuidelines } from "../lib/tournament-guidelines";
 
 type TournamentGuidelinesModalProps = {
@@ -32,77 +32,102 @@ export function TournamentGuidelinesModal({
   onClose,
 }: TournamentGuidelinesModalProps) {
   const [accepted, setAccepted] = useState(false);
-  const [showDetails, setShowDetails] = useState(false);
+
+  // Reset checkbox when modal closes
+  useEffect(() => {
+    if (!open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setAccepted(false);
+    }
+  }, [open]);
+
+  // Close on Escape
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
 
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-2xl overflow-hidden rounded-xl border border-[var(--cr-border)] bg-[var(--cr-bg-secondary)] shadow-2xl animate-fade-in">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="tournament-rules-title"
+        className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border bg-card shadow-2xl animate-in fade-in zoom-in-95 duration-200"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
-        <div className="flex items-center gap-3 border-b border-[var(--cr-border)] px-6 py-4">
-          <svg className="h-7 w-7 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M16.5 18.75h-9m9 0a3 3 0 013 3h-15a3 3 0 013-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 01-.982-3.172M9.497 14.25a7.454 7.454 0 00.981-3.172M5.25 4.236c-.982.143-1.954.317-2.916.52A6.003 6.003 0 007.73 9.728M5.25 4.236V4.5c0 2.108.966 3.99 2.48 5.228M5.25 4.236V2.721C7.456 2.41 9.71 2.25 12 2.25c2.291 0 4.545.16 6.75.47v1.516M18.75 4.236c.982.143 1.954.317 2.916.52A6.003 6.003 0 0016.27 9.728M18.75 4.236V4.5c0 2.108-.966 3.99-2.48 5.228m0 0a6.015 6.015 0 01-2.52.52m0 0a6.015 6.015 0 01-2.52-.52"/></svg>
-          <div>
-            <h2 className="text-lg font-semibold text-[var(--cr-fg)]">Tournament Guidelines</h2>
-            <p className="text-xs text-[var(--cr-fg-muted)]">
-              {tournamentName ? `${tournamentName} — read carefully before joining` : "Read carefully before joining"}
-            </p>
+        <div className="flex items-center justify-between border-b px-6 py-4">
+          <div className="flex items-center gap-3">
+            <span className="flex size-9 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M16.5 18.75h-9m9 0a3 3 0 013 3h-15a3 3 0 013-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 01-.982-3.172M9.497 14.25a7.454 7.454 0 00.981-3.172M5.25 4.236c-.982.143-1.954.317-2.916.52A6.003 6.003 0 007.73 9.728M5.25 4.236V4.5c0 2.108.966 3.99 2.48 5.228M5.25 4.236V2.721C7.456 2.41 9.71 2.25 12 2.25c2.291 0 4.545.16 6.75.47v1.516M18.75 4.236c.982.143 1.954.317 2.916.52A6.003 6.003 0 0016.27 9.728M18.75 4.236V4.5c0 2.108-.966 3.99-2.48 5.228m0 0a6.015 6.015 0 01-2.52.52m0 0a6.015 6.015 0 01-2.52-.52"/></svg>
+            </span>
+            <div>
+              <h2 id="tournament-rules-title" className="text-base font-semibold text-foreground">Tournament Rules</h2>
+              <p className="text-xs text-muted-foreground">
+                {tournamentName ? `${tournamentName} — read carefully before joining` : "Read carefully before joining"}
+              </p>
+            </div>
           </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="inline-flex size-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+          </button>
         </div>
 
-        {/* Body */}
-        <div className="max-h-[55vh] overflow-y-auto px-6 py-4">
-          <p className="mb-4 text-sm leading-relaxed text-[var(--cr-fg-muted)]">
+        {/* Body — always shows full rules */}
+        <div className="overflow-y-auto px-6 py-5">
+          <p className="mb-6 text-sm leading-relaxed text-muted-foreground">
             Code Royale is built on fair competition. All participants must follow these rules.
             By accepting, you agree to be bound by them for the duration of the tournament.
           </p>
 
-          {showDetails ? (
-            <div className="space-y-4">
-              {tournamentGuidelines.map((section) => (
-                <div key={section.title}>
-                  <div className="mb-2 flex items-center gap-2">
-                    <span className="text-amber-400">{sectionIcons[section.title]}</span>
-                    <h3 className="text-sm font-semibold tracking-wide text-[var(--cr-fg)]">
-                      {section.title}
-                    </h3>
-                  </div>
-                  <ul className="space-y-2">
-                    {section.items.map((item, i) => (
-                      <li key={i} className="flex gap-2.5 text-sm leading-relaxed text-[var(--cr-fg-muted)]">
-                        <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[rgb(var(--cr-accent-rgb))]" />
-                        <span>{item}</span>
-                      </li>
-                    ))}
-                  </ul>
+          <div className="space-y-6">
+            {tournamentGuidelines.map((section) => (
+              <div key={section.title} className="rounded-xl border bg-muted/20 p-4">
+                <div className="mb-3 flex items-center gap-2">
+                  <span className="text-primary">{sectionIcons[section.title]}</span>
+                  <h3 className="text-sm font-semibold tracking-wide text-foreground">
+                    {section.title}
+                  </h3>
                 </div>
-              ))}
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setShowDetails(true)}
-              className="flex w-full items-center justify-between rounded-lg border border-[var(--cr-border)] bg-[var(--cr-bg)] px-4 py-3 text-sm text-[rgb(var(--cr-accent-rgb))] transition-colors hover:border-[rgba(var(--cr-accent-rgb),0.4)]"
-            >
-              <span>View full guidelines</span>
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-              </svg>
-            </button>
-          )}
+                <ul className="space-y-2.5">
+                  {section.items.map((item, i) => (
+                    <li key={i} className="flex gap-2.5 text-sm leading-relaxed text-muted-foreground">
+                      <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
         </div>
 
-        {/* Accept */}
-        <div className="border-t border-[var(--cr-border)] px-6 py-4">
-          <label className="mb-3 flex cursor-pointer items-start gap-3 text-sm text-[var(--cr-fg-muted)]">
+        {/* Footer */}
+        <div className="border-t bg-muted/30 px-6 py-4">
+          <label className="mb-3 flex cursor-pointer items-start gap-3 text-sm text-muted-foreground">
             <input
               type="checkbox"
               checked={accepted}
               onChange={(e) => setAccepted(e.target.checked)}
-              className="mt-0.5 h-4 w-4 rounded border-[var(--cr-border)] bg-[var(--cr-bg)] text-[rgb(var(--cr-accent-rgb))] accent-[rgb(var(--cr-accent-rgb))]"
+              className="mt-0.5 h-4 w-4 rounded border-input bg-background accent-primary"
             />
             <span>
-              I have read and agree to the tournament guidelines above.
+              I have read and agree to the tournament rules above.
             </span>
           </label>
 
@@ -110,19 +135,18 @@ export function TournamentGuidelinesModal({
             <button
               type="button"
               onClick={onClose}
-              className="rounded-lg border border-[var(--cr-border)] bg-[var(--cr-bg)] px-4 py-2 text-sm font-medium text-[var(--cr-fg)] transition-colors hover:bg-[var(--cr-bg-tertiary)]"
+              className="inline-flex h-9 items-center justify-center rounded-lg border bg-background px-4 text-sm font-medium text-foreground shadow-sm transition-colors hover:bg-muted"
             >
-              Not Now
+              Cancel
             </button>
             <button
               type="button"
               disabled={!accepted}
               onClick={() => {
                 onAccept();
-                setAccepted(false);
-                setShowDetails(false);
+                onClose();
               }}
-              className="rounded-lg bg-[rgb(var(--cr-accent-rgb))] px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex h-9 items-center justify-center rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Accept & Proceed
             </button>

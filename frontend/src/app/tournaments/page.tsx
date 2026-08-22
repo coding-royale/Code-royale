@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
-import { Trophy } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { ScrollText, Trophy } from "lucide-react";
 
 import { AppShell } from "../../components/app-shell";
 import { TournamentGuidelinesModal } from "../../components/tournament-guidelines-modal";
@@ -15,20 +16,30 @@ export default function TournamentsPage() {
     <AppShell>
       <div className="min-h-[calc(100vh-3.5rem)] p-6 md:p-10">
         {/* Header */}
-        <div className="mb-10">
-          <div className="flex items-center gap-3">
-            <div className="flex size-11 items-center justify-center rounded-xl bg-accent text-accent-foreground">
-              <Trophy className="size-6" />
+        <div className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <div className="flex items-center gap-3">
+              <div className="flex size-11 items-center justify-center rounded-xl bg-accent text-accent-foreground">
+                <Trophy className="size-6" />
+              </div>
+              <h1 className="font-heading text-3xl font-bold tracking-tight text-foreground">
+                Tournaments
+              </h1>
+              <Badge variant="secondary" className="ml-1">COMING SOON</Badge>
             </div>
-            <h1 className="font-heading text-3xl font-bold tracking-tight text-foreground">
-              Tournaments
-            </h1>
-            <Badge variant="secondary" className="ml-1">COMING SOON</Badge>
+            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+              Organized competitive events where players battle it out for glory and bragging rights.
+              Tournaments are currently under development — stay tuned for launch announcements!
+            </p>
           </div>
-          <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-            Organized competitive events where players battle it out for glory and bragging rights.
-            Tournaments are currently under development — stay tuned for launch announcements!
-          </p>
+          <Button
+            variant="outline"
+            onClick={() => setShowGuidelines(true)}
+            className="shrink-0 gap-2"
+          >
+            <ScrollText className="size-4" />
+            Rules
+          </Button>
         </div>
 
         {/* Coming Soon banner */}
@@ -49,13 +60,6 @@ export default function TournamentsPage() {
               <span className="size-2 animate-pulse rounded-full bg-accent-foreground" />
               In Development
             </Badge>
-            <button
-              type="button"
-              onClick={() => setShowGuidelines(true)}
-              className="mt-2 inline-flex items-center rounded-lg border bg-secondary px-4 py-2 text-sm font-medium text-secondary-foreground shadow-sm transition-colors hover:bg-secondary/80"
-            >
-              Preview tournament guidelines
-            </button>
           </div>
         </div>
 
