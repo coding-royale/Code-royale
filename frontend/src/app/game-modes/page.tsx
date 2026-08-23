@@ -566,12 +566,11 @@ export default function GameModesPage() {
     setMatchId(null);
     setSearchSecondsRemaining(60);
 
-    const matchType = resolveMatchType(selection?.players ?? "1v1");
-    if (matchType !== "1v1") {
-      setErrorMessage("2v2 and Free-for-all matchmaking are coming soon. Use 1v1 for now.");
-      setState("error");
-      return;
-    }
+    let matchType = resolveMatchType(selection?.players ?? "1v1");
+    // Non-ranked presets map directly to team sizes
+    if (modeId === "duos") matchType = "2v2";
+    if (modeId === "ffa") matchType = "ffa";
+    if (modeId === "rapid-fire") matchType = "1v1";
 
     setState("searching");
 
