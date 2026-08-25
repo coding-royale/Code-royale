@@ -148,6 +148,15 @@ export function AppShell({ children, showSidebar = true }: AppShellProps) {
   const [incomingRequestCount, setIncomingRequestCount] = useState(0);
   const [pendingNotifications, setPendingNotifications] = useState<PendingNotification[]>([]);
   const [acceptingRequesterIds, setAcceptingRequesterIds] = useState<Set<string>>(new Set());
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchResults, setSearchResults] = useState<{
+    users: Array<{ id: string; username: string | null; rating?: number | null }>;
+    problems: Array<{ id: string; slug: string | null; title: string; difficulty: string }>;
+  }>({ users: [], problems: [] });
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
 
   // Cache the notification inbox per user so the poll does not hit the DB
   // on every tick.
@@ -305,6 +314,57 @@ export function AppShell({ children, showSidebar = true }: AppShellProps) {
     };
   }, []);
 
+  // Global search: peers and problems
+  useEffect(() => {
+    const trimmed = searchQuery.trim();
+    if (trimmed.length < 2) {
+      setSearchResults({ users: [], problems: [] });
+      setSearchLoading(false);
+      if (trimmed.length === 0) setSearchOpen(false);
+      return;
+    }
+    setSearchLoading(true);
+    setSearchOpen(true);
+    const timer = window.setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/search?q=${encodeURIComponent(trimmed)}`, { cache: "no-store" });
+        if (!res.ok) throw new Error("search failed");
+        const data = (await res.json()) as {
+          users: Array<{ id: string; username: string | null }>;
+          problems: Array<{ id: string; slug: string | null; title: string; difficulty: string }>;
+        };
+        setSearchResults({ users: data.users ?? [], problems: data.problems ?? [] });
+      } catch {
+        setSearchResults({ users: [], problems: [] });
+      } finally {
+        setSearchLoading(false);
+      }
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+        setSearchOpen(true);
+      }
+      if (e.key === "Escape") setSearchOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  useEffect(() => {
+    const onClick = (e: MouseEvent) => {
+      if (!searchContainerRef.current) return;
+      if (!searchContainerRef.current.contains(e.target as Node)) setSearchOpen(false);
+    };
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, []);
+
   const handleAcceptFromNotification = async (requesterId: string) => {
     if (!viewerId) return;
 
@@ -350,17 +410,98 @@ export function AppShell({ children, showSidebar = true }: AppShellProps) {
           Code Royale
         </span>
         <div className="pointer-events-none absolute inset-x-0 flex justify-center max-md:hidden">
-          <div className="pointer-events-auto relative w-full max-w-sm">
+          <div ref={searchContainerRef} className="pointer-events-auto relative w-full max-w-sm">
             <Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
+              ref={searchInputRef}
               type="search"
-              placeholder="Search problems…"
+              placeholder="Search problems and players…"
               className="h-9 pl-8 pr-14"
-              aria-label="Search problems"
+              aria-label="Search problems and players"
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                if (e.target.value.trim().length >= 2) setSearchOpen(true);
+              }}
+              onFocus={() => {
+                if (searchQuery.trim().length >= 2) setSearchOpen(true);
+              }}
             />
             <kbd className="absolute right-2.5 top-1/2 hidden -translate-y-1/2 rounded border border-border bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground lg:inline-block">
               ⌘K
             </kbd>
+            {searchOpen && searchQuery.trim().length >= 2 && (
+              <div className="absolute left-0 right-0 top-full z-50 mt-2 max-h-[60vh] overflow-auto rounded-xl border bg-popover p-2 shadow-lg">
+                {searchLoading ? (
+                  <div className="px-3 py-6 text-center text-sm text-muted-foreground">Searching…</div>
+                ) : searchResults.users.length === 0 && searchResults.problems.length === 0 ? (
+                  <div className="px-3 py-6 text-center text-sm text-muted-foreground">
+                    No results for &quot;{searchQuery.trim()}&quot;
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-3">
+                    {searchResults.problems.length > 0 && (
+                      <div>
+                        <p className="px-2 py-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                          Problems
+                        </p>
+                        <div className="flex flex-col gap-1">
+                          {searchResults.problems.map((p) => {
+                            const href = p.slug ? `/practice/${encodeURIComponent(p.slug)}` : `/practice/${p.id}`;
+                            return (
+                              <Link
+                                key={p.id}
+                                href={href}
+                                onClick={() => setSearchOpen(false)}
+                                className="flex items-center gap-2.5 rounded-lg px-2 py-2 hover:bg-muted"
+                              >
+                                <Code2 className="size-4 shrink-0 text-muted-foreground" />
+                                <span className="min-w-0 flex-1 truncate text-sm font-medium">{p.title}</span>
+                                <span className="shrink-0 text-xs capitalize text-muted-foreground">{p.difficulty}</span>
+                              </Link>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                    {searchResults.users.length > 0 && (
+                      <div>
+                        <p className="px-2 py-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                          Players
+                        </p>
+                        <div className="flex flex-col gap-1">
+                          {searchResults.users.map((u) => (
+                            <Link
+                              key={u.id}
+                              href={`/profile?userId=${u.id}`}
+                              onClick={() => setSearchOpen(false)}
+                              className="flex items-center gap-2.5 rounded-lg px-2 py-2 hover:bg-muted"
+                            >
+                              <Avatar className="size-6">
+                                <AvatarFallback className="text-xs">
+                                  {(u.username?.[0] ?? "?").toUpperCase()}
+                                </AvatarFallback>
+                              </Avatar>
+                              <span className="min-w-0 flex-1 truncate text-sm font-medium">{u.username ?? "Unknown"}</span>
+                              <span className="shrink-0 text-xs text-muted-foreground">{u.rating ?? 0} pts</span>
+                            </Link>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    <div className="border-t pt-2">
+                      <Link
+                        href={`/friends?tab=search`}
+                        onClick={() => setSearchOpen(false)}
+                        className="block rounded-lg px-2 py-2 text-center text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
+                      >
+                        Advanced search in Friends →
+                      </Link>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
 

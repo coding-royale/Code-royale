@@ -16,20 +16,23 @@ export default function TournamentsPage() {
     <AppShell>
       <div className="min-h-[calc(100vh-3.5rem)] p-6 md:p-10">
         {/* Header */}
-        <div className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <div className="flex items-center gap-3">
-              <div className="flex size-11 items-center justify-center rounded-xl bg-accent text-accent-foreground">
-                <Trophy className="size-6" />
-              </div>
+            <div className="flex items-center gap-2.5">
+              <Trophy className="size-5 text-muted-foreground" aria-hidden="true" />
               <h1 className="font-heading text-3xl font-bold tracking-tight text-foreground">
                 Tournaments
               </h1>
-              <Badge variant="secondary" className="ml-1">COMING SOON</Badge>
+              <Badge variant="secondary" className="ml-1">
+                COMING SOON
+              </Badge>
             </div>
             <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-              Organized competitive events where players battle it out for glory and bragging rights.
-              Tournaments are currently under development — stay tuned for launch announcements!
+              Tournaments are timed competitions. You solve problems and the system ranks you by
+              accuracy and speed.
+            </p>
+            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+              This feature is not available yet. This page shows the launch date when it is ready.
             </p>
           </div>
           <Button
@@ -42,42 +45,44 @@ export default function TournamentsPage() {
           </Button>
         </div>
 
-        {/* Coming Soon banner */}
-        <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-          <div className="flex flex-col items-center gap-4 px-6 py-12 text-center md:py-16">
-            <div className="flex size-14 items-center justify-center rounded-full bg-accent text-accent-foreground">
-              <Trophy className="size-7" />
+        {/* Status */}
+        <div className="rounded-xl border border-border bg-card p-6 shadow-sm md:p-8">
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center gap-2">
+              <Trophy className="size-4 text-muted-foreground" aria-hidden="true" />
+              <h2 className="text-sm font-semibold tracking-wide text-foreground">
+                Status: Not Available
+              </h2>
+              <Badge variant="secondary" className="ml-2">
+                In Development
+              </Badge>
             </div>
-            <h2 className="text-xl font-semibold text-foreground">
-              Tournaments are on the way!
-            </h2>
-            <p className="max-w-lg text-sm text-muted-foreground">
-              We&apos;re building a fully-featured tournament system with brackets, seeding, and
-              live spectating. Prizes haven&apos;t been decided yet — we&apos;ll announce
-              details once everything is finalized.
+            <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
+              The team builds brackets, seeding, and live view. The feature opens after tests pass.
             </p>
-            <Badge variant="secondary" className="gap-2 px-4 py-1.5">
-              <span className="size-2 animate-pulse rounded-full bg-accent-foreground" />
-              In Development
-            </Badge>
+            <ul className="list-disc space-y-1 pl-5 text-sm text-muted-foreground">
+              <li>Brackets show the match order.</li>
+              <li>Seeding sets the initial rank.</li>
+              <li>Live view shows current scores.</li>
+            </ul>
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              Prize details are not final. The announcement will list prizes and dates.
+            </p>
           </div>
         </div>
 
         {acceptedAt && (
           <p className="mt-6 text-center text-xs text-muted-foreground">
-            Tournament guidelines accepted {new Date(acceptedAt).toLocaleString()}.
+            You accepted the guidelines on {new Date(acceptedAt).toLocaleString()}.
           </p>
         )}
 
-        {/* Footer note */}
         <p className="mt-8 text-center text-xs text-muted-foreground">
-          When a tournament begins, you&apos;ll be asked to review and accept the tournament
-          guidelines before you can participate.
+          Before you join a tournament, read and accept the guidelines. The app shows the
+          guidelines when a tournament starts.
         </p>
       </div>
 
-      {/* When a tournament begins, open this modal to gate entry until the
-          user accepts the guidelines. */}
       <TournamentGuidelinesModal
         open={showGuidelines}
         tournamentName="Upcoming Tournament"
