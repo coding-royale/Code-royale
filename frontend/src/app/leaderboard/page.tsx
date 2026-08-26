@@ -5,7 +5,7 @@ import { Trophy } from "lucide-react";
 import { AppShell } from "../../components/app-shell";
 import { supabase } from "../../lib/supabase-browser";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { fetchAvatarMap } from "@/lib/avatars";
+import { fetchAvatarMap, getAvatarUrl } from "@/lib/avatars";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -120,13 +120,13 @@ export default function LeaderboardPage() {
         if (alive && allPlayers) {
           const playerIds = (allPlayers as Array<{ id: string }>).map((p) => p.id as string);
           const avatarMap = await fetchAvatarMap([...playerIds, ...(myUserId ? [myUserId] : [])]);
-          const currentAvatar = myUserId ? avatarMap[myUserId] ?? null : null;
+          const currentAvatar = myUserId ? getAvatarUrl(myUserId, "You", avatarMap) : null;
           if (alive && currentAvatar) setMyAvatar(currentAvatar);
 
           const mapped: LeaderboardPlayer[] = allPlayers.map((p) => ({
             id: p.id as string,
             username: (p.username as string) ?? "Anonymous",
-            avatarUrl: avatarMap[p.id as string] ?? null,
+            avatarUrl: getAvatarUrl(p.id as string, (p.username as string) ?? "Anonymous", avatarMap),
             rating: typeof p.rating === "number" ? p.rating : 0,
             wins: typeof p.wins === "number" ? p.wins : 0,
             losses: typeof p.losses === "number" ? p.losses : 0,

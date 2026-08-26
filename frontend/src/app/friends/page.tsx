@@ -1,13 +1,13 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Loader2, Search, UserPlus } from "lucide-react";
 
 import { AppShell } from "../../components/app-shell";
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
-import { Avatar, AvatarFallback } from "../../components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "../../components/ui/avatar";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
@@ -15,6 +15,7 @@ import { Input } from "../../components/ui/input";
 import { Skeleton } from "../../components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
 import { supabase } from "../../lib/supabase-browser";
+import { fetchAvatarMap, getAvatarUrl } from "@/lib/avatars";
 import {
   computeRelationship,
   partitionConnections,
@@ -70,9 +71,16 @@ function FriendsContent() {
   const [outgoingRequests, setOutgoingRequests] = useState<FriendListItem[]>([]);
   const [relationshipByUserId, setRelationshipByUserId] = useState<Record<string, Relationship>>({});
   const [friendCountByUserId, setFriendCountByUserId] = useState<Record<string, number>>({});
+  const [avatarMap, setAvatarMap] = useState<Record<string, string | null>>({});
 
   const trimmedQuery = query.trim();
   const canSearch = trimmedQuery.length >= 2;
+
+  // Aggressive cache: keep friends payload for 5m in memory + sessionStorage (stale-while-revalidate)
+  const FRIENDS_TTL_MS = 5 * 60 * 1000;
+  const friendsCacheRef = useRef<Map<string, { payload: { friends: FriendListItem[]; incoming: FriendListItem[]; outgoing: FriendListItem[]; rows: ConnectionRow[]; counts: Record<string, number>; avatars: Record<string, string | null> }; expiresAt: number }>>(new Map());
+  const SEARCH_TTL_MS = 30_000;
+  const searchCacheRef = useRef<Map<string, { users: UserRow[]; counts: Record<string, number>; avatars: Record<string, string | null>; expiresAt: number }>>(new Map());
 
   const getDisplayName = (value: string | null | undefined) => {
     const trimmed = value?.trim();
@@ -108,7 +116,47 @@ function FriendsContent() {
     return relMap;
   };
 
-  const loadConnections = useCallback(async (currentViewerId: string) => {
+  const loadConnections = useCallback(async (currentViewerId: string, opts?: { useCache?: boolean }) => {
+    const useCache = opts?.useCache ?? true;
+    const cacheKey = `friends:${currentViewerId}`;
+    const now = Date.now();
+
+    // Check memory cache first (instant)
+    if (useCache) {
+      const hit = friendsCacheRef.current.get(cacheKey);
+      if (hit && hit.expiresAt > now) {
+        setConnectionRows(hit.payload.rows);
+        setFriends(hit.payload.friends);
+        setIncomingRequests(hit.payload.incoming);
+        setOutgoingRequests(hit.payload.outgoing);
+        setFriendCountByUserId((prev) => ({ ...prev, ...hit.payload.counts }));
+        setAvatarMap((prev) => ({ ...prev, ...hit.payload.avatars }));
+        setLoadingConnections(false);
+        // Revalidate in background after 2s stale-while-revalidate
+        setTimeout(() => void loadConnections(currentViewerId, { useCache: false }), 2000);
+        return;
+      }
+      // Try sessionStorage for cross-reload instant
+      try {
+        const raw = sessionStorage.getItem(cacheKey);
+        if (raw) {
+          const parsed = JSON.parse(raw) as { payload: { friends: FriendListItem[]; incoming: FriendListItem[]; outgoing: FriendListItem[]; rows: ConnectionRow[]; counts: Record<string, number>; avatars: Record<string, string | null> }; expiresAt: number };
+          if (parsed.expiresAt > now) {
+            friendsCacheRef.current.set(cacheKey, parsed);
+            setConnectionRows(parsed.payload.rows);
+            setFriends(parsed.payload.friends);
+            setIncomingRequests(parsed.payload.incoming);
+            setOutgoingRequests(parsed.payload.outgoing);
+            setFriendCountByUserId((prev) => ({ ...prev, ...parsed.payload.counts }));
+            setAvatarMap((prev) => ({ ...prev, ...parsed.payload.avatars }));
+            setLoadingConnections(false);
+            setTimeout(() => void loadConnections(currentViewerId, { useCache: false }), 2000);
+            return;
+          }
+        }
+      } catch {}
+    }
+
     setLoadingConnections(true);
 
     const { data: rowsData, error: rowsError } = await supabase
@@ -133,6 +181,9 @@ function FriendsContent() {
     const uniqueIds = Array.from(new Set([...incomingIds, ...outgoingIds, ...friendIds]));
 
     if (uniqueIds.length === 0) {
+      const emptyPayload = { friends: [], incoming: [], outgoing: [], rows, counts: {}, avatars: {} };
+      friendsCacheRef.current.set(cacheKey, { payload: emptyPayload, expiresAt: now + FRIENDS_TTL_MS });
+      try { sessionStorage.setItem(cacheKey, JSON.stringify({ payload: emptyPayload, expiresAt: now + FRIENDS_TTL_MS })); } catch {}
       setFriends([]);
       setIncomingRequests([]);
       setOutgoingRequests([]);
@@ -140,10 +191,11 @@ function FriendsContent() {
       return;
     }
 
-    const { data: usersData, error: usersError } = await supabase
-      .from("users")
-      .select("id,username,rating")
-      .in("id", uniqueIds);
+    const [{ data: usersData, error: usersError }, avatars, counts] = await Promise.all([
+      supabase.from("users").select("id,username,rating").in("id", uniqueIds),
+      fetchAvatarMap(uniqueIds),
+      loadFriendCounts(uniqueIds),
+    ]);
 
     if (usersError) {
       setError(usersError.message);
@@ -156,8 +208,8 @@ function FriendsContent() {
 
     const users = (usersData ?? []) as UserRow[];
     const userMap = new Map(users.map((user) => [user.id, user]));
-    const counts = await loadFriendCounts(uniqueIds);
     setFriendCountByUserId((prev) => ({ ...prev, ...counts }));
+    setAvatarMap((prev) => ({ ...prev, ...avatars }));
 
     const toListItem = (userId: string): FriendListItem => {
       const user = userMap.get(userId);
@@ -171,9 +223,17 @@ function FriendsContent() {
 
     const sortByName = (a: FriendListItem, b: FriendListItem) => a.username.localeCompare(b.username);
 
-    setIncomingRequests(incomingIds.map(toListItem).sort(sortByName));
-    setOutgoingRequests(outgoingIds.map(toListItem).sort(sortByName));
-    setFriends(friendIds.map(toListItem).sort(sortByName));
+    const incoming = incomingIds.map(toListItem).sort(sortByName);
+    const outgoing = outgoingIds.map(toListItem).sort(sortByName);
+    const fr = friendIds.map(toListItem).sort(sortByName);
+
+    setIncomingRequests(incoming);
+    setOutgoingRequests(outgoing);
+    setFriends(fr);
+
+    const payload = { friends: fr, incoming, outgoing, rows, counts, avatars };
+    friendsCacheRef.current.set(cacheKey, { payload, expiresAt: now + FRIENDS_TTL_MS });
+    try { sessionStorage.setItem(cacheKey, JSON.stringify({ payload, expiresAt: now + FRIENDS_TTL_MS })); } catch {}
     setLoadingConnections(false);
   }, [loadFriendCounts]);
 
@@ -207,6 +267,18 @@ function FriendsContent() {
       return;
     }
 
+    const cacheKey = trimmedQuery.toLowerCase();
+    const cached = searchCacheRef.current.get(cacheKey);
+    if (cached && cached.expiresAt > Date.now()) {
+      setResults(cached.users);
+      setFriendCountByUserId((prev) => ({ ...prev, ...cached.counts }));
+      setAvatarMap((prev) => ({ ...prev, ...cached.avatars }));
+      if (viewerId && cached.users.length > 0) {
+        setRelationshipByUserId(buildRelationshipMap(cached.users, connectionRows, viewerId));
+      }
+      return;
+    }
+
     setSearching(true);
     setError(null);
     setResults([]);
@@ -228,8 +300,13 @@ function FriendsContent() {
     const users = (userRows ?? []) as UserRow[];
     setResults(users);
 
-    const counts = await loadFriendCounts(users.map((user) => user.id));
+    const [counts, avatars] = await Promise.all([
+      loadFriendCounts(users.map((user) => user.id)),
+      fetchAvatarMap(users.map((u) => u.id)),
+    ]);
     setFriendCountByUserId((prev) => ({ ...prev, ...counts }));
+    setAvatarMap((prev) => ({ ...prev, ...avatars }));
+    searchCacheRef.current.set(cacheKey, { users, counts, avatars, expiresAt: Date.now() + SEARCH_TTL_MS });
 
     if (!viewerId || users.length === 0) {
       setSearching(false);
@@ -251,7 +328,7 @@ function FriendsContent() {
       return;
     }
 
-    await loadConnections(viewerId);
+    await loadConnections(viewerId, { useCache: false });
     setRelationshipByUserId((prev) => ({ ...prev, [userId]: "outgoing_pending" }));
   };
 
@@ -267,7 +344,7 @@ function FriendsContent() {
       return;
     }
 
-    await loadConnections(viewerId);
+    await loadConnections(viewerId, { useCache: false });
     setRelationshipByUserId((prev) => ({ ...prev, [userId]: "friends" }));
   };
 
@@ -284,7 +361,7 @@ function FriendsContent() {
       return;
     }
 
-    await loadConnections(viewerId);
+    await loadConnections(viewerId, { useCache: false });
     setRelationshipByUserId((prev) => ({ ...prev, [userId]: "none" }));
   };
 
@@ -301,7 +378,7 @@ function FriendsContent() {
       return;
     }
 
-    await loadConnections(viewerId);
+    await loadConnections(viewerId, { useCache: false });
     setRelationshipByUserId((prev) => ({ ...prev, [userId]: "none" }));
   };
 
@@ -310,12 +387,14 @@ function FriendsContent() {
   const renderUserLine = (user: FriendListItem, kind: "incoming" | "outgoing" | "friend") => {
     const isSelf = user.id === viewerId;
     const profileHref = isSelf ? "/profile" : `/profile?userId=${user.id}`;
+    const avatarUrl = getAvatarUrl(user.id, user.username, avatarMap);
 
     return (
       <Card key={`${kind}-${user.id}`}>
         <CardContent className="flex items-center justify-between gap-3 p-4">
           <div className="flex min-w-0 items-center gap-3">
             <Avatar className="size-10">
+              <AvatarImage src={avatarUrl ?? undefined} alt={user.username} />
               <AvatarFallback className="text-sm font-medium">
                 {user.username[0]?.toUpperCase() ?? "?"}
               </AvatarFallback>
@@ -436,6 +515,7 @@ function FriendsContent() {
                     >
                       <div className="flex min-w-0 items-center gap-3">
                         <Avatar className="size-10">
+                          <AvatarImage src={getAvatarUrl(user.id, user.username ?? "Unknown", avatarMap) ?? undefined} alt={user.username ?? "Unknown"} />
                           <AvatarFallback className="text-sm font-medium">
                             {(user.username ?? "?")[0].toUpperCase()}
                           </AvatarFallback>

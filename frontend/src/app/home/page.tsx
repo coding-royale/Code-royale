@@ -8,7 +8,7 @@ import { AppShell } from "../../components/app-shell";
 import { useFriendPresence } from "../../lib/use-friend-presence";
 import { cachedFetch } from "../../lib/cached-fetch";
 import { getFreshCachedProfile, subscribeProfileCache } from "../../lib/user-profile-cache";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { LinkButton } from "@/components/ui/link-button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -232,10 +232,16 @@ export default function HomePage() {
                   >
                     <div className="relative mx-auto size-16">
                       <Avatar className="size-16 ring-1 ring-foreground/10 transition group-hover:ring-2 group-hover:ring-ring">
+                        {friend.avatarUrl ? (
+                          <AvatarImage src={friend.avatarUrl} alt={friend.username} className="size-full rounded-full object-cover" />
+                        ) : null}
                         <AvatarFallback className="bg-accent font-semibold text-accent-foreground">
                           {initialsFromName(friend.username)}
                         </AvatarFallback>
                       </Avatar>
+                      {friend.online && (
+                        <span className="absolute bottom-0 right-0 size-3 rounded-full bg-emerald-500 ring-2 ring-background" />
+                      )}
                     </div>
                     <p className="mt-3 truncate text-sm font-medium">{friend.username}</p>
                   </Link>
