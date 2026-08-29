@@ -391,7 +391,7 @@ function FriendsContent() {
 
     return (
       <Card key={`${kind}-${user.id}`}>
-        <CardContent className="flex items-center justify-between gap-3 p-4">
+        <CardContent className="flex items-center justify-between gap-3 p-3">
           <div className="flex min-w-0 items-center gap-3">
             <Avatar className="size-10">
               <AvatarImage src={avatarUrl ?? undefined} alt={user.username} />
@@ -400,24 +400,16 @@ function FriendsContent() {
               </AvatarFallback>
             </Avatar>
             <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <Link
-                  href={profileHref}
-                  className="truncate text-sm font-medium hover:underline"
-                >
-                  {user.username}
-                </Link>
-                {kind === "friend" && (
-                  <Badge
-                    variant="outline"
-                    className="border-emerald-500/30 text-emerald-600 dark:text-emerald-400"
-                  >
-                    Friends
-                  </Badge>
-                )}
+              <Link
+                href={profileHref}
+                className="block truncate text-sm font-medium hover:underline"
+              >
+                {user.username}
+              </Link>
+              <div className="flex flex-wrap gap-x-3 text-xs text-muted-foreground">
+                <span>Rating: {user.rating}</span>
+                <span>Friends: {user.friendCount}</span>
               </div>
-              <p className="text-xs text-muted-foreground">Rating: {user.rating}</p>
-              <p className="text-xs text-muted-foreground">Friends: {user.friendCount}</p>
             </div>
           </div>
 
@@ -440,14 +432,6 @@ function FriendsContent() {
             >
               Cancel Request
             </Button>
-          )}
-          {kind === "friend" && (
-            <Badge
-              variant="outline"
-              className="shrink-0 border-emerald-500/30 text-emerald-600 dark:text-emerald-400"
-            >
-              Friends
-            </Badge>
           )}
         </CardContent>
       </Card>
