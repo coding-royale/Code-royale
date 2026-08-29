@@ -29,6 +29,7 @@ import { Skeleton } from "../../components/ui/skeleton";
 import { Textarea } from "../../components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../components/ui/tooltip";
 import { supabase } from "../../lib/supabase-browser";
+import { diceBearUrl } from "@/lib/avatars";
 import { computeRelationship, type ConnectionRow, type Relationship } from "@/lib/friends";
 
 type Badge = {
@@ -252,11 +253,26 @@ function ProfileContent() {
               awarded_at: b.awarded_at,
             }];
           });
+
+        // Avatar priority (matches the app shell): the viewer's OAuth provider
+        // picture (only when viewing your own profile), then the uploaded
+        // profile picture, then a deterministic DiceBear fallback so a profile
+        // always shows a picture rather than bare initials.
+        const storedAvatar =
+          (typeof statsRow?.avatar_url === "string" && statsRow.avatar_url) || null;
+        const isViewingSelf = Boolean(authData.user?.id && idToLoad === authData.user.id);
+        const metadataAvatar =
+          (authData.user?.user_metadata?.avatar_url as string | undefined) ??
+          (authData.user?.user_metadata?.picture as string | undefined) ??
+          null;
+        const avatarUrl =
+          (isViewingSelf ? metadataAvatar : null) ??
+          storedAvatar ??
+          diceBearUrl(((userRow?.username as string | null) ?? "Player").trim() || "Player", idToLoad);
         
         setProfile({
           ...userRow as UserRow,
-          avatarUrl:
-            (typeof statsRow?.avatar_url === "string" && statsRow.avatar_url) || null,
+          avatarUrl,
           badges: parsedBadges,
           club_id: clubInfo?.id ?? null,
           club_name: clubInfo?.name ?? null,
