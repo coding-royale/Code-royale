@@ -2,36 +2,42 @@
 
 import { Users } from "lucide-react";
 
-import { PracticeScaffold } from "../practice/practice-scaffold";
+import { AppShell } from "../../components/app-shell";
+import { Badge } from "../../components/ui/badge";
+import { LinkButton } from "@/components/ui/link-button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 
 export default function TeamPage() {
   return (
-    <PracticeScaffold defaultSidebarOpen>
-      <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8 px-6 pt-8 sm:px-10 lg:px-16">
-        <Card className="p-8">
-          <CardHeader className="gap-3 p-0">
-            <CardTitle className="text-4xl tracking-tight sm:text-5xl">
-              Join a club or team
-            </CardTitle>
+    <AppShell>
+      <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 p-8">
+        <div className="flex items-center gap-2.5">
+          <Users className="size-5 text-muted-foreground" aria-hidden />
+          <h1 className="font-heading text-3xl font-bold tracking-tight">Team Play</h1>
+          <Badge variant="secondary">Coming soon</Badge>
+        </div>
+
+        <Card className="bg-gradient-to-br from-accent/10 to-transparent">
+          <CardHeader className="gap-2">
+            <CardTitle className="text-xl">Duos and squads are on the way</CardTitle>
           </CardHeader>
-          <CardContent className="p-0 pt-3">
-            <p className="max-w-2xl text-sm text-muted-foreground">
-              Team features are not wired yet. This page is the placeholder entry point for
-              joining or creating a team.
+          <CardContent className="flex flex-col gap-3 text-sm text-muted-foreground">
+            <p className="max-w-2xl leading-relaxed">
+              Team battles combine your solves with a partner, share the score, and reward
+              synchronized solving. We&apos;re building the 2v2 and club-team queues now.
+            </p>
+            <p className="max-w-2xl leading-relaxed">
+              Until then, sharpen your skills solo and invite friends to a head-to-head.
             </p>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="flex flex-col items-start gap-3 p-8 text-sm text-muted-foreground">
-            <Users className="size-5 text-muted-foreground" />
-            <p>
-              Add team browsing and invitations here once the Supabase tables are ready.
-            </p>
-          </CardContent>
-        </Card>
+        <div className="flex flex-wrap gap-3">
+          <LinkButton href="/practice">Practice Solo</LinkButton>
+          <LinkButton href="/game-modes" variant="outline">Play a Match</LinkButton>
+          <LinkButton href="/clubs" variant="outline">Browse Clubs</LinkButton>
+        </div>
       </div>
-    </PracticeScaffold>
+    </AppShell>
   );
 }
