@@ -31,6 +31,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "../../components/ui/too
 import { supabase } from "../../lib/supabase-browser";
 import { diceBearUrl } from "@/lib/avatars";
 import { computeRelationship, type ConnectionRow, type Relationship } from "@/lib/friends";
+import { computeAchievements } from "@/lib/achievements";
 
 type Badge = {
   id: string;
@@ -299,6 +300,7 @@ function ProfileContent() {
   const losses = profile?.losses ?? 0;
   const totalMatches = wins + losses;
   const winRate = totalMatches > 0 ? Math.round((wins / totalMatches) * 100) : 0;
+  const achievements = computeAchievements({ wins, losses, solvedProblems: solvedQuestions.length });
 
   const sendFriendRequest = async () => {
     if (!viewerUserId || !resolvedUserId || isSelf) return;
@@ -668,13 +670,9 @@ function ProfileContent() {
               <CardContent className="p-6">
                 <h2 className="mb-4 text-lg font-semibold">Achievements</h2>
                 <div className="grid gap-3 sm:grid-cols-3">
-                  {[
-                    { name: "First Win", description: "Win your first match", unlocked: wins > 0 },
-                    { name: "5-Win Streak", description: "Win 5 matches in a row", unlocked: false },
-                    { name: "Problem Solver", description: "Solve 50 practice problems", unlocked: false },
-                  ].map((achievement) => (
+                  {achievements.map((achievement) => (
                     <div
-                      key={achievement.name}
+                      key={achievement.id}
                       className={`rounded-lg border p-4 transition-all ${
                         achievement.unlocked
                           ? "border-accent-foreground/30 bg-accent/40 shadow-sm"
