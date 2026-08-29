@@ -1,6 +1,6 @@
 # Code Royale frontend
 
-This folder contains the Code Royale application. The application is a Next.js 16 app with Supabase and Judge0.
+This folder contains the Code Royale application. The application is a Next.js 16 app with Supabase and goboxd.
 
 ## Quick start
 

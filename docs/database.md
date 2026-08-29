@@ -291,7 +291,6 @@ The service-role client bypasses row level security. The server routes use it fo
 The `frontend` folder contains these SQL files:
 
 - `supabase-single-source-reset.sql` — the reset and rebuild script. It is the source of truth
-- `supabase-clubs-leaderboard.sql` — the older incremental script for clubs, leaderboards, practice, and matchmaking tables
 - `supabase-bot-battles.sql` — adds the bot battle columns to `player_stats`
 - `supabase-badges.sql` — creates the badges tables and inserts the default badges
-- `supabase-extra-dsa-daa-questions.sql` — adds 30 extra questions to `practice_questions`
+- `supabase-github-username.sql` — adds the GitHub username fallback function for GitHub sign-in

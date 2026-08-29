@@ -2,9 +2,15 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, Clock, Languages, Shuffle } from "lucide-react";
+import {
+  CheckCircle2,
+  ChevronRight,
+  Clock,
+  Languages,
+  Search,
+  Shuffle,
+} from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -13,6 +19,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import {
   Select,
@@ -22,7 +29,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { getPracticePrefs, setPracticePrefs } from "@/lib/practice-preferences";
 
 type Difficulty = "easy" | "medium" | "hard";
 
@@ -34,11 +41,23 @@ type QuestionMeta = {
   solved: boolean;
 };
 
-const difficultyOptions: Array<{ label: string; value: Difficulty; badgeClass: string }> = [
-  { label: "Easy", value: "easy", badgeClass: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" },
-  { label: "Medium", value: "medium", badgeClass: "bg-amber-500/10 text-amber-600 dark:text-amber-400" },
-  { label: "Hard", value: "hard", badgeClass: "bg-red-500/10 text-red-600 dark:text-red-400" },
-];
+type DifficultyFilter = "all" | Difficulty;
+type StatusFilter = "all" | "solved" | "unsolved";
+type SortKey = "default" | "title-asc" | "title-desc" | "difficulty-asc" | "difficulty-desc";
+
+const difficultyOrder: Record<Difficulty, number> = { easy: 0, medium: 1, hard: 2 };
+
+const difficultyText: Record<Difficulty, string> = {
+  easy: "text-emerald-600 dark:text-emerald-400",
+  medium: "text-amber-600 dark:text-amber-400",
+  hard: "text-red-600 dark:text-red-400",
+};
+
+const difficultyLabels: Record<Difficulty, string> = {
+  easy: "Easy",
+  medium: "Medium",
+  hard: "Hard",
+};
 
 const timerOptions = [
   { label: "1 minute", value: 60 },
@@ -55,62 +74,51 @@ const languageOptions = [
   { label: "C", value: "c" },
 ];
 
-type Filter = "all" | Difficulty;
-
 export function PracticeLobby() {
   const router = useRouter();
-  const [filter, setFilter] = useState<Filter>("all");
+
+  const [search, setSearch] = useState("");
+  const [difficulty, setDifficulty] = useState<DifficultyFilter>("all");
+  const [status, setStatus] = useState<StatusFilter>("all");
+  const [sortKey, setSortKey] = useState<SortKey>("default");
   const [timer, setTimer] = useState<number>(5 * 60);
   const [language, setLanguage] = useState<string>(languageOptions[0].value);
+
   const [questions, setQuestions] = useState<QuestionMeta[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    let isMounted = true;
-
-    const loadQuestions = async () => {
-      setLoading(true);
-      setError(null);
-
+    let cancelled = false;
+    setLoading(true);
+    (async () => {
       try {
         const response = await fetch("/api/practice/questions");
-
-        if (!response.ok) {
-          throw new Error(`Failed to load questions (${response.status})`);
-        }
-
+        if (!response.ok) throw new Error(`Failed to load questions (${response.status})`);
         const data = (await response.json()) as { questions: QuestionMeta[] };
-
-        if (isMounted) {
-          setQuestions(data.questions);
-        }
+        if (!cancelled) setQuestions(data.questions);
       } catch (err) {
         console.error(err);
-        if (isMounted) {
+        if (!cancelled) {
           setError("Unable to load problems. Please try again.");
           setQuestions([]);
         }
       } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
+        if (!cancelled) setLoading(false);
       }
-    };
-
-    loadQuestions();
-
+    })();
     return () => {
-      isMounted = false;
+      cancelled = true;
     };
   }, []);
 
-  const filteredQuestions = useMemo(() => {
-    if (filter === "all") {
-      return questions;
-    }
-    return questions.filter((question) => question.difficulty === filter);
-  }, [questions, filter]);
+  // Apply stored session prefs after mount (client-only) to avoid a hydration
+  // mismatch between server and client first render.
+  useEffect(() => {
+    const prefs = getPracticePrefs();
+    if (typeof prefs.timer === "number") setTimer(prefs.timer);
+    if (typeof prefs.language === "string") setLanguage(prefs.language);
+  }, []);
 
   const solvedCount = useMemo(
     () => questions.filter((question) => question.solved).length,
@@ -118,62 +126,97 @@ export function PracticeLobby() {
   );
 
   const countsByDifficulty = useMemo(() => {
-    const counts: Record<Filter, number> = { all: questions.length, easy: 0, medium: 0, hard: 0 };
+    const counts: Record<DifficultyFilter, number> = {
+      all: questions.length,
+      easy: 0,
+      medium: 0,
+      hard: 0,
+    };
     for (const question of questions) {
-      if (countsByDifficultyHas(question.difficulty)) {
+      if (question.difficulty === "easy" || question.difficulty === "medium" || question.difficulty === "hard") {
         counts[question.difficulty] += 1;
       }
     }
     return counts;
   }, [questions]);
 
+  const normalizeTitle = (value: string) => value.trim().toLowerCase();
+
+  const visibleQuestions = useMemo(() => {
+    const query = normalizeTitle(search);
+
+    let list = questions;
+    if (difficulty !== "all") {
+      list = list.filter((question) => question.difficulty === difficulty);
+    }
+    if (status === "solved") {
+      list = list.filter((question) => question.solved);
+    } else if (status === "unsolved") {
+      list = list.filter((question) => !question.solved);
+    }
+    if (query) {
+      list = list.filter((question) => normalizeTitle(question.title).includes(query));
+    }
+
+    const sorted = [...list];
+    switch (sortKey) {
+      case "title-asc":
+        sorted.sort((a, b) => a.title.localeCompare(b.title));
+        break;
+      case "title-desc":
+        sorted.sort((a, b) => b.title.localeCompare(a.title));
+        break;
+      case "difficulty-asc":
+        sorted.sort((a, b) => difficultyOrder[a.difficulty] - difficultyOrder[b.difficulty]);
+        break;
+      case "difficulty-desc":
+        sorted.sort((a, b) => difficultyOrder[b.difficulty] - difficultyOrder[a.difficulty]);
+        break;
+      case "default":
+      default:
+        break;
+    }
+    return sorted;
+  }, [questions, search, difficulty, status, sortKey]);
+
   const buildRouteKey = (question: QuestionMeta) =>
     typeof question.slug === "string" && question.slug.trim().length > 0
       ? question.slug.trim()
       : question.id;
 
-  const sessionParams = useMemo(() => {
-    const params = new URLSearchParams({ timer: String(timer), language });
-    return params.toString();
-  }, [timer, language]);
-
   const handleOpenQuestion = (question: QuestionMeta) => {
-    router.push(`/practice/${encodeURIComponent(buildRouteKey(question))}?${sessionParams}`);
+    router.push(`/practice/${encodeURIComponent(buildRouteKey(question))}`);
   };
 
   const handleRandom = () => {
-    if (filteredQuestions.length === 0) {
+    if (visibleQuestions.length === 0) {
       setError("No problems available yet for this filter.");
       return;
     }
-    const pick = filteredQuestions[Math.floor(Math.random() * filteredQuestions.length)];
-    router.push(`/practice/${encodeURIComponent(buildRouteKey(pick))}?${sessionParams}`);
+    const pick = visibleQuestions[Math.floor(Math.random() * visibleQuestions.length)];
+    router.push(`/practice/${encodeURIComponent(buildRouteKey(pick))}`);
+  };
+
+  const handleTimerChange = (value: string | null) => {
+    if (value == null) return;
+    const next = Number(value);
+    setTimer(next);
+    setPracticePrefs({ timer: next });
+  };
+
+  const handleLanguageChange = (value: string | null) => {
+    if (value == null) return;
+    setLanguage(value);
+    setPracticePrefs({ language: value });
   };
 
   const progressPercent =
     questions.length > 0 ? Math.round((solvedCount / questions.length) * 100) : 0;
 
-  const filters: Array<{ label: string; value: Filter }> = [
-    { label: "All", value: "all" },
-    ...difficultyOptions.map((option) => ({ label: option.label, value: option.value as Filter })),
-  ];
-
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr_20rem]">
-      {/* Problem Browser */}
+      {/* Problem browser */}
       <div className="flex flex-col gap-5">
-        {/* Filter tabs */}
-        <Tabs value={filter} onValueChange={(value) => setFilter(value as Filter)}>
-          <TabsList className="h-9 w-fit">
-            {filters.map((option) => (
-              <TabsTrigger key={option.value} value={option.value} className="gap-1.5 px-3">
-                {option.label}
-                <span className="text-xs text-muted-foreground">{countsByDifficulty[option.value]}</span>
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
-
         {/* Solved progress */}
         <Card className="shadow-sm">
           <CardContent className="flex flex-col gap-3">
@@ -190,61 +233,118 @@ export function PracticeLobby() {
           </CardContent>
         </Card>
 
+        {/* Toolbar */}
+        <Card className="shadow-sm">
+          <CardContent className="flex flex-col gap-3 p-4">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search problems…"
+                className="pl-9"
+                aria-label="Search problems"
+              />
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Select value={difficulty} onValueChange={(value) => value != null && setDifficulty(value as DifficultyFilter)}>
+                <SelectTrigger className="w-[8.5rem]">
+                  <SelectValue placeholder="Difficulty" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All difficulties</SelectItem>
+                  <SelectItem value="easy">Easy · {countsByDifficulty.easy}</SelectItem>
+                  <SelectItem value="medium">Medium · {countsByDifficulty.medium}</SelectItem>
+                  <SelectItem value="hard">Hard · {countsByDifficulty.hard}</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={status} onValueChange={(value) => value != null && setStatus(value as StatusFilter)}>
+                <SelectTrigger className="w-[8.5rem]">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All statuses</SelectItem>
+                  <SelectItem value="unsolved">Unsolved</SelectItem>
+                  <SelectItem value="solved">Solved</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={sortKey} onValueChange={(value) => value != null && setSortKey(value as SortKey)}>
+                <SelectTrigger className="w-[10.5rem]">
+                  <SelectValue placeholder="Sort" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="default">Default order</SelectItem>
+                  <SelectItem value="title-asc">Title A–Z</SelectItem>
+                  <SelectItem value="title-desc">Title Z–A</SelectItem>
+                  <SelectItem value="difficulty-asc">Difficulty: Easy first</SelectItem>
+                  <SelectItem value="difficulty-desc">Difficulty: Hard first</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Problem list */}
         <Card className="overflow-hidden shadow-sm">
-          <div className="grid grid-cols-[auto_1fr_auto] items-center gap-3 border-b border-border px-5 py-3 text-xs uppercase tracking-wider text-muted-foreground">
+          <div className="grid grid-cols-[auto_1fr_auto_auto] items-center gap-3 border-b border-border px-5 py-3 text-xs uppercase tracking-wider text-muted-foreground">
             <span className="w-8">Status</span>
-            <span>Problem</span>
+            <span className="pl-2">Problem</span>
             <span>Difficulty</span>
+            <span className="w-4" />
           </div>
 
           {loading && (
             <div className="flex flex-col gap-4 p-5">
               {[0, 1, 2, 3, 4].map((i) => (
-                <div key={i} className="grid grid-cols-[auto_1fr_auto] items-center gap-3">
-                  <Skeleton className="size-6 rounded-full" />
+                <div key={i} className="grid grid-cols-[auto_1fr_auto_auto] items-center gap-3">
+                  <Skeleton className="size-6" />
                   <Skeleton className="h-4 w-full max-w-md" />
-                  <Skeleton className="h-5 w-16 rounded-full" />
+                  <Skeleton className="h-4 w-12" />
+                  <Skeleton className="size-4" />
                 </div>
               ))}
             </div>
           )}
 
-          {!loading && filteredQuestions.length === 0 && (
-            <p className="px-5 py-6 text-sm text-muted-foreground">
-              {error ?? "No problems available yet for this filter."}
+          {!loading && visibleQuestions.length === 0 && (
+            <p className="px-5 py-8 text-sm text-muted-foreground">
+              {error ?? "No problems match your filters."}
             </p>
           )}
 
           {!loading &&
-            filteredQuestions.length > 0 &&
-            filteredQuestions.map((question, index) => {
-              const diff = difficultyOptions.find((option) => option.value === question.difficulty);
-              return (
-                <button
-                  key={question.id}
-                  type="button"
-                  onClick={() => handleOpenQuestion(question)}
-                  className="grid w-full grid-cols-[auto_1fr_auto] items-center gap-3 border-b border-border px-5 py-4 text-left transition-colors last:border-b-0 hover:bg-accent/50"
-                >
-                  <span className="flex w-8 items-center">
-                    {question.solved ? (
-                      <CheckCircle2 className="size-5 text-emerald-600 dark:text-emerald-400" />
-                    ) : (
-                      <span className="text-xs tabular-nums text-muted-foreground">
-                        {String(index + 1).padStart(2, "0")}
-                      </span>
-                    )}
-                  </span>
-                  <span className="truncate pr-4 text-sm text-foreground">{question.title}</span>
-                  {diff && (
-                    <Badge variant="outline" className={diff.badgeClass}>
-                      {diff.label}
-                    </Badge>
+            visibleQuestions.length > 0 &&
+            visibleQuestions.map((question) => (
+              <button
+                key={question.id}
+                type="button"
+                onClick={() => handleOpenQuestion(question)}
+                className="group grid w-full cursor-pointer grid-cols-[auto_1fr_auto_auto] items-center gap-3 border-b border-border px-5 py-4 text-left transition-colors last:border-b-0 hover:bg-muted/40"
+                aria-label={`Open ${question.title}`}
+              >
+                <span className="flex w-8 items-center justify-start">
+                  {question.solved ? (
+                    <CheckCircle2 className="size-5 text-emerald-500" />
+                  ) : (
+                    <span className="text-xs tabular-nums text-muted-foreground">
+                      {String(visibleQuestions.indexOf(question) + 1).padStart(2, "0")}
+                    </span>
                   )}
-                </button>
-              );
-            })}
+                </span>
+
+                <span className="truncate pl-2 pr-4 text-sm font-medium text-foreground transition-colors group-hover:text-primary group-hover:underline">
+                  {question.title}
+                </span>
+
+                <span className={`text-xs font-medium uppercase tracking-wide ${difficultyText[question.difficulty]}`}>
+                  {difficultyLabels[question.difficulty]}
+                </span>
+
+                <ChevronRight className="size-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+              </button>
+            ))}
         </Card>
       </div>
 
@@ -261,7 +361,7 @@ export function PracticeLobby() {
                 <Clock className="size-4" />
                 Timer
               </span>
-              <Select value={String(timer)} onValueChange={(value) => value != null && setTimer(Number(value))}>
+              <Select value={String(timer)} onValueChange={handleTimerChange}>
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select timer" />
                 </SelectTrigger>
@@ -280,7 +380,7 @@ export function PracticeLobby() {
                 <Languages className="size-4" />
                 Language
               </span>
-              <Select value={language} onValueChange={(value) => value != null && setLanguage(value)}>
+              <Select value={language} onValueChange={handleLanguageChange}>
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select language" />
                 </SelectTrigger>
@@ -296,22 +396,18 @@ export function PracticeLobby() {
 
             <Button
               onClick={handleRandom}
-              disabled={loading || filteredQuestions.length === 0}
+              disabled={loading || visibleQuestions.length === 0}
               className="w-full"
             >
               <Shuffle data-icon="inline-start" />
               Surprise Me
             </Button>
             <p className="text-center text-xs text-muted-foreground">
-              Random problem from the current filter
+              Random problem from the current filters
             </p>
           </CardContent>
         </Card>
       </div>
     </div>
   );
-}
-
-function countsByDifficultyHas(value: string): value is Difficulty {
-  return value === "easy" || value === "medium" || value === "hard";
 }

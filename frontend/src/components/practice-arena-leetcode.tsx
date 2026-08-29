@@ -34,6 +34,14 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
+import { CodeEditor } from "@/components/code-editor";
+import { buildTemplate, languageLabels, normalizeLanguage } from "@/lib/code-templates";
+import { getPracticePrefs, setPracticePrefs } from "@/lib/practice-preferences";
+import {
+  buildTemplate as buildHarnessTemplate,
+  signatureFromMeta,
+  type HarnessLang,
+} from "@/lib/harness";
 
 type PracticeTestcase = {
   id: string;
@@ -72,41 +80,11 @@ type SubmissionResult = {
   input: string;
 };
 
-const languageLabels: Record<string, string> = {
-  node: "JavaScript (Node)",
-  javascript: "JavaScript (Node)",
-  python: "Python 3",
-  cpp: "C++",
-  java: "Java",
-  c: "C",
-};
-
-const codeTemplates: Record<string, string> = {
-  node: `function solve(raw) {\n  // enter your code here\n\n  return raw;\n}\n\nconst fs = require('fs');\nconst input = fs.readFileSync(0, 'utf8').trim();\nprocess.stdout.write(String(solve(input)));\n`,
-  javascript: `function solve(raw) {\n  // enter your code here\n\n  return raw;\n}\n\nconst fs = require('fs');\nconst input = fs.readFileSync(0, 'utf8').trim();\nprocess.stdout.write(String(solve(input)));\n`,
-  python: `def solve(raw: str) -> str:\n    # enter your code here\n\n    return raw\n\nimport sys\ninput_data = sys.stdin.read().strip()\nprint(solve(input_data))\n`,
-  cpp: `#include <bits/stdc++.h>\nusing namespace std;\n\nstring solve(const string& raw) {\n    // enter your code here\n\n    return raw;\n}\n\nint main() {\n    ios::sync_with_stdio(false);\n    cin.tie(nullptr);\n    stringstream buffer;\n    buffer << cin.rdbuf();\n    string input = buffer.str();\n    cout << solve(input);\n    return 0;\n}\n`,
-  java: `import java.io.*;\nimport java.util.*;\n\npublic class Main {\n  private static String solve(String raw) {\n    // enter your code here\n\n    return raw;\n  }\n\n  public static void main(String[] args) throws Exception {\n    StringBuilder sb = new StringBuilder();\n    try (BufferedReader br = new BufferedReader(new InputStreamReader(System.in))) {\n      String line;\n      while ((line = br.readLine()) != null) {\n        if (sb.length() > 0) sb.append("\\n");\n        sb.append(line);\n      }\n    }\n    System.out.print(solve(sb.toString()));\n  }\n}\n`,
-  c: `#include <stdio.h>\n#include <string.h>\n\nvoid solve(const char *raw) {\n  // enter your code here\n\n  printf("%s", raw);\n}\n\nint main(void) {\n  char buffer[1 << 16];\n  size_t length = fread(buffer, 1, sizeof(buffer) - 1, stdin);\n  buffer[length] = '\\0';\n  solve(buffer);\n  return 0;\n}\n`,
-};
-
 const formatDuration = (seconds: number) => {
   const mins = Math.floor(seconds / 60).toString().padStart(2, "0");
   const secs = Math.max(seconds % 60, 0).toString().padStart(2, "0");
   return `${mins}:${secs}`;
 };
-
-const normalizeLanguage = (value: string) => (value === "javascript" ? "node" : value);
-
-const buildTemplate = (language: string, title: string) => {
-  const key = normalizeLanguage(language);
-  const template = codeTemplates[key];
-  if (!template) return `// ${title}\n// enter your code here\n`;
-  return template.replaceAll("${title}", title);
-};
-
-const editorPlaceholder = (language: string) =>
-  normalizeLanguage(language) === "python" ? "# enter your code here" : "// enter your code here";
 
 const summarizeError = (stderr: string | null) => {
   if (!stderr) return null;
@@ -147,10 +125,23 @@ export function PracticeArenaLeetcode({
     ? testcases
     : [{ id: `${question.id}-fallback`, input: "", output: "" }];
 
+  // LeetCode-style signature (when the problem declares one). With a signature
+  // the editor shows only a clean `solve(...)` function; the judge wraps it
+  // with a hidden stdin/stdout harness. Without one, we fall back to the old
+  // full token-based program template.
+  const signature = useMemo(() => signatureFromMeta(question.meta), [question.meta]);
+  const arenaTemplate = useCallback(
+    (lang: string) =>
+      signature
+        ? buildHarnessTemplate(normalizeLanguage(lang) as HarnessLang, signature)
+        : buildTemplate(lang, question.title),
+    [signature, question.title],
+  );
+
   const [language, setLanguage] = useState(normalizedInitialLanguage);
   const [timerSeconds, setTimerSeconds] = useState(initialTimer);
   const [isTimerActive, setIsTimerActive] = useState(true);
-  const [code, setCode] = useState(() => buildTemplate(normalizedInitialLanguage, question.title));
+  const [code, setCode] = useState(() => arenaTemplate(normalizedInitialLanguage));
   const [results, setResults] = useState<SubmissionResult[] | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
@@ -167,6 +158,23 @@ export function PracticeArenaLeetcode({
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Timer effect
+  useEffect(() => {
+    // Apply stored session prefs after mount (client-only) to avoid a
+    // hydration mismatch between server and client first render.
+    const prefs = getPracticePrefs();
+    if (typeof prefs.timer === "number") {
+      setTimerSeconds(prefs.timer);
+    }
+    if (typeof prefs.language === "string") {
+      const stored = normalizeLanguage(prefs.language);
+      if (availableLanguages.includes(stored)) {
+        setLanguage(stored);
+        setCode(arenaTemplate(stored));
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     const interval = setInterval(() => {
       setTimerSeconds((prev) => {
@@ -254,8 +262,16 @@ export function PracticeArenaLeetcode({
 
   const handleLanguageChange = (value: string) => {
     const normalized = normalizeLanguage(value);
+    setPracticePrefs({ language: normalized });
+    // Swap to the new language's template only when the editor is untouched:
+    // empty, or still holding the default template for the previously selected
+    // language. Preserve any code the user actually wrote.
+    const currentTemplate = arenaTemplate(language);
+    const untouched = code.trim() === "" || code === currentTemplate;
     setLanguage(normalized);
-    setCode((current) => (!current.trim() ? buildTemplate(normalized, question.title) : current));
+    if (untouched) {
+      setCode(arenaTemplate(normalized));
+    }
   };
 
   const handleSubmit = async (intent: "run" | "submit") => {
@@ -413,7 +429,7 @@ export function PracticeArenaLeetcode({
               <div className="flex flex-col gap-6">
                 {/* Description */}
                 <div>
-                  {question.description.split(/\n\n+/).map((p, i) => (
+                  {question.description.replace(/\\n/g, "\n").split(/\n\n+/).map((p, i) => (
                     <p key={i} className="text-sm leading-relaxed text-foreground">
                       {p}
                     </p>
@@ -492,12 +508,10 @@ export function PracticeArenaLeetcode({
         <div className="flex flex-1 flex-col overflow-hidden">
           {/* Code editor */}
           <div className="flex-1 overflow-hidden">
-            <textarea
+            <CodeEditor
+              language={language}
               value={code}
-              onChange={(e) => setCode(e.target.value)}
-              spellCheck={false}
-              placeholder={editorPlaceholder(language)}
-              className="code-editor h-full w-full resize-none border-0 bg-background p-4 text-foreground placeholder:text-muted-foreground focus:outline-none"
+              onChange={setCode}
             />
           </div>
 

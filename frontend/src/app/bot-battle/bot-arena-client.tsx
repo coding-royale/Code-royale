@@ -5,6 +5,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Bot, BookOpen, Check, Clock, Eye, Trophy, X, Zap } from "lucide-react";
 import { TetrioBattleBackground } from "@/components/battle/tetrio-battle-background";
 import { MaskedOpponentEditor } from "@/components/battle/masked-opponent-editor";
+import { CodeEditor } from "@/components/code-editor";
+import { buildTemplate, languageLabels, normalizeLanguage } from "@/lib/code-templates";
 import { BotSimulator, getBotConfig, type BotDifficulty, type BotProgress } from "@/lib/bot-player";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -60,40 +62,10 @@ type SubmissionResult = {
   input: string;
 };
 
-const languageLabels: Record<string, string> = {
-  node: "JavaScript (Node)",
-  javascript: "JavaScript (Node)",
-  python: "Python 3",
-  cpp: "C++",
-  java: "Java",
-  c: "C",
-};
-
-const codeTemplates: Record<string, string> = {
-  node: `function solve(raw) {\n  // enter your code here\n  return raw;\n}\n\nconst fs = require('fs');\nconst input = fs.readFileSync(0, 'utf8').trim();\nprocess.stdout.write(String(solve(input)));\n`,
-  javascript: `function solve(raw) {\n  // enter your code here\n  return raw;\n}\n\nconst fs = require('fs');\nconst input = fs.readFileSync(0, 'utf8').trim();\nprocess.stdout.write(String(solve(input)));\n`,
-  python: `def solve(raw: str) -> str:\n    # write your solution\n    return raw\n\nimport sys\ninput_data = sys.stdin.read().strip()\nprint(solve(input_data))\n`,
-  cpp: `#include <bits/stdc++.h>\nusing namespace std;\n\nstring solve(const string& raw) {\n    // enter your code here\n    return raw;\n}\n\nint main() {\n    ios::sync_with_stdio(false);\n    cin.tie(nullptr);\n\n    stringstream buffer;\n    buffer << cin.rdbuf();\n    string input = buffer.str();\n\n    cout << solve(input);\n    return 0;\n}\n`,
-  java: `import java.io.*;\nimport java.util.*;\n\npublic class Main {\n  private static String solve(String raw) {\n    // enter your code here\n    return raw;\n  }\n\n  public static void main(String[] args) throws Exception {\n    StringBuilder sb = new StringBuilder();\n    try (BufferedReader br = new BufferedReader(new InputStreamReader(System.in))) {\n      String line;\n      while ((line = br.readLine()) != null) {\n        if (sb.length() > 0) sb.append("\\n");\n        sb.append(line);\n      }\n    }\n    System.out.print(solve(sb.toString()));\n  }\n}\n`,
-  c: `#include <stdio.h>\n#include <string.h>\n\nvoid solve(const char *raw) {\n  // enter your code here\n  printf("%s", raw);\n}\n\nint main(void) {\n  char buffer[1 << 16];\n  size_t length = fread(buffer, 1, sizeof(buffer) - 1, stdin);\n  buffer[length] = '\\0';\n  solve(buffer);\n  return 0;\n}\n`,
-};
-
 const formatDuration = (seconds: number) => {
   const mins = Math.floor(seconds / 60).toString().padStart(2, "0");
   const secs = Math.max(seconds % 60, 0).toString().padStart(2, "0");
   return `${mins}:${secs}`;
-};
-
-const normalizeLanguage = (value: string) => {
-  if (value === "javascript") return "node";
-  return value;
-};
-
-const buildTemplate = (language: string, title: string) => {
-  const key = normalizeLanguage(language);
-  const template = codeTemplates[key];
-  if (!template) return `// ${title}\n// Write your solution here\n`;
-  return template.replaceAll("${title}", title);
 };
 
 const BOT_NAMES: Record<BotDifficulty, string> = {
@@ -128,7 +100,7 @@ const DIFFICULTY_STYLES: Record<
 
 const SOLUTION_CODE_BY_LANG: Record<string, string> = {
   node: `function solve(raw) {\n  const lines = raw.trim().split('\\n');\n  const nums = lines[0].split(',').map(Number);\n  let sum = 0;\n  for (const n of nums) {\n    if (n > 0) sum += n;\n  }\n  return String(sum);\n}\n\nconst fs = require('fs');\nconst input = fs.readFileSync(0, 'utf8').trim();\nprocess.stdout.write(solve(input));`,
-  python: `def solve(raw: str) -> str:\n    nums = [int(x) for x in raw.strip().split(',')]\n    total = sum(n for n in nums if n > 0)\n    return str(total)\n\nimport sys\ninput_data = sys.stdin.read().strip()\nprint(solve(input_data))`,
+  python: `def solve(raw: str) -> str:\n    nums = [int(x) for x in raw.strip().split(',')]\n    total = sum(n for n in nums if n > 0)\n    return str(total)\n\nimport sys\ninput_data = sys.stdin.read().strip()\nsys.stdout.write(solve(input_data))`,
   cpp: `#include <bits/stdc++.h>\nusing namespace std;\n\nstring solve(const string& raw) {\n    stringstream ss(raw);\n    string token;\n    int sum = 0;\n    while (getline(ss, token, ',')) {\n        int n = stoi(token);\n        if (n > 0) sum += n;\n    }\n    return to_string(sum);\n}\n\nint main() {\n    ios::sync_with_stdio(false);\n    cin.tie(nullptr);\n    stringstream buffer;\n    buffer << cin.rdbuf();\n    cout << solve(buffer.str());\n    return 0;\n}`,
   java: `import java.io.*;\nimport java.util.*;\n\npublic class Main {\n  private static String solve(String raw) {\n    int sum = 0;\n    for (String s : raw.trim().split(",")) {\n      int n = Integer.parseInt(s.trim());\n      if (n > 0) sum += n;\n    }\n    return String.valueOf(sum);\n  }\n\n  public static void main(String[] args) throws Exception {\n    StringBuilder sb = new StringBuilder();\n    try (BufferedReader br = new BufferedReader(new InputStreamReader(System.in))) {\n      String line;\n      while ((line = br.readLine()) != null) {\n        if (sb.length() > 0) sb.append("\\n");\n        sb.append(line);\n      }\n    }\n    System.out.print(solve(sb.toString()));\n  }\n}`,
   c: `#include <stdio.h>\n#include <string.h>\n#include <stdlib.h>\n\nvoid solve(const char *raw) {\n    char copy[1024];\n    strcpy(copy, raw);\n    int sum = 0;\n    char *token = strtok(copy, ",");\n    while (token) {\n        int n = atoi(token);\n        if (n > 0) sum += n;\n        token = strtok(NULL, ",");\n    }\n    printf("%d", sum);\n}\n\nint main(void) {\n    char buffer[1 << 16];\n    size_t length = fread(buffer, 1, sizeof(buffer) - 1, stdin);\n    buffer[length] = '\\0';\n    solve(buffer);\n    return 0;\n}`,
@@ -424,7 +396,7 @@ export function BotBattleArenaClient({
 
               {showQuestion ? (
                 <div className="flex-1 overflow-y-auto text-sm leading-relaxed text-foreground/80">
-                {question.description.split(/\n\n+/).map((p, i) => (
+                {question.description.replace(/\\n/g, "\n").split(/\n\n+/).map((p, i) => (
                   <p key={i} className="mb-3">{p}</p>
                 ))}
 
@@ -504,8 +476,13 @@ export function BotBattleArenaClient({
                       onValueChange={(value) => {
                         if (value === null) return;
                         const normalized = normalizeLanguage(value);
+                        // Swap only when untouched: still the default template or empty.
+                        const currentTemplate = buildTemplate(language, question.title);
+                        const untouched = code.trim() === "" || code === currentTemplate;
                         setLanguage(normalized);
-                        setCode((c) => (!c.trim() ? buildTemplate(normalized, question.title) : c));
+                        if (untouched) {
+                          setCode(buildTemplate(normalized, question.title));
+                        }
                       }}
                     >
                       <SelectTrigger size="sm" className="text-[11px] font-semibold uppercase tracking-wider">
@@ -550,12 +527,11 @@ export function BotBattleArenaClient({
                   </div>
 
                   <div className="flex flex-1 overflow-hidden rounded-xl border bg-card shadow-sm">
-                    <textarea
+                    <CodeEditor
+                      language={language}
                       value={code}
-                      onChange={(e) => setCode(e.target.value)}
-                      spellCheck={false}
-                      className="code-editor h-full w-full resize-none bg-transparent p-5 text-[14px] text-foreground/90 focus:outline-none"
-                      disabled={isMatchOver}
+                      onChange={setCode}
+                      readOnly={isMatchOver}
                     />
                   </div>
                 </div>

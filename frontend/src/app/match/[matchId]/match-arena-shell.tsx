@@ -5,6 +5,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { BookOpen, Check, Clock, Eye, Trophy, X } from "lucide-react";
 import { TetrioBattleBackground } from "@/components/battle/tetrio-battle-background";
 import { MaskedOpponentEditor } from "@/components/battle/masked-opponent-editor";
+import { CodeEditor } from "@/components/code-editor";
+import { buildTemplate, languageLabels, normalizeLanguage } from "@/lib/code-templates";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -63,24 +65,6 @@ type SubmissionResult = {
   input: string;
 };
 
-const languageLabels: Record<string, string> = {
-  node: "JavaScript (Node)",
-  javascript: "JavaScript (Node)",
-  python: "Python 3",
-  cpp: "C++",
-  java: "Java",
-  c: "C",
-};
-
-const codeTemplates: Record<string, string> = {
-  node: `// TODO: solve "${"${title}"}"\nfunction solve(raw) {\n  // write your solution\n  return raw;\n}\n\nconst fs = require('fs');\nconst input = fs.readFileSync(0, 'utf8').trim();\nprocess.stdout.write(String(solve(input)));\n`,
-  javascript: `// TODO: solve "${"${title}"}"\nfunction solve(raw) {\n  // write your solution\n  return raw;\n}\n\nconst fs = require('fs');\nconst input = fs.readFileSync(0, 'utf8').trim();\nprocess.stdout.write(String(solve(input)));\n`,
-  python: `# TODO: solve "${"${title}"}"\ndef solve(raw: str) -> str:\n    # write your solution\n    return raw\n\nimport sys\ninput_data = sys.stdin.read().strip()\nprint(solve(input_data))\n`,
-  cpp: `// TODO: solve "${"${title}"}"\n#include <bits/stdc++.h>\nusing namespace std;\n\nstring solve(const string& raw) {\n    // enter your code here\n    return raw;\n}\n\nint main() {\n    ios::sync_with_stdio(false);\n    cin.tie(nullptr);\n\n    stringstream buffer;\n    buffer << cin.rdbuf();\n    string input = buffer.str();\n\n    cout << solve(input);\n    return 0;\n}\n`,
-  java: `// TODO: solve "${"${title}"}"\nimport java.io.*;\nimport java.util.*;\n\npublic class Main {\n  private static String solve(String raw) {\n    // enter your code here\n    return raw;\n  }\n\n  public static void main(String[] args) throws Exception {\n    StringBuilder sb = new StringBuilder();\n    try (BufferedReader br = new BufferedReader(new InputStreamReader(System.in))) {\n      String line;\n      while ((line = br.readLine()) != null) {\n        if (sb.length() > 0) sb.append("\\n");\n        sb.append(line);\n      }\n    }\n    System.out.print(solve(sb.toString()));\n  }\n}\n`,
-  c: `// TODO: solve "${"${title}"}"\n#include <stdio.h>\n#include <string.h>\n\nvoid solve(const char *raw) {\n  // write your solution\n  printf("%s", raw);\n}\n\nint main(void) {\n  char buffer[1 << 16];\n  size_t length = fread(buffer, 1, sizeof(buffer) - 1, stdin);\n  buffer[length] = '\\0';\n  solve(buffer);\n  return 0;\n}\n`,
-};
-
 const formatDuration = (seconds: number) => {
   const mins = Math.floor(seconds / 60)
     .toString()
@@ -89,22 +73,6 @@ const formatDuration = (seconds: number) => {
     .toString()
     .padStart(2, "0");
   return `${mins}:${secs}`;
-};
-
-const normalizeLanguage = (value: string) => {
-  if (value === "javascript") {
-    return "node";
-  }
-  return value;
-};
-
-const buildTemplate = (language: string, title: string) => {
-  const key = normalizeLanguage(language);
-  const template = codeTemplates[key];
-  if (!template) {
-    return `// ${title}\n// Write your solution here\n`;
-  }
-  return template.replaceAll("${title}", title);
 };
 
 const modeLabels: Record<string, string> = {
@@ -522,7 +490,7 @@ export function MatchArenaShell({
 
               {showQuestion ? (
                 <div className="flex-1 overflow-y-auto text-sm leading-relaxed text-foreground/80">
-                  {question.description.split(/\n\n+/).map((p, i) => (
+                  {question.description.replace(/\\n/g, "\n").split(/\n\n+/).map((p, i) => (
                     <p key={i} className="mb-3">
                       {p}
                     </p>
@@ -622,12 +590,14 @@ export function MatchArenaShell({
                         onValueChange={(value) => {
                           if (value === null) return;
                           const normalized = normalizeLanguage(value);
+                          // Swap only when the editor is untouched: still holding
+                          // the default template for the current language or empty.
+                          const currentTemplate = buildTemplate(language, question.title);
+                          const untouched = code.trim() === "" || code === currentTemplate;
                           setLanguage(normalized);
-                          setCode((c) =>
-                            !c.trim()
-                              ? buildTemplate(normalized, question.title)
-                              : c,
-                          );
+                          if (untouched) {
+                            setCode(buildTemplate(normalized, question.title));
+                          }
                         }}
                       >
                         <SelectTrigger size="sm" className="text-[11px] font-semibold uppercase tracking-wider">
@@ -676,11 +646,10 @@ export function MatchArenaShell({
                   </div>
 
                   <div className="flex flex-1 overflow-hidden rounded-xl border bg-card shadow-sm">
-                    <textarea
+                    <CodeEditor
+                      language={language}
                       value={code}
-                      onChange={(e) => setCode(e.target.value)}
-                      spellCheck={false}
-                      className="code-editor h-full w-full resize-none bg-transparent p-5 text-[14px] text-foreground/90 focus:outline-none"
+                      onChange={setCode}
                     />
                   </div>
                 </div>

@@ -625,39 +625,45 @@ Request body:
 {
   "questionId": "uuid",
   "code": "string",
-  "language": "python"
+  "language": "python",
+  "intent": "run"
 }
 ```
 
-The supported languages are `node`, `javascript`, `python`, `cpp`, `java`, and `c`. The route maps `javascript` to `node`.
+The `intent` field is `"run"` or `"submit"`. A passed submission is recorded on the player's profile only when `intent` is `"submit"`. The response carries both `passed` (all tests pass) and `solved` (`passed` and a submit intent).
+
+The supported languages are `node`, `javascript`, `python`, `cpp`, `java`, and `c`. The route maps these to goboxd registry IDs: `javascript`/`node` → `js`, `python` → `py3`, and the rest keep their names.
 
 The route performs these actions:
 
 1. Load the question and its test cases
 2. Verify that the question allows the language
-3. Resolve the Judge0 language ID
-4. Send the code to Judge0 for each test case
-5. Compare the output with the expected output
-6. Stop at the first failed test case
-7. Record a passed submission for the session user when all test cases pass
+3. Send the source and every test case to goboxd in a single `POST /run`
+4. Map each goboxd result back to a status
 
 The test cases come from `practice_questions.testcases`. When that array is empty, the route uses the legacy `practice_testcases` table.
 
-Each Judge0 submission has a timeout of 20 seconds. The route uses the wait mode of Judge0.
+The route requires the `GOBOXD_API_URL` environment variable. When it is missing, the route returns `502`.
+
+Judging is strict and byte-exact. Only goboxd's `accepted` status (stdout equals the expected output exactly) counts as a pass. goboxd's `output_whitespace_mismatch` and `wrong_output` both count as failures. The route returns a result for every test case; it does not stop at the first failure.
 
 The result statuses are:
 
-- `Accepted` — the output matches and the status code is 3
-- `Wrong Answer` — the output does not match
-- `Compilation Error` — the status code is 6
-- `Time Limit Exceeded` — the status code is 5
-- `Runtime Error` — the status code is 11 or 12
+- `Accepted` — the output matches exactly (`accepted`)
+- `Wrong Answer` — the output does not match (`wrong_output` or `output_whitespace_mismatch`)
+- `Compilation Error` — the code failed to build (`build_failed`)
+- `Time Limit Exceeded` — the wall or CPU limit was exceeded
+- `Memory Limit Exceeded` — the memory limit was exceeded
+- `Runtime Error` — the program crashed or exited non-zero
+- `Not Executed` — the test was skipped after a build failure
+- `Internal Error` — a server-side failure inside goboxd
 
 Success response (200):
 
 ```json
 {
   "passed": false,
+  "solved": false,
   "results": [
     {
       "index": 0,

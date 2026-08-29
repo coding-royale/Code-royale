@@ -11,7 +11,7 @@ The app uses these technologies:
 - TypeScript 5
 - Tailwind CSS 4
 - Supabase for the database, authentication, and realtime features
-- Judge0 for code execution
+- goboxd for code execution
 - bun as the package manager
 
 ## High-level architecture
@@ -21,7 +21,7 @@ The app has two parts:
 - The client (the browser)
 - The server (the Next.js API routes)
 
-The client connects to Supabase for authentication, data, and realtime features. The client sends code submissions to the server. The server runs the code on Judge0 and returns the result.
+The client connects to Supabase for authentication, data, and realtime features. The client sends code submissions to the server. The server runs the code on goboxd and returns the result.
 
 The diagram below shows the main connections:
 
@@ -34,7 +34,7 @@ Browser (Next.js client)
     |
     |-- Next.js API routes
             |
-            |-- Judge0 (code execution)
+            |-- goboxd (code execution)
 ```
 
 ## Codebase layout
@@ -130,7 +130,6 @@ The library modules are in `frontend/src/lib`:
 - `supabase-service.ts` — the Supabase service-role client for server operations
 - `oauth.ts` — the shared OAuth helpers for the redirect target and error messages
 - `bot-player.ts` — the bot simulator for bot battles
-- `pvp-questions.ts` — the curated PvP question seeds
 - `use-friend-presence.ts` — the hook for live friend presence
 
 ### Proxy
@@ -141,8 +140,8 @@ The file `frontend/src/proxy.ts` is the session proxy. It refreshes the Supabase
 
 The scripts are in `frontend/scripts`:
 
-- `seed-pvp-questions.mjs` — seeds the curated PvP questions
-- `seed-extra-questions.mjs` — seeds 30 extra DSA and DAA questions
+- `seed-quality-questions.mjs` — clears and reseeds `practice_questions` with the curated quality problem bank
+- `quality-bank.mjs` — the curated problem bank that `seed-quality-questions.mjs` reads
 
 ### SQL files
 
@@ -187,11 +186,10 @@ The `public` folder contains the static assets. It has the logo files and the im
 
 1. The client sends a request to `POST /api/practice/submit`.
 2. The server loads the question and its test cases.
-3. The server sends the code to Judge0 for each test case.
-4. The server compares the output with the expected output.
-5. The server stops at the first failed test case.
-6. The server records a submission when all test cases pass.
-7. The server returns the results to the client.
+3. The server sends the code and all test cases to goboxd in a single request.
+4. goboxd judges each test case and returns a result per case.
+5. The server maps the results and records a submission when a `submit` intent passes all test cases.
+6. The server returns the results to the client.
 
 ### Bot battle flow
 
