@@ -660,9 +660,9 @@ export function AppShell({ children, showSidebar = true }: AppShellProps) {
         <SidebarInset>
           <div className="min-h-[calc(100vh-3.5rem)]">{children}</div>
 
-          <footer className="border-t border-border bg-muted/30 px-6 py-10">
-            <div className="mx-auto grid w-full max-w-6xl gap-8 md:grid-cols-2">
-              <section className="flex flex-col gap-3">
+          <footer className="mt-8 border-t border-border bg-muted/20 px-6 py-6">
+            <div className="mx-auto grid w-full max-w-6xl gap-6 md:grid-cols-2">
+              <section className="flex flex-col gap-2">
                 <h3 className="text-sm font-semibold">Social</h3>
                 <div className="flex flex-wrap gap-2">
                   {socialButtons.map((item) => {
@@ -691,7 +691,7 @@ export function AppShell({ children, showSidebar = true }: AppShellProps) {
                 </div>
               </section>
 
-              <section className="flex flex-col gap-3">
+              <section className="flex flex-col gap-2">
                 <h3 className="text-sm font-semibold">Contact</h3>
                 <LinkButton
                   variant="outline"

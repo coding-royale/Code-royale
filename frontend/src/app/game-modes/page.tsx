@@ -720,10 +720,11 @@ export default function GameModesPage() {
             : undefined,
   }));
 
-  const nonRankedCards = NON_RANKED_MODES.map((mode) => ({
-    mode,
-    onClick: mode.enabled ? () => handleNonRankedClick(mode) : undefined,
-  }));
+  const nonRankedCards = NON_RANKED_MODES.filter((mode) => mode.enabled);
+
+  const upcomingTitles = [...RANKED_MODES, ...NON_RANKED_MODES]
+    .filter((mode) => !mode.enabled)
+    .map((mode) => mode.title);
 
   const activeMode = selectedMode ?? RANKED_MODES[0];
   const rankedBand = getRankedBandFromRating(viewerRating);
@@ -781,25 +782,34 @@ export default function GameModesPage() {
                 </p>
               </div>
               <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-                {rankedCards.map(({ mode, onClick }) => (
+                {rankedCards.filter(({ mode }) => mode.enabled).map(({ mode, onClick }) => (
                   <ModeCard key={mode.id} mode={mode} onClick={onClick} />
                 ))}
               </div>
             </section>
 
-            <section className="flex flex-col gap-6">
-              <div className="flex flex-col gap-1">
-                <h2 className="font-heading text-xl font-semibold tracking-tight">Non-Ranked Match Types</h2>
-                <p className="max-w-2xl text-sm text-muted-foreground">
-                  Skill-focused formats with reduced or zero trophy impact. Perfect for warming up, experimenting, or casual competition.
-                </p>
-              </div>
-              <div className="grid gap-5 md:grid-cols-2">
-                {nonRankedCards.map(({ mode, onClick }) => (
-                  <ModeCard key={mode.id} mode={mode} onClick={onClick} />
-                ))}
-              </div>
-            </section>
+            {nonRankedCards.length > 0 && (
+              <section className="flex flex-col gap-6">
+                <div className="flex flex-col gap-1">
+                  <h2 className="font-heading text-xl font-semibold tracking-tight">More modes</h2>
+                  <p className="max-w-2xl text-sm text-muted-foreground">
+                    Skill-focused formats with reduced or zero trophy impact.
+                  </p>
+                </div>
+                <div className="grid gap-5 md:grid-cols-2">
+                  {nonRankedCards.map((mode) => (
+                    <ModeCard key={mode.id} mode={mode} onClick={() => void handleNonRankedClick(mode)} />
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {upcomingTitles.length > 0 && (
+              <section className="rounded-2xl border border-dashed border-border bg-card/40 px-6 py-5">
+                <h3 className="font-heading text-base font-semibold">Coming soon</h3>
+                <p className="mt-1 text-sm text-muted-foreground">{upcomingTitles.join(" · ")}</p>
+              </section>
+            )}
           </div>
         )}
 
