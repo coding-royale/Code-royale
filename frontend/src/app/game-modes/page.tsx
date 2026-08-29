@@ -687,10 +687,19 @@ export default function GameModesPage() {
     setState("configuring");
   };
 
-  const handleNonRankedClick = (mode: ModeDefinition) => {
-    setSelectedMode(mode);
-    setConfigSelection(null);
-    setState("configuring");
+  const handleRandomPractice = async () => {
+    try {
+      const response = await fetch("/api/practice/questions", { cache: "no-store" });
+      if (!response.ok) return;
+      const data = (await response.json()) as { questions: Array<{ slug: string | null; id: string }> };
+      const questions = data.questions ?? [];
+      if (questions.length === 0) return;
+      const pick = questions[Math.floor(Math.random() * questions.length)];
+      const key = pick.slug && pick.slug.trim() ? pick.slug.trim() : pick.id;
+      router.push(`/practice/${encodeURIComponent(key)}`);
+    } catch {
+      // ignore transient failures
+    }
   };
 
   const handleEnterMatch = () => {
@@ -708,23 +717,15 @@ export default function GameModesPage() {
     resetQueue();
   };
 
-  const rankedCards = RANKED_MODES.map((mode) => ({
-    mode,
-    onClick:
-      mode.enabled && (mode.id === "ranked" || mode.id === "unranked")
-        ? () => handleRankedClick(mode)
-        : mode.enabled && mode.id === "friend"
-          ? () => void openFriendPicker()
-          : mode.enabled && mode.id === "bots"
-            ? () => handleRankedClick(mode)
-            : undefined,
-  }));
+  const getMode = (id: string): ModeDefinition => RANKED_MODES.find((m) => m.id === id)!;
 
-  const nonRankedCards = NON_RANKED_MODES.filter((mode) => mode.enabled);
-
-  const upcomingTitles = [...RANKED_MODES, ...NON_RANKED_MODES]
-    .filter((mode) => !mode.enabled)
-    .map((mode) => mode.title);
+  const quickActions: Array<{ id: string; label: string; action: () => void }> = [
+    { id: "ranked", label: "Ranked 1v1", action: () => handleRankedClick(getMode("ranked")) },
+    { id: "unranked", label: "Unranked 1v1", action: () => handleRankedClick(getMode("unranked")) },
+    { id: "bots", label: "Battle vs Bots", action: () => handleRankedClick(getMode("bots")) },
+    { id: "friend", label: "Play with Friend", action: () => void openFriendPicker() },
+    { id: "random", label: "Random problem", action: () => void handleRandomPractice() },
+  ];
 
   const activeMode = selectedMode ?? RANKED_MODES[0];
   const rankedBand = getRankedBandFromRating(viewerRating);
@@ -738,12 +739,8 @@ export default function GameModesPage() {
               Arena
             </p>
             <h1 className="font-heading text-3xl font-bold tracking-tight sm:text-4xl">
-
               Choose your battle mode
             </h1>
-            <p className="max-w-xl text-sm text-muted-foreground sm:text-base">
-              Squad up, duel a rival, or warm up with friends. Ranked battles award trophies, while event modes let you experiment without wrecking your ladder standing.
-            </p>
           </div>
           <div className="flex items-center gap-4 rounded-lg border border-primary/30 bg-primary/10 px-6 py-4">
             <div className="flex size-11 items-center justify-center rounded-full bg-primary/15">
@@ -773,43 +770,18 @@ export default function GameModesPage() {
         )}
 
         {state === "idle" && (
-          <div className="flex flex-col gap-12">
-            <section className="flex flex-col gap-6">
-              <div className="flex flex-col gap-1">
-                <h2 className="font-heading text-xl font-semibold tracking-tight">Ranked & Core Modes</h2>
-                <p className="text-sm text-muted-foreground">
-                  Climb the ladder, invite friends, or queue up for legacy formats. These affect your season standing.
-                </p>
-              </div>
-              <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-                {rankedCards.filter(({ mode }) => mode.enabled).map(({ mode, onClick }) => (
-                  <ModeCard key={mode.id} mode={mode} onClick={onClick} />
-                ))}
-              </div>
-            </section>
-
-            {nonRankedCards.length > 0 && (
-              <section className="flex flex-col gap-6">
-                <div className="flex flex-col gap-1">
-                  <h2 className="font-heading text-xl font-semibold tracking-tight">More modes</h2>
-                  <p className="max-w-2xl text-sm text-muted-foreground">
-                    Skill-focused formats with reduced or zero trophy impact.
-                  </p>
-                </div>
-                <div className="grid gap-5 md:grid-cols-2">
-                  {nonRankedCards.map((mode) => (
-                    <ModeCard key={mode.id} mode={mode} onClick={() => void handleNonRankedClick(mode)} />
-                  ))}
-                </div>
-              </section>
-            )}
-
-            {upcomingTitles.length > 0 && (
-              <section className="rounded-2xl border border-dashed border-border bg-card/40 px-6 py-5">
-                <h3 className="font-heading text-base font-semibold">Coming soon</h3>
-                <p className="mt-1 text-sm text-muted-foreground">{upcomingTitles.join(" · ")}</p>
-              </section>
-            )}
+          <div className="mx-auto flex w-full max-w-xl flex-col gap-2">
+            {quickActions.map((row) => (
+              <button
+                key={row.id}
+                type="button"
+                onClick={row.action}
+                className="group flex w-full cursor-pointer items-center justify-between gap-4 rounded-xl border border-border bg-card px-5 py-4 text-left shadow-sm transition-colors hover:border-accent-foreground/30 hover:bg-accent/40"
+              >
+                <span className="text-base font-medium">{row.label}</span>
+                <ArrowRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+              </button>
+            ))}
           </div>
         )}
 
@@ -1079,75 +1051,6 @@ function FriendInviteModal({ open, creating, error, friend, matchId, onClose, on
         )}
       </DialogContent>
     </Dialog>
-  );
-}
-
-type ModeCardProps = {
-  mode: ModeDefinition;
-  onClick?: () => void;
-};
-
-function ModeCard({ mode, onClick }: ModeCardProps) {
-  const { title, subtitle, badge, details, enabled, impact, limited } = mode;
-  const Icon = MODE_ICONS[mode.id] ?? Gamepad2;
-
-  const content = (
-    <div className="flex h-full flex-col gap-4">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex size-10 items-center justify-center rounded-lg bg-accent text-accent-foreground">
-          <Icon className="size-5" />
-        </div>
-        {!enabled && (
-          <Badge variant="secondary" className="gap-1">
-            <Lock className="size-3" />
-            {badge ?? "Locked"}
-          </Badge>
-        )}
-      </div>
-      <div className="flex flex-col gap-1">
-        <h3 className="text-lg font-semibold tracking-tight">{title}</h3>
-        <p className="text-sm text-muted-foreground">{subtitle}</p>
-      </div>
-      {details && (
-        <ul className="flex flex-col gap-1.5 text-sm text-muted-foreground">
-          {details.slice(0, 3).map((detail) => (
-            <li key={detail} className="flex items-start gap-2">
-              <span className="mt-1.5 size-1 shrink-0 rounded-full bg-accent-foreground/60" />
-              <span>{detail}</span>
-            </li>
-          ))}
-        </ul>
-      )}
-      <div className="mt-auto flex flex-wrap items-center gap-2 pt-2">
-        <Badge variant="outline" className={cn("gap-1", impactBadgeClass(impact))}>
-          <Trophy className="size-3" />
-          {impact}
-        </Badge>
-        {badge && enabled && (
-          <Badge variant="secondary">{badge}</Badge>
-        )}
-        {limited && <Badge variant="outline">Limited-time</Badge>}
-      </div>
-      {enabled ? (
-        <Button className="mt-2 w-full" onClick={onClick} disabled={!onClick}>
-          <Play data-icon="inline-start" />
-          Play Now
-        </Button>
-      ) : null}
-    </div>
-  );
-
-  const cardClasses = cn(
-    "h-full rounded-xl bg-card shadow-sm ring-1 ring-foreground/10 transition-all duration-200",
-    enabled
-      ? "hover:-translate-y-0.5 hover:shadow-md hover:ring-foreground/20"
-      : "opacity-70",
-  );
-
-  return (
-    <Card className={cardClasses}>
-      <CardContent className="flex h-full flex-col">{content}</CardContent>
-    </Card>
   );
 }
 
