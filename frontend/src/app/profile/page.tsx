@@ -400,8 +400,35 @@ function ProfileContent() {
     setMenuOpen(false);
   };
 
-  const submitReport = () => {
-    setReportSubmitted(true);
+  const [reportBusy, setReportBusy] = useState(false);
+  const [reportError, setReportError] = useState<string | null>(null);
+
+  const submitReport = async () => {
+    if (!resolvedUserId || isSelf) return;
+    setReportBusy(true);
+    setReportError(null);
+    try {
+      const response = await fetch("/api/report", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          reportedId: resolvedUserId,
+          reason: reportReason,
+          description: reportDescription,
+        }),
+      });
+      const json = (await response.json().catch(() => ({}))) as { error?: string };
+      if (!response.ok) {
+        setReportError(json.error ?? "Unable to submit report.");
+        return;
+      }
+      setReportSubmitted(true);
+      setReportModalOpen(true);
+    } catch {
+      setReportError("Unable to submit report right now.");
+    } finally {
+      setReportBusy(false);
+    }
   };
 
   return (
@@ -463,6 +490,7 @@ function ProfileContent() {
                             onClick={() => {
                               setReportModalOpen(true);
                               setReportSubmitted(false);
+                              setReportError(null);
                               setMenuOpen(false);
                             }}
                           >
@@ -697,7 +725,7 @@ function ProfileContent() {
                 <DialogHeader>
                   <DialogTitle>Report {displayName}</DialogTitle>
                   <DialogDescription>
-                    Tell us what happened. This is a demo flow for now.
+                    Tell us what happened so our moderators can review it.
                   </DialogDescription>
                 </DialogHeader>
 
@@ -725,12 +753,16 @@ function ProfileContent() {
                   className="h-28"
                 />
 
+                {reportError && (
+                  <p className="text-sm text-destructive">{reportError}</p>
+                )}
+
                 <div className="flex justify-end gap-2">
-                  <Button type="button" variant="outline" onClick={() => setReportModalOpen(false)}>
+                  <Button type="button" variant="outline" onClick={() => setReportModalOpen(false)} disabled={reportBusy}>
                     Cancel
                   </Button>
-                  <Button type="button" onClick={submitReport}>
-                    Submit Report
+                  <Button type="button" onClick={() => void submitReport()} disabled={reportBusy}>
+                    {reportBusy ? "Submitting…" : "Submit Report"}
                   </Button>
                 </div>
               </>
