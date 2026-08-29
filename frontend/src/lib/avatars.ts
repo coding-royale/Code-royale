@@ -84,6 +84,17 @@ export function diceBearUrl(username: string, seed?: string) {
   return `https://api.dicebear.com/9.x/initials/svg?seed=${s}&backgroundType=gradientLinear&fontFamily=Helvetica`;
 }
 
+/** Drop the memory + sessionStorage cache so a fresh read reflects a change. */
+export function clearAvatarCache(userIds: string[]): void {
+  for (const id of userIds) {
+    if (!id) continue;
+    avatarCache.delete(id);
+    try {
+      sessionStorage.removeItem(`avatar:${id}`);
+    } catch {}
+  }
+}
+
 export function getAvatarUrl(
   userId: string,
   username: string,

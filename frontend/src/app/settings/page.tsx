@@ -17,6 +17,7 @@ import { Textarea } from "../../components/ui/textarea";
 import { supabase } from "../../lib/supabase-browser";
 import { getStoredAccent, applyAccent, setStoredAccent, type Accent } from "../../lib/accent";
 import { clearCachedProfile, getFreshCachedProfile, writeCachedProfile, subscribeProfileCache } from "../../lib/user-profile-cache";
+import { clearAvatarCache } from "../../lib/avatars";
 
 const themeOptions = [
   { id: "light", name: "Light", description: "Bright and airy", icon: Sun },
@@ -231,12 +232,16 @@ export default function SettingsPage() {
         throw new Error(json.error ?? "Upload failed");
       }
 
+      // Drop the avatar cache so every surface (leaderboard, friends, header)
+      // picks up the new photo immediately instead of after the 5m TTL.
+      const { data: authData } = await supabase.auth.getUser();
+      if (authData.user?.id) clearAvatarCache([authData.user.id]);
+
       // Refresh the shared cache so the header and all surfaces update now.
       const cached = getFreshCachedProfile();
       if (cached) {
         writeCachedProfile({ ...cached, avatarUrl: json.url, cachedAt: Date.now() });
       } else {
-        const { data: authData } = await supabase.auth.getUser();
         writeCachedProfile({
           userId: authData.user?.id ?? "unknown",
           username: viewerName,
