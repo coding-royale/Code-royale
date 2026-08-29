@@ -719,12 +719,12 @@ export default function GameModesPage() {
 
   const getMode = (id: string): ModeDefinition => RANKED_MODES.find((m) => m.id === id)!;
 
-  const quickActions: Array<{ id: string; label: string; action: () => void }> = [
-    { id: "ranked", label: "Ranked 1v1", action: () => handleRankedClick(getMode("ranked")) },
-    { id: "unranked", label: "Unranked 1v1", action: () => handleRankedClick(getMode("unranked")) },
-    { id: "bots", label: "Battle vs Bots", action: () => handleRankedClick(getMode("bots")) },
-    { id: "friend", label: "Play with Friend", action: () => void openFriendPicker() },
-    { id: "random", label: "Random problem", action: () => void handleRandomPractice() },
+  const launcherActions = [
+    { id: "ranked", title: "Ranked 1v1", icon: <Swords />, action: () => handleRankedClick(getMode("ranked")) },
+    { id: "unranked", title: "Unranked 1v1", icon: <Gamepad2 />, action: () => handleRankedClick(getMode("unranked")) },
+    { id: "bots", title: "Play Bots", icon: <Bot />, action: () => handleRankedClick(getMode("bots")) },
+    { id: "friend", title: "Play Friend", icon: <UserPlus />, action: () => void openFriendPicker() },
+    { id: "random", title: "Random Problem", icon: <Sparkles />, action: () => void handleRandomPractice() },
   ];
 
   const activeMode = selectedMode ?? RANKED_MODES[0];
@@ -770,16 +770,21 @@ export default function GameModesPage() {
         )}
 
         {state === "idle" && (
-          <div className="mx-auto flex w-full max-w-xl flex-col gap-2">
-            {quickActions.map((row) => (
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {launcherActions.map((tile) => (
               <button
-                key={row.id}
+                key={tile.id}
                 type="button"
-                onClick={row.action}
-                className="group flex w-full cursor-pointer items-center justify-between gap-4 rounded-xl border border-border bg-card px-5 py-4 text-left shadow-sm transition-colors hover:border-accent-foreground/30 hover:bg-accent/40"
+                onClick={tile.action}
+                className="group flex cursor-pointer flex-col gap-4 rounded-2xl border border-border bg-card p-6 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-accent-foreground/30 hover:shadow-md"
               >
-                <span className="text-base font-medium">{row.label}</span>
-                <ArrowRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+                <div className="flex items-start justify-between">
+                  <span className="flex size-12 items-center justify-center rounded-2xl bg-accent text-accent-foreground">
+                    {tile.icon}
+                  </span>
+                  <ArrowRight className="size-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+                </div>
+                <h3 className="text-lg font-semibold tracking-tight">{tile.title}</h3>
               </button>
             ))}
           </div>
