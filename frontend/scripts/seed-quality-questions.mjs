@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
 import { createClient } from "@supabase/supabase-js";
-import { QUALITY_BANK } from "./quality-bank.mjs";
+import { QUALITY_BANK, problemMeta } from "./quality-bank.mjs";
 
 const root = process.cwd();
 const envPath = path.join(root, ".env.local");
@@ -64,7 +64,7 @@ for (const problem of QUALITY_BANK) {
     difficulty: problem.difficulty,
     languages: problem.languages,
     testcases: problem.testcases,
-    meta: { signature: problem.signature },
+    meta: { signature: problem.signature, ...(problemMeta(problem.slug) ?? {}) },
   });
   if (insertError) {
     console.error(`Failed to insert ${problem.slug}:`, insertError.message);

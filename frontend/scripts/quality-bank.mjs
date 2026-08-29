@@ -303,3 +303,34 @@ export const QUALITY_BANK = [
     python: "def solve(colors: list[int]) -> list[int]:\n    a = sorted(colors)\n    return a",
   },
 ];
+
+// Per-problem metadata surfaced on the practice page (Time/Space complexity and
+// topics). Kept in one place so the bank data stays readable and the seed and
+// tests agree on it.
+const PROBLEM_META = {
+  "sum-two-numbers": { timeComplexity: "O(1)", spaceComplexity: "O(1)", topics: ["math"] },
+  "largest-of-three": { timeComplexity: "O(1)", spaceComplexity: "O(1)", topics: ["math", "comparison"] },
+  "even-or-odd": { timeComplexity: "O(1)", spaceComplexity: "O(1)", topics: ["math"] },
+  "reverse-string": { timeComplexity: "O(n)", spaceComplexity: "O(n)", topics: ["strings"] },
+  "factorial": { timeComplexity: "O(n)", spaceComplexity: "O(1)", topics: ["math"] },
+  "array-sum": { timeComplexity: "O(n)", spaceComplexity: "O(1)", topics: ["arrays"] },
+  "max-of-array": { timeComplexity: "O(n)", spaceComplexity: "O(1)", topics: ["arrays"] },
+  "is-sorted": { timeComplexity: "O(n)", spaceComplexity: "O(1)", topics: ["arrays"] },
+  gcd: { timeComplexity: "O(log min(a,b))", spaceComplexity: "O(1)", topics: ["math", "number-theory"] },
+  "count-target": { timeComplexity: "O(n)", spaceComplexity: "O(1)", topics: ["arrays", "search"] },
+  "two-sum": { timeComplexity: "O(n)", spaceComplexity: "O(n)", topics: ["hash-table", "arrays"] },
+  "rotate-array": { timeComplexity: "O(n)", spaceComplexity: "O(1)", topics: ["arrays"] },
+  "remove-duplicates": { timeComplexity: "O(n)", spaceComplexity: "O(n)", topics: ["arrays", "hash-table"] },
+  "valid-parentheses": { timeComplexity: "O(n)", spaceComplexity: "O(n)", topics: ["stack", "strings"] },
+  "binary-search": { timeComplexity: "O(log n)", spaceComplexity: "O(1)", topics: ["binary-search"] },
+  "first-unique-character": { timeComplexity: "O(n)", spaceComplexity: "O(n)", topics: ["strings", "hash-table"] },
+  "move-zeroes": { timeComplexity: "O(n)", spaceComplexity: "O(1)", topics: ["arrays", "two-pointers"] },
+  "max-profit": { timeComplexity: "O(n)", spaceComplexity: "O(1)", topics: ["arrays", "greedy"] },
+  "maximum-subarray": { timeComplexity: "O(n)", spaceComplexity: "O(1)", topics: ["arrays", "dynamic-programming"] },
+  "product-except-self": { timeComplexity: "O(n)", spaceComplexity: "O(n)", topics: ["arrays", "prefix-sum"] },
+  "sort-colors": { timeComplexity: "O(n)", spaceComplexity: "O(1)", topics: ["arrays", "sorting", "two-pointers"] },
+};
+
+export function problemMeta(slug) {
+  return PROBLEM_META[slug];
+}
