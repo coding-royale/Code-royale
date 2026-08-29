@@ -61,6 +61,18 @@ function getRankFromRating(rating: number) {
   return { name: "Unranked", color: "text-muted-foreground" };
 }
 
+const difficultyText: Record<string, string> = {
+  easy: "text-emerald-600 dark:text-emerald-400",
+  medium: "text-amber-600 dark:text-amber-400",
+  hard: "text-red-600 dark:text-red-400",
+};
+
+const difficultyLabel: Record<string, string> = {
+  easy: "Easy",
+  medium: "Medium",
+  hard: "Hard",
+};
+
 function initialsFromName(name: string) {
   const trimmed = name.trim();
   if (!trimmed) return "CR";
@@ -76,6 +88,9 @@ function ProfileContent() {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [solvedQuestions, setSolvedQuestions] = useState<
+    Array<{ questionId: string; slug: string | null; title: string; difficulty: string; solvedAt: string }>
+  >([]);
 
   const [viewerUserId, setViewerUserId] = useState<string | null>(null);
   const [profile, setProfile] = useState<UserRow | null>(null);
@@ -134,6 +149,20 @@ function ProfileContent() {
         setFriendCount(payload.counts?.[idToLoad] ?? 0);
       } else {
         setFriendCount(0);
+      }
+
+      // Load the problems this user has solved (newest first).
+      const solvedResponse = await fetch(`/api/profile/solved?userId=${encodeURIComponent(idToLoad)}`, {
+        cache: "no-store",
+      });
+      if (!mounted) return;
+      if (solvedResponse.ok) {
+        const solvedPayload = (await solvedResponse.json()) as {
+          solvedQuestions: Array<{ questionId: string; slug: string | null; title: string; difficulty: string; solvedAt: string }>;
+        };
+        setSolvedQuestions(solvedPayload.solvedQuestions ?? []);
+      } else {
+        setSolvedQuestions([]);
       }
 
       const connectionRows = (relationshipResult.data ?? []) as ConnectionRow[];
@@ -563,6 +592,44 @@ function ProfileContent() {
                 </CardContent>
               </Card>
             </section>
+
+            {/* Solved Questions */}
+            <Card>
+              <CardContent className="p-6">
+                <div className="mb-4 flex items-center justify-between">
+                  <h2 className="text-lg font-semibold">Solved Questions</h2>
+                  <span className="text-xs text-muted-foreground">{solvedQuestions.length} solved</span>
+                </div>
+                {solvedQuestions.length === 0 ? (
+                  <div className="flex items-center justify-center py-8 text-muted-foreground">
+                    <div className="flex flex-col items-center gap-2 text-center">
+                      <p className="text-sm">No problems solved yet</p>
+                      <Link href="/practice" className="text-sm text-accent-foreground underline underline-offset-3">
+                        Start practicing →
+                      </Link>
+                    </div>
+                  </div>
+                ) : (
+                  <ul className="divide-y divide-border">
+                    {solvedQuestions.map((q) => (
+                      <li key={q.questionId}>
+                        <Link
+                          href={`/practice/${encodeURIComponent(q.slug || q.questionId)}`}
+                          className="flex items-center justify-between gap-3 py-2.5 transition-colors hover:bg-muted/40"
+                        >
+                          <span className="min-w-0 truncate text-sm font-medium text-foreground hover:text-accent-foreground">
+                            {q.title}
+                          </span>
+                          <span className={`shrink-0 text-xs font-medium uppercase tracking-wide ${difficultyText[q.difficulty] ?? "text-muted-foreground"}`}>
+                            {difficultyLabel[q.difficulty] ?? q.difficulty}
+                          </span>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </CardContent>
+            </Card>
 
             {/* Recent Activity */}
             <Card>
