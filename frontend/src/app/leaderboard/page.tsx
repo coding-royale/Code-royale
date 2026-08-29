@@ -221,7 +221,7 @@ export default function LeaderboardPage() {
                 ) : (
                   <div className="mt-1 flex flex-wrap items-center gap-2">
                     <span className="text-lg font-bold text-foreground">
-                      {myRating.toLocaleString()} Trophies
+                      {myRating.toLocaleString()} Rating
                     </span>
                     {myLeague && (
                       <Badge
@@ -310,7 +310,7 @@ export default function LeaderboardPage() {
               <TableRow className="hover:bg-transparent">
                 <TableHead className="w-12">#</TableHead>
                 <TableHead>Player</TableHead>
-                <TableHead className="text-right">Trophies</TableHead>
+                <TableHead className="text-right">Rating</TableHead>
                 <TableHead className="text-right">W</TableHead>
                 <TableHead className="text-right">L</TableHead>
                 <TableHead className="text-right">League</TableHead>
@@ -479,7 +479,7 @@ export default function LeaderboardPage() {
                   <div className="text-2xl">{tier.icon}</div>
                   <div className={cn("mt-1 text-sm font-semibold", tier.color)}>{tier.label}</div>
                   <div className="mt-0.5 text-xs text-muted-foreground">
-                    {tier.minTrophies === 0 ? "0" : tier.minTrophies.toLocaleString()}+ trophies
+                    {tier.minTrophies === 0 ? "0" : tier.minTrophies.toLocaleString()}+ rating
                   </div>
                   {i < leagueTiers.length - 1 && (
                     <div className="absolute -right-2 top-1/2 hidden -translate-y-1/2 text-muted-foreground sm:block">

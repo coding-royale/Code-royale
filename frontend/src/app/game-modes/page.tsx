@@ -755,7 +755,7 @@ export default function GameModesPage() {
                   {viewerRating.toLocaleString()}
                 </span>
                 <span className="font-mono text-xs font-medium uppercase tracking-[0.15em] text-primary/70">
-                  Trophies
+                  Rating
                 </span>
               </div>
               <p className="font-mono text-xs uppercase tracking-[0.15em] text-primary/80">
