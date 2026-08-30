@@ -290,7 +290,7 @@ export function PracticeLobby() {
         <Card className="overflow-hidden shadow-sm">
           <div className="grid grid-cols-[auto_1fr_auto_auto] items-center gap-3 border-b border-border px-5 py-3 text-xs uppercase tracking-wider text-muted-foreground">
             <span className="w-8">Status</span>
-            <span className="pl-2">Problem</span>
+            <span className="pl-2">Choose your arena (problem)</span>
             <span>Difficulty</span>
             <span className="w-4" />
           </div>
@@ -353,7 +353,7 @@ export function PracticeLobby() {
         <Card className="h-fit shadow-sm">
           <CardHeader>
             <CardTitle>Session Settings</CardTitle>
-            <CardDescription>Set your timer and language before jumping in.</CardDescription>
+            <CardDescription>Set your timer and weapon (language) before jumping in.</CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-5">
             <div className="flex flex-col gap-2">
@@ -378,7 +378,7 @@ export function PracticeLobby() {
             <div className="flex flex-col gap-2">
               <span className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Languages className="size-4" />
-                Language
+                Weapon (language)
               </span>
               <Select value={language} onValueChange={handleLanguageChange}>
                 <SelectTrigger className="w-full">
