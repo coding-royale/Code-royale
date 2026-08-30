@@ -9,7 +9,11 @@
  *
  * Config:
  *   GOBOXD_API_URL  (required) — base URL of the self-hosted goboxd server,
- *   e.g. https://judge.example.com (trailing slash is stripped).
+ *   e.g. https://goboxd.nithitsuki.com (trailing slash is stripped).
+ *   GOBOXD_AUTH_TOKEN (optional) — shared secret sent as `Authorization:
+ *   Bearer <token>`. goboxd rejects requests without a valid bearer token when
+ *   it is configured to require one (GOBOXD_AUTH_TOKEN set server-side). Leave
+ *   unset to match a dev goboxd that has authentication disabled.
  *
  * Judging is STRICT (byte-exact): a run only passes when goboxd reports
  * "accepted", which requires stdout to exactly match the expected output
@@ -18,6 +22,7 @@
  */
 
 const goboxdBaseUrl = (process.env.GOBOXD_API_URL ?? "").replace(/\/+$/, "");
+const goboxdAuthToken = process.env.GOBOXD_AUTH_TOKEN ?? "";
 
 export function getGoboxdBaseUrl(): string {
   if (!goboxdBaseUrl) {
@@ -156,7 +161,13 @@ export async function judgeCode(
   try {
     const response = await fetch(`${baseUrl}/run`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        // Authenticate to goboxd when it requires a bearer token. Setting both
+        // headers unconditionally is harmless when the token is empty, but we
+        // omit Authorization to keep dev flows (auth disabled) byte-identical.
+        ...(goboxdAuthToken ? { Authorization: `Bearer ${goboxdAuthToken}` } : {}),
+      },
       signal: controller.signal,
       body: JSON.stringify({
         language: goboxdLanguage,

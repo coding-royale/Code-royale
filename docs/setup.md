@@ -21,6 +21,9 @@ The app reads its configuration from environment variables. Create the file `fro
 | `SUPABASE_SERVICE_ROLE_KEY` | Yes | The service role key for server operations |
 | `NEXT_PUBLIC_SITE_URL` | No | The deployed domain for confirmation email links |
 | `GOBOXD_API_URL` | Yes | The base URL of the self-hosted goboxd code execution service. The app returns `502` at submission time when this is missing |
+| `GOBOXD_AUTH_TOKEN` | No (recommended in production) | Shared secret sent to goboxd as `Authorization: Bearer <token>`. Must match the token set on the goboxd server |
+| `SUBMIT_RATE_LIMIT` | No | Max code submissions allowed per user per window (default `20`) |
+| `SUBMIT_RATE_WINDOW_SECONDS` | No | Submission rate-limit window length in seconds (default `20`) |
 
 Note: `NEXT_PUBLIC_SUPABASE_ANON_KEY` must be a real key. The browser client rejects placeholder values that contain `YOUR_`.
 
@@ -40,8 +43,9 @@ Run the SQL files in the Supabase SQL editor. Use this order:
 2. `supabase-bot-battles.sql` — adds the bot battle columns
 3. `supabase-badges.sql` — creates the badges tables and the default badges
 4. `supabase-github-username.sql` — adds the GitHub username fallback function (optional, for GitHub sign-in)
+5. `supabase-submit-rate-limit.sql` — creates the per-user submission rate-limit table and `bump_submit_rate` function (needed for the submit route's rate limit). Already applied to the current Supabase project as migration `add_submit_rate_limit`.
 
-CAUTION: `supabase-single-source-reset.sql` drops and recreates the app tables. It deletes all app data. It does not touch the `auth.users` table.
+CAUTION: `supabase-single-source-reset.sql` drops and recreates the app tables. It deletes all app data. It does not touch the `auth.users` table, and it does not drop the rate-limit table from step 5.
 
 ## Seed the questions
 
@@ -109,6 +113,12 @@ Set the `GOBOXD_API_URL` variable to the base URL of your goboxd server. It is
 required; submissions fail with `502` when it is missing.
 
 - `GOBOXD_API_URL`
+- `GOBOXD_AUTH_TOKEN` — when the goboxd server requires a bearer token, set the
+  matching token here. The app sends it as `Authorization: Bearer <token>`.
+
+Submissions are authenticated and per-user rate limited: the submit route
+returns `401` for anonymous callers and `429` (with `Retry-After`) once a user
+exceeds `SUBMIT_RATE_LIMIT` submissions in `SUBMIT_RATE_WINDOW_SECONDS`.
 
 The supported languages are JavaScript (Node.js), Python, C++, Java, and C.
 The server maps these to goboxd's registry IDs: `javascript`/`node` → `js`,

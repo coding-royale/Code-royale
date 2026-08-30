@@ -330,7 +330,7 @@ export function MatchArenaShell({
         const data = await response
           .json()
           .catch(() => ({ error: "Submission failed." }));
-        setFeedback(data.error ?? "Submission failed.");
+        setFeedback([data.detail, data.error].filter(Boolean).join(" — ") ?? "Submission failed.");
         setFeedbackTone("error");
         return;
       }

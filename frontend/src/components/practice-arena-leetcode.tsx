@@ -296,7 +296,7 @@ export function PracticeArenaLeetcode({
 
       if (!response.ok) {
         const data = await response.json().catch(() => ({ error: "Something went wrong. Please try again." }));
-        setFeedback(data.error ?? "Something went wrong. Please try again.");
+        setFeedback([data.detail, data.error].filter(Boolean).join(" — ") ?? "Something went wrong. Please try again.");
         setFeedbackTone("error");
         return;
       }

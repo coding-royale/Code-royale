@@ -3,12 +3,19 @@ import { createSupabaseServiceClient } from "@/lib/supabase-service";
 import { createSupabaseServerClient } from "@/lib/supabase";
 import { judgeCode, normalizeAppLanguage, SUPPORTED_LANGUAGES } from "@/lib/goboxd";
 import { buildProgram, signatureFromMeta, type HarnessLang } from "@/lib/harness";
+import { checkSubmitRateLimit } from "@/lib/submit-rate-limit";
 
 /*
  * Code execution uses goboxd, a self-hosted hardened sandbox service.
  * GOBOXD_API_URL (required) points at the goboxd server, e.g.
- * https://judge.example.com. A single POST /run runs the source against every
- * test case and returns a result per test, judged byte-exact.
+ * https://goboxd.nithitsuki.com. A single POST /run runs the source against
+ * every test case and returns a result per test, judged byte-exact.
+ *
+ * The endpoint is authenticated: only signed-in players may execute code, so
+ * the per-user submission rate limit (submit-rate-limit.ts / the
+ * `bump_submit_rate` RPC) can key on the real `user_id` instead of an IP.
+ * Both the `run` and `submit` intents execute code, so both consume the user's
+ * submission budget.
  *
  * The `intent` field (run | submit) controls whether a passed submission is
  * recorded on the player's profile: only intent "submit" does. The response
@@ -52,6 +59,18 @@ export async function POST(request: Request) {
   if (!supportedLanguageSet.has(normalizedLanguage)) {
     return NextResponse.json({ error: "Unsupported language" }, { status: 400 });
   }
+
+  // Non-anonymous rate limiting needs a real identity. Require auth before any
+  // further work (and before any code execution) so anonymous callers cannot
+  // consume compute or hide behind a rotating IP.
+  const authSupabase = await createSupabaseServerClient();
+  const { data: authData, error: authError } = await authSupabase.auth.getUser();
+
+  if (authError || !authData.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const userId = authData.user.id;
 
   let supabase;
 
@@ -123,6 +142,20 @@ export async function POST(request: Request) {
     ? buildProgram(normalizeAppLanguage(language) as HarnessLang, signature, code)
     : code;
 
+  // Per-user (non-anonymous) rate limit. Consumes budget on every request that
+  // reaches code execution (both run and submit intents), so a malicious or
+  // compromised session can't saturate goboxd. Keyed by user_id, not IP.
+  const rateLimit = await checkSubmitRateLimit(userId);
+  if (!rateLimit.ok) {
+    return NextResponse.json(
+      { error: "Submission rate limit exceeded. Try again shortly." },
+      {
+        status: 429,
+        headers: { "Retry-After": String(rateLimit.resetAfterSeconds) },
+      },
+    );
+  }
+
   let judged;
   try {
     judged = await judgeCode(
@@ -144,8 +177,15 @@ export async function POST(request: Request) {
       );
     }
 
+    // Surface the underlying judge error (HTTP status + goboxd's response
+    // body) alongside the friendly message so a misconfigured token, a
+    // saturated judge, or a tunnel outage is diagnosable from the UI instead
+    // of collapsing into a generic "try again".
     return NextResponse.json(
-      { error: "Unable to run code right now. Please try again in a moment." },
+      {
+        error: "Unable to run code right now. Please try again in a moment.",
+        detail: message.slice(0, 500),
+      },
       { status: 502 },
     );
   }
@@ -155,19 +195,14 @@ export async function POST(request: Request) {
 
   if (solved) {
     try {
-      const authSupabase = await createSupabaseServerClient();
-      const {
-        data: { user },
-      } = await authSupabase.auth.getUser();
-
-      if (user?.id) {
-        await supabase.from("practice_submissions").insert({
-          user_id: user.id,
-          question_id: questionId,
-          language,
-          passed: true,
-        });
-      }
+      // Reuse the authenticated user already resolved earlier in this request;
+      // no second session fetch is needed.
+      await supabase.from("practice_submissions").insert({
+        user_id: userId,
+        question_id: questionId,
+        language,
+        passed: true,
+      });
     } catch {
       // ignore tracking failures
     }
