@@ -1,9 +1,9 @@
 ﻿"use client";
 
 import { Suspense, useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Clock, Flag, Loader2, MoreVertical, Settings, Shield, Trophy, UserPlus } from "lucide-react";
+import { Clock, Flag, Loader2, MoreVertical, Settings, Shield, Swords, Trophy, UserMinus, UserPlus } from "lucide-react";
 
 import { AppShell } from "../../components/app-shell";
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
@@ -106,8 +106,12 @@ function ProfileContent() {
   const [reportDescription, setReportDescription] = useState("");
   const [reportSubmitted, setReportSubmitted] = useState(false);
 
+  const router = useRouter();
   const resolvedUserId = targetUserIdParam ?? viewerUserId;
   const isSelf = Boolean(resolvedUserId && viewerUserId && resolvedUserId === viewerUserId);
+
+  const [battleBusy, setBattleBusy] = useState(false);
+  const [battleError, setBattleError] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -366,6 +370,89 @@ function ProfileContent() {
     setActionBusy(false);
   };
 
+  const handleUnfriend = async () => {
+    if (!viewerUserId || !resolvedUserId || isSelf) return;
+    if (!confirm(`Unfriend ${displayName}? You will need to send a new request to become friends again.`)) return;
+
+    setActionBusy(true);
+    setError(null);
+
+    // Delete the accepted connection in either direction
+    const { error: del1 } = await supabase
+      .from("connections")
+      .delete()
+      .match({ user_id: viewerUserId, connection_id: resolvedUserId, status: "accepted" });
+    const { error: del2 } = await supabase
+      .from("connections")
+      .delete()
+      .match({ user_id: resolvedUserId, connection_id: viewerUserId, status: "accepted" });
+
+    if (del1 && del2) {
+      // If both failed, at least one should have succeeded; check if any error is not "no rows"
+      // Supabase delete with no matching rows returns no error, so we only error if both have messages
+      if (del1.message && del2.message) {
+        setError(del1.message || del2.message);
+        setActionBusy(false);
+        return;
+      }
+    }
+    // Supabase delete returns no error even when 0 rows deleted, so we treat as success
+    // Verify deletion by checking if any accepted row still exists
+    const { data: stillFriends } = await supabase
+      .from("connections")
+      .select("user_id")
+      .or(`and(user_id.eq.${viewerUserId},connection_id.eq.${resolvedUserId}),and(user_id.eq.${resolvedUserId},connection_id.eq.${viewerUserId})`)
+      .eq("status", "accepted")
+      .limit(1);
+
+    if (stillFriends && stillFriends.length > 0) {
+      setError("Unable to unfriend right now. Please try again.");
+      setActionBusy(false);
+      return;
+    }
+
+    setRelationshipStatus("none");
+    setIsFriendWithViewer(false);
+    setFriendCount((prev) => Math.max(0, prev - 1));
+    setActionBusy(false);
+  };
+
+  const handleSendBattleRequest = async () => {
+    if (!viewerUserId || !resolvedUserId || isSelf) return;
+
+    setBattleBusy(true);
+    setBattleError(null);
+    setError(null);
+
+    try {
+      const res = await fetch("/api/friend-match/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ friendUserId: resolvedUserId, timeLimitSeconds: 10 * 60 }),
+      });
+
+      const data = (await res.json().catch(() => ({}))) as { matchId?: string; error?: string };
+
+      if (!res.ok) {
+        setBattleError(data.error ?? "Failed to create battle request.");
+        setBattleBusy(false);
+        return;
+      }
+
+      if (!data.matchId) {
+        setBattleError("Failed to create battle.");
+        setBattleBusy(false);
+        return;
+      }
+
+      router.push(`/match/${data.matchId}`);
+    } catch (e) {
+      console.error(e);
+      setBattleError("Unable to send battle request right now.");
+      setBattleBusy(false);
+    }
+  };
+
   const updateBlockStatus = async (action: "block" | "unblock") => {
     if (!resolvedUserId || isSelf) return;
 
@@ -596,6 +683,30 @@ function ProfileContent() {
                     <Badge variant="secondary" className="mt-4">
                       Request Sent
                     </Badge>
+                  )}
+                  {!isSelf && relationshipStatus === "friends" && (
+                    <div className="mt-4 flex flex-col gap-2">
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={handleUnfriend}
+                          disabled={actionBusy}
+                        >
+                          <UserMinus data-icon="inline-start" />
+                          {actionBusy ? "Updating..." : "Unfriend"}
+                        </Button>
+                        <Button
+                          type="button"
+                          onClick={handleSendBattleRequest}
+                          disabled={battleBusy}
+                        >
+                          <Swords data-icon="inline-start" />
+                          {battleBusy ? "Sending..." : "Send Battle Request"}
+                        </Button>
+                      </div>
+                      {battleError && <p className="text-sm text-destructive">{battleError}</p>}
+                    </div>
                   )}
                   {!isSelf && relationshipStatus === "blocked" && (
                     <Badge variant="outline" className="mt-4 border-rose-500/30 text-rose-500">
