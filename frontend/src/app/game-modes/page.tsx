@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { AppShell } from "../../components/app-shell";
 import { supabase } from "../../lib/supabase-browser";
+import { buildStatusUrl, shouldAutoEnterMatch } from "../../lib/matchmaking";
 import { useFriendPresence } from "../../lib/use-friend-presence";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -338,6 +339,7 @@ export default function GameModesPage() {
   const [selectedMode, setSelectedMode] = useState<ModeDefinition | null>(null);
   const [configSelection, setConfigSelection] = useState<ModeConfigSelection | null>(null);
   const [matchId, setMatchId] = useState<string | null>(null);
+  const [queueSince, setQueueSince] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [pollRef, setPollRef] = useState<ReturnType<typeof setInterval> | null>(null);
   const [searchSecondsRemaining, setSearchSecondsRemaining] = useState(60);
@@ -412,6 +414,13 @@ export default function GameModesPage() {
     };
   }, []);
 
+  // Auto-enter the arena the moment a fresh match is found — no extra click.
+  useEffect(() => {
+    if (shouldAutoEnterMatch(state, matchId)) {
+      router.push(`/match/${matchId}`);
+    }
+  }, [state, matchId, router]);
+
   useEffect(() => {
     return () => {
       if (pollRef) clearInterval(pollRef);
@@ -425,6 +434,7 @@ export default function GameModesPage() {
       setPollRef(null);
     }
     setMatchId(null);
+    setQueueSince(null);
     setConfigSelection(null);
     setSelectedMode(null);
     setErrorMessage(null);
@@ -563,6 +573,8 @@ export default function GameModesPage() {
 
     setErrorMessage(null);
     setMatchId(null);
+    const queueStartIso = new Date().toISOString();
+    setQueueSince(queueStartIso);
     setSearchSecondsRemaining(60);
 
     let matchType = resolveMatchType(selection?.players ?? "1v1");
@@ -629,9 +641,19 @@ export default function GameModesPage() {
     }
 
     const joinData = (await joinResponse.json().catch(() => ({}))) as
-      | { matchId: string }
-      | { status: "queued" }
+      | { matchId: string; queuedAt?: string }
+      | { status: "queued"; queuedAt?: string }
       | { error: string };
+
+    if ("queuedAt" in joinData && joinData.queuedAt) {
+      setQueueSince(joinData.queuedAt);
+    }
+    // Capture locally: state updates are async and the interval closure
+    // would otherwise keep the stale (null) value.
+    const sinceForPoll =
+      "queuedAt" in joinData && joinData.queuedAt
+        ? joinData.queuedAt
+        : (queueSince ?? queueStartIso);
 
     if ("matchId" in joinData && joinData.matchId) {
       setMatchId(joinData.matchId);
@@ -658,7 +680,7 @@ export default function GameModesPage() {
       }
 
       try {
-        const res = await fetch("/api/matchmaking/status", { 
+        const res = await fetch(buildStatusUrl("/api/matchmaking/status", sinceForPoll), { 
           method: "GET",
           headers: session?.access_token
             ? { Authorization: `Bearer ${session.access_token}` }

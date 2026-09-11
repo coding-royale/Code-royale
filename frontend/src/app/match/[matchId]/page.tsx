@@ -1,10 +1,11 @@
 import { notFound, redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase";
 import { PracticeScaffold } from "@/app/practice/practice-scaffold";
+import { resolveMatchIdFromParams } from "@/lib/matchmaking";
 import { MatchArenaShell } from "./match-arena-shell";
 
 type PageProps = {
-  params: { matchId: string };
+  params: Promise<{ matchId: string }> | { matchId: string };
 };
 
 function parseTimerFromMetadata(metadata: unknown) {
@@ -39,7 +40,13 @@ function parseMatchMode(metadata: unknown, mode: string | null): string {
 }
 
 export default async function MatchPage({ params }: PageProps) {
-  const matchId = params.matchId;
+  // Next 15/16 passes params as a Promise. Awaiting a plain object is a
+  // no-op, so this works on both old and new Next. Without the await,
+  // matchId is undefined and every arena 404s.
+  const matchId = await resolveMatchIdFromParams(params);
+  if (!matchId) {
+    notFound();
+  }
   const supabase = await createSupabaseServerClient();
 
   const { data: authData } = await supabase.auth.getUser();

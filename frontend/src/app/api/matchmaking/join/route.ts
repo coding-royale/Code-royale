@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase";
 import { createSupabaseServiceClient } from "@/lib/supabase-service";
+import { JOIN_SEARCH_TIMEOUT_MS } from "@/lib/matchmaking";
+
+export const maxDuration = 60;
 
 type JoinRequest = {
   mode?: "ranked" | "unranked";
@@ -127,9 +130,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: `Failed to join matchmaking: ${enqueueError.message}` }, { status: 500 });
   }
 
-  // Polling loop: try to find nearest ELO opponent(s) and create match
+  // Polling loop: try to find nearest ELO opponent(s) and create match.
+  // Kept short on purpose: Vercel Hobby kills functions at ~10s, so join
+  // returns fast and the client status-poll does the long wait instead.
   const searchStart = Date.now();
-  const searchTimeoutMs = 35_000;
+  const queuedAt = new Date(searchStart).toISOString();
+  const searchTimeoutMs = JOIN_SEARCH_TIMEOUT_MS;
   const pollIntervalMs = 1500;
   const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -331,6 +337,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ matchId }, { status: 200 });
   }
 
-  // Timeout — keep queue for status polling (don't delete yet, let status poll handle or expire)
-  return NextResponse.json({ status: "queued" }, { status: 200 });
+  // Timeout — keep queue for status polling (don't delete yet, let status poll handle or expire).
+  // queuedAt lets the client pass ?since= so status never returns pre-queue matches.
+  return NextResponse.json({ status: "queued", queuedAt }, { status: 200 });
 }

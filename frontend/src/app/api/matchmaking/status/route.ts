@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase";
 import { createSupabaseServiceClient } from "@/lib/supabase-service";
+import { isFreshMatch, resolveStatusCutoff } from "@/lib/matchmaking";
 
 function getUserIdFromToken(token: string): string | null {
   try {
@@ -37,51 +38,45 @@ export async function GET(request: Request) {
 
   // userId already resolved above
 
-  // Also check if user is still in queue — not yet matched
-  // Find most recent match via match_players.joined_at (not created_at)
-  const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000).toISOString();
+  // Only matches created after this queue attempt started count. Without
+  // `since`, a player who played 2 minutes ago instantly sees that OLD match
+  // as "match found" — a lie. The client sends ?since=<queue start ISO>.
+  const sinceParam = new URL(request.url).searchParams.get("since");
+  const cutoffIso = resolveStatusCutoff(sinceParam);
 
-  // match_players has joined_at, not created_at — use joined_at
+  // match_players historically used created_at; newer schemas use joined_at.
+  // Select both and filter in code so neither schema 404s or lies.
   const { data: playerRow, error } = await supabase
     .from("match_players")
-    .select("match_id, joined_at")
+    .select("match_id, joined_at, created_at")
     .eq("user_id", userId)
-    .gte("joined_at", threeMinutesAgo)
     .order("joined_at", { ascending: false })
     .limit(1)
     .maybeSingle();
 
   if (error) {
     console.error("Failed to check match status", error);
-    // Try fallback without gte in case joined_at filter fails
-    const fallback = await supabase
-      .from("match_players")
-      .select("match_id")
-      .eq("user_id", userId)
-      .order("joined_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    return NextResponse.json({ matchId: fallback.data?.match_id ?? null }, { status: 200 });
-  }
-
-  // Also handle case where match_players is empty but we are still queued — return null so client keeps polling
-  if (!playerRow?.match_id) {
-    // Optional: check if there is an active match via status poll timeout logic — just return null
     return NextResponse.json({ matchId: null }, { status: 200 });
   }
 
-  // Verify match is still active/pending (not completed/cancelled)
+  // Also handle case where match_players is empty but we are still queued — return null so client keeps polling
+  const row = playerRow as { match_id?: string | null; joined_at?: string | null; created_at?: string | null } | null;
+  const joinedAt = row?.joined_at ?? row?.created_at ?? null;
+  if (!row?.match_id || !isFreshMatch(joinedAt, cutoffIso)) {
+    return NextResponse.json({ matchId: null }, { status: 200 });
+  }
+
+  // Verify match still exists (select only columns guaranteed by the base
+  // schema — `status` does not exist on fresh resets and would error).
   const { data: matchRow } = await supabase
     .from("matches")
-    .select("id, status")
-    .eq("id", playerRow.match_id)
+    .select("id")
+    .eq("id", row.match_id)
     .maybeSingle();
 
   if (!matchRow) {
     return NextResponse.json({ matchId: null }, { status: 200 });
   }
 
-  // If match is completed/cancelled and ended more than 3m ago, ignore?
-  // For now return it — client will navigate and page will show result or redirect
-  return NextResponse.json({ matchId: playerRow.match_id }, { status: 200 });
+  return NextResponse.json({ matchId: row.match_id }, { status: 200 });
 }
