@@ -8,6 +8,7 @@ import { MaskedOpponentEditor } from "@/components/battle/masked-opponent-editor
 import { CodeEditor } from "@/components/code-editor";
 import { buildTemplate, languageLabels, normalizeLanguage } from "@/lib/code-templates";
 import { BotSimulator, getBotConfig, type BotDifficulty, type BotProgress } from "@/lib/bot-player";
+import { getBotRevealSummary, shouldRevealBotCode, type BotBattleResult } from "@/lib/bot-arena";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -164,6 +165,10 @@ export function BotBattleArenaClient({
   }, []);
 
   useEffect(() => {
+    // Freeze the bot the moment the battle ends: its frozen code/progress
+    // is exactly "how much the bot did", revealed in the activity panel.
+    if (matchResult !== "playing") return;
+
     const targetCode = SOLUTION_CODE_BY_LANG[language] ?? SOLUTION_CODE_BY_LANG.node ?? "";
     const sim = new BotSimulator(
       botDifficulty,
@@ -300,6 +305,8 @@ export function BotBattleArenaClient({
   const activeTestcase = safeTestcases[activeTestcaseIndex];
 
   const isMatchOver = matchResult !== "playing";
+  const revealBotCode = shouldRevealBotCode(matchResult as BotBattleResult);
+  const botReveal = getBotRevealSummary(botProgress.code, botProgress.overallProgress);
 
   const handlePlayAgain = useCallback(() => {
     setMatchResult("playing");
@@ -307,6 +314,13 @@ export function BotBattleArenaClient({
     setResults(null);
     setFeedback(null);
     setFeedbackTone(null);
+    setBotProgress({
+      overallProgress: 0,
+      stage: "thinking",
+      code: "",
+      statusMessage: "Initializing...",
+      estimatedTimeRemaining: 0,
+    });
     setCode(buildTemplate(normalizedInitialLanguage, question.title));
     setElapsedTime(0);
     startedAtRef.current = Date.now();
@@ -652,19 +666,21 @@ export function BotBattleArenaClient({
               <div className="flex-1 overflow-hidden p-4">
                 <div className="h-full overflow-hidden rounded-xl border bg-card shadow-sm">
                   <div className="border-b px-4 py-2">
-                    <div className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-muted-foreground">
+                    <div className="flex items-center justify-between gap-2 text-[10px] uppercase tracking-wider text-muted-foreground">
                       <span>Bot Coding Activity</span>
-                    </div>
-                  </div>
-                  <div className="h-[calc(100%-36px)] overflow-y-auto p-5">
-                    <pre className="whitespace-pre-wrap font-mono text-[13px] text-foreground/70">
-                      {botProgress.code || (
-                        <span className="italic text-muted-foreground">
-                          {botProgress.stage === "thinking" ? "Thinking about the problem..." : "// writing solution..."}
+                      {isMatchOver && (
+                        <span className="font-mono normal-case tracking-normal">
+                          revealed · {botReveal.lines} lines · {botReveal.percent}%
                         </span>
                       )}
-                      <span className="animate-pulse">▊</span>
-                    </pre>
+                    </div>
+                  </div>
+                  <div className="h-[calc(100%-36px)] overflow-hidden">
+                    <MaskedOpponentEditor
+                      opponentName={botName}
+                      code={botProgress.code}
+                      revealed={revealBotCode}
+                    />
                   </div>
                 </div>
               </div>

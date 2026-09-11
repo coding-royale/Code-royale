@@ -25,7 +25,7 @@ import {
 } from "lucide-react";
 import { AppShell } from "../../components/app-shell";
 import { supabase } from "../../lib/supabase-browser";
-import { buildStatusUrl, shouldAutoEnterMatch } from "../../lib/matchmaking";
+import { buildMatchUrl, buildStatusUrl, shouldAutoEnterMatch } from "../../lib/matchmaking";
 import { useFriendPresence } from "../../lib/use-friend-presence";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -414,10 +414,12 @@ export default function GameModesPage() {
     };
   }, []);
 
-  // Auto-enter the arena the moment a fresh match is found — no extra click.
+  // Direct spawn: the moment a fresh match is found, both players go
+  // straight to the arena. No gate, no extra click.
   useEffect(() => {
     if (shouldAutoEnterMatch(state, matchId)) {
-      router.push(`/match/${matchId}`);
+      const target = buildMatchUrl(matchId);
+      if (target) router.push(target);
     }
   }, [state, matchId, router]);
 
@@ -724,12 +726,6 @@ export default function GameModesPage() {
     }
   };
 
-  const handleEnterMatch = () => {
-    if (matchId) {
-      router.push(`/match/${matchId}`);
-    }
-  };
-
   const handleCancelSearch = async () => {
     try {
       await fetch("/api/matchmaking/cancel", { method: "POST" });
@@ -836,11 +832,10 @@ export default function GameModesPage() {
         )}
 
         {state === "match_found" && (
-          <MatchFoundPanel
+          <EnteringArenaPanel
             mode={activeMode}
             config={configSelection}
-            onEnter={handleEnterMatch}
-            onStay={resetQueue}
+            matchId={matchId}
           />
         )}
 
@@ -1249,19 +1244,22 @@ function MatchmakingPanel({ mode, config, onCancel, secondsRemaining }: Matchmak
   );
 }
 
-type MatchFoundPanelProps = {
+type EnteringArenaPanelProps = {
   mode: ModeDefinition;
   config: ModeConfigSelection | null;
-  onEnter: () => void;
-  onStay: () => void;
+  matchId: string | null;
 };
 
-function MatchFoundPanel({ mode, config, onEnter, onStay }: MatchFoundPanelProps) {
+function EnteringArenaPanel({ mode, config, matchId }: EnteringArenaPanelProps) {
+  const target = buildMatchUrl(matchId);
   return (
     <Card className="shadow-md ring-emerald-500/30">
       <CardContent className="flex flex-col items-center gap-8 px-6 py-14 text-center sm:py-16">
-        <div className="flex size-16 items-center justify-center rounded-full bg-emerald-500/15">
-          <CheckCircle2 className="size-8 text-emerald-600 dark:text-emerald-400" />
+        <div className="relative flex size-16 items-center justify-center">
+          <span className="absolute inset-0 animate-ping rounded-full bg-emerald-500/30" />
+          <div className="relative flex size-16 items-center justify-center rounded-full bg-emerald-500/15">
+            <CheckCircle2 className="size-8 text-emerald-600 dark:text-emerald-400" />
+          </div>
         </div>
         <div className="flex flex-col items-center gap-2">
           <p className="text-xs font-semibold uppercase tracking-[0.25em] text-emerald-700 dark:text-emerald-400">
@@ -1269,7 +1267,7 @@ function MatchFoundPanel({ mode, config, onEnter, onStay }: MatchFoundPanelProps
           </p>
           <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">{mode.title}</h2>
           <p className="max-w-lg text-sm text-muted-foreground">
-            Match created. Enter the arena to start your duel.
+            Spawning both players into the arena…
           </p>
         </div>
         {config && (
@@ -1279,15 +1277,11 @@ function MatchFoundPanel({ mode, config, onEnter, onStay }: MatchFoundPanelProps
             <Badge variant="secondary">Language · {config.language}</Badge>
           </div>
         )}
-        <div className="flex flex-wrap justify-center gap-3">
-          <Button size="lg" onClick={onEnter}>
-            <Play data-icon="inline-start" />
-            Enter match
-          </Button>
-          <Button variant="outline" size="lg" onClick={onStay}>
-            Back to modes
-          </Button>
-        </div>
+        {target && (
+          <a href={target} className="text-xs text-muted-foreground underline underline-offset-4">
+            Taking too long? Tap here to enter manually.
+          </a>
+        )}
       </CardContent>
     </Card>
   );

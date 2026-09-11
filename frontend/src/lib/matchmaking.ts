@@ -31,6 +31,12 @@ export function shouldAutoEnterMatch(state: string, matchId: string | null): boo
   return state === "match_found" && !!matchId;
 }
 
+/** Direct-spawn target. Null means stay put (still searching / no match). */
+export function buildMatchUrl(matchId: string | null | undefined): string | null {
+  if (!matchId || !matchId.trim()) return null;
+  return `/match/${matchId}`;
+}
+
 type MatchParams = { matchId?: string } | null | undefined;
 
 export async function resolveMatchIdFromParams(

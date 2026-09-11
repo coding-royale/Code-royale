@@ -56,11 +56,14 @@ function maskLine(line: string): string {
 type MaskedOpponentEditorProps = {
   opponentName?: string;
   code?: string;
+  /** When true, show the real code (post-match reveal). Default masks it. */
+  revealed?: boolean;
 };
 
 export function MaskedOpponentEditor({
   opponentName = "Opponent",
   code,
+  revealed = false,
 }: MaskedOpponentEditorProps) {
   const realLines = code?.split("\n") ?? null;
 
@@ -107,7 +110,7 @@ export function MaskedOpponentEditor({
       <div className="flex items-center justify-between border-b px-4 py-2">
         <div className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-muted-foreground">
           <Eye className="size-3.5" />
-          Watching {opponentName}
+          {revealed ? `${opponentName} final code` : `Watching ${opponentName}`}
         </div>
         <span className="font-mono text-[10px] text-muted-foreground">{lineCount} lines</span>
       </div>
@@ -118,7 +121,7 @@ export function MaskedOpponentEditor({
               <span className="mr-3 w-6 shrink-0 select-none text-right text-[10px] text-muted-foreground/40">
                 {index + 1}
               </span>
-              <span className="break-all">{maskLine(line) || " "}</span>
+              <span className="break-all">{revealed ? line || " " : maskLine(line) || " "}</span>
             </div>
           ))}
           <span className="inline-block h-[1em] w-[0.55em] translate-y-[2px] animate-pulse bg-foreground/70" />
