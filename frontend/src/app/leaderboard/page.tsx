@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
+import Link from "next/link";
 import { Trophy } from "lucide-react";
 import { AppShell } from "../../components/app-shell";
 import { supabase } from "../../lib/supabase-browser";
@@ -353,7 +354,10 @@ export default function LeaderboardPage() {
                         </span>
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-3">
+                        <Link
+                          href={`/profile?userId=${player.id}`}
+                          className="flex items-center gap-3 rounded-md transition-opacity hover:opacity-80"
+                        >
                           <Avatar className="size-9 bg-accent text-accent-foreground">
                           {player.avatarUrl ? (
                             <AvatarImage
@@ -370,7 +374,7 @@ export default function LeaderboardPage() {
                           <span className={cn("font-medium", isMe && "text-primary")}>
                             {player.username} {isMe && <span className="text-xs opacity-60">(you)</span>}
                           </span>
-                        </div>
+                        </Link>
                       </TableCell>
                       <TableCell className="text-right">
                         <span className="inline-flex items-center gap-1 font-mono font-semibold text-amber-500">
@@ -410,8 +414,9 @@ export default function LeaderboardPage() {
                 const tierCfg = getTierConfig(myLeague);
                 const isMe = player.id === myUserId;
                 return (
-                  <div
+                  <Link
                     key={player.id}
+                    href={`/profile?userId=${player.id}`}
                     className={cn(
                       "flex items-center gap-4 rounded-lg px-3 py-3 transition-colors hover:bg-accent/50",
                       isMe && "bg-accent/40"
@@ -446,7 +451,7 @@ export default function LeaderboardPage() {
                       <Trophy className="size-3.5" />
                       {player.rating.toLocaleString()}
                     </span>
-                  </div>
+                  </Link>
                 );
               })}
             </CardContent>
