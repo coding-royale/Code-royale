@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase";
 import { createSupabaseServiceClient } from "@/lib/supabase-service";
+import { parseChallengeMode } from "@/lib/friend-challenge";
 
 type CreateFriendMatchRequest = {
   friendUserId?: string;
+  mode?: "ranked" | "unranked";
   timeLimitSeconds?: number;
   language?: string | null;
   difficulty?: "easy" | "medium" | "hard" | "mixed";
@@ -41,6 +43,7 @@ export async function POST(request: Request) {
 
   const timeLimitSeconds = sanitizeTimeLimitSeconds(payload.timeLimitSeconds);
   const language = sanitizeLanguage(payload.language);
+  const mode = parseChallengeMode(payload.mode);
 
   // Determine question difficulty.
   let difficulty: "easy" | "medium" | "hard" | null = null;
@@ -88,12 +91,15 @@ export async function POST(request: Request) {
 
   const chosen = availableQuestions[Math.floor(Math.random() * availableQuestions.length)];
 
-  // Create match + players.
-  // Note: started_at is intentionally null until someone starts the match.
+  // Create match as a pending challenge. status is NOT NULL on prod and has
+  // no default, so it must be set explicitly (missing it = "Failed to
+  // create match"). The question is re-picked from both ratings on accept.
   const { data: matchRow, error: matchError } = await supabase
     .from("matches")
     .insert({
-      mode: "unranked",
+      mode,
+      status: "pending",
+      created_by: userId,
       metadata: {
         question_id: chosen.id,
         question_difficulty: chosen.difficulty,
@@ -103,9 +109,11 @@ export async function POST(request: Request) {
         friend_invite: {
           inviter_id: userId,
           invitee_id: friendUserId,
+          mode,
         },
         trophy_multiplier: 1,
         started_at: null,
+        mode,
       },
     })
     .select("id")

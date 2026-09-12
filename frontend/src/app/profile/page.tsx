@@ -29,6 +29,7 @@ import { Skeleton } from "../../components/ui/skeleton";
 import { Textarea } from "../../components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../components/ui/tooltip";
 import { supabase } from "../../lib/supabase-browser";
+import { isChallengeLive } from "../../lib/friend-challenge";
 import { diceBearUrl } from "@/lib/avatars";
 import { computeRelationship, type ConnectionRow, type Relationship } from "@/lib/friends";
 import { computeAchievements } from "@/lib/achievements";
@@ -112,6 +113,8 @@ function ProfileContent() {
 
   const [battleBusy, setBattleBusy] = useState(false);
   const [battleError, setBattleError] = useState<string | null>(null);
+  const [modePickerOpen, setModePickerOpen] = useState(false);
+  const [sentChallengeId, setSentChallengeId] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -417,18 +420,19 @@ function ProfileContent() {
     setActionBusy(false);
   };
 
-  const handleSendBattleRequest = async () => {
+  const handleSendBattleRequest = async (mode: "ranked" | "unranked") => {
     if (!viewerUserId || !resolvedUserId || isSelf) return;
 
     setBattleBusy(true);
     setBattleError(null);
     setError(null);
+    setModePickerOpen(false);
 
     try {
       const res = await fetch("/api/friend-match/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ friendUserId: resolvedUserId, timeLimitSeconds: 10 * 60 }),
+        body: JSON.stringify({ friendUserId: resolvedUserId, mode, timeLimitSeconds: 10 * 60 }),
       });
 
       const data = (await res.json().catch(() => ({}))) as { matchId?: string; error?: string };
@@ -445,12 +449,58 @@ function ProfileContent() {
         return;
       }
 
-      router.push(`/match/${data.matchId}`);
+      // Challenge sent — wait here for the friend to accept, then spawn in.
+      setSentChallengeId(data.matchId);
+      setBattleBusy(false);
     } catch (e) {
       console.error(e);
       setBattleError("Unable to send battle request right now.");
       setBattleBusy(false);
     }
+  };
+
+  // Sender waits on this page: when the friend accepts, enter the arena.
+  useEffect(() => {
+    if (!sentChallengeId) return;
+    let alive = true;
+    const interval = window.setInterval(async () => {
+      try {
+        const { data } = await supabase
+          .from("matches")
+          .select("id,status,metadata")
+          .eq("id", sentChallengeId)
+          .maybeSingle();
+        if (!alive || !data) return;
+        const meta =
+          data.metadata && typeof data.metadata === "object"
+            ? (data.metadata as Record<string, unknown>)
+            : {};
+        if (isChallengeLive(data.status as string, meta.started_at as string | null)) {
+          window.clearInterval(interval);
+          router.push(`/match/${sentChallengeId}`);
+        }
+      } catch {
+        // ignore transient errors
+      }
+    }, 2000);
+    return () => {
+      alive = false;
+      window.clearInterval(interval);
+    };
+  }, [sentChallengeId, router]);
+
+  const handleCancelChallenge = async () => {
+    if (!sentChallengeId) return;
+    try {
+      await fetch("/api/friend-match/decline", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ matchId: sentChallengeId }),
+      });
+    } catch {
+      // ignore
+    }
+    setSentChallengeId(null);
   };
 
   const updateBlockStatus = async (action: "block" | "unblock") => {
@@ -698,14 +748,26 @@ function ProfileContent() {
                         </Button>
                         <Button
                           type="button"
-                          onClick={handleSendBattleRequest}
-                          disabled={battleBusy}
+                          onClick={() => {
+                            setBattleError(null);
+                            setModePickerOpen(true);
+                          }}
+                          disabled={battleBusy || sentChallengeId !== null}
                         >
                           <Swords data-icon="inline-start" />
-                          {battleBusy ? "Sending..." : "Send Battle Request"}
+                          {battleBusy ? "Sending..." : sentChallengeId ? "Challenge Sent" : "Send Battle Request"}
                         </Button>
                       </div>
                       {battleError && <p className="text-sm text-destructive">{battleError}</p>}
+                      {sentChallengeId && (
+                        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm">
+                          <Loader2 className="size-4 animate-spin text-emerald-500" />
+                          <span>Challenge sent! Waiting for them to accept — you will spawn into the arena automatically.</span>
+                          <Button type="button" variant="ghost" size="sm" onClick={handleCancelChallenge}>
+                            Cancel
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   )}
                   {!isSelf && relationshipStatus === "blocked" && (
@@ -827,6 +889,41 @@ function ProfileContent() {
             </Card>
           </div>
         )}
+
+        {/* Battle mode picker */}
+        <Dialog open={modePickerOpen} onOpenChange={setModePickerOpen}>
+          <DialogContent className="w-full max-w-md gap-5 p-6">
+            <DialogHeader>
+              <DialogTitle>Challenge to a duel</DialogTitle>
+              <DialogDescription>
+                Pick a mode. They will see your challenge on their home page.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-2">
+              <Button
+                type="button"
+                size="lg"
+                disabled={battleBusy}
+                onClick={() => void handleSendBattleRequest("ranked")}
+                className="justify-start"
+              >
+                <Trophy data-icon="inline-start" />
+                Ranked 1v1 · trophies on the line
+              </Button>
+              <Button
+                type="button"
+                size="lg"
+                variant="outline"
+                disabled={battleBusy}
+                onClick={() => void handleSendBattleRequest("unranked")}
+                className="justify-start"
+              >
+                <Swords data-icon="inline-start" />
+                Unranked 1v1 · just for fun
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* Report Modal */}
         <Dialog open={reportModalOpen} onOpenChange={setReportModalOpen}>

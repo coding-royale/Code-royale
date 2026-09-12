@@ -1,15 +1,19 @@
 "use client";
 
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ArrowRight, Bot, CheckCircle2, Flame, Swords, Users } from "lucide-react";
 
 import { AppShell } from "../../components/app-shell";
 import { useFriendPresence } from "../../lib/use-friend-presence";
+import { supabase } from "../../lib/supabase-browser";
+import { isChallengeExpired, isChallengeLive } from "../../lib/friend-challenge";
 import { cachedFetch } from "../../lib/cached-fetch";
 import { getFreshCachedProfile, subscribeProfileCache } from "../../lib/user-profile-cache";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { LinkButton } from "@/components/ui/link-button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -57,7 +61,18 @@ function initialsFromName(name: string) {
   return `${first}${second ?? "R"}`.toUpperCase();
 }
 
+type ChallengeCard = {
+  id: string;
+  mode: string;
+  direction: "incoming" | "outgoing";
+  otherUserId: string;
+  otherUsername: string;
+  createdAt: string;
+  isNew: boolean;
+};
+
 export default function HomePage() {
+  const router = useRouter();
   const { friends, loading: friendsLoading } = useFriendPresence();
   // Read the cached identity synchronously on the client — the greeting never
   // flashes an empty "Coder" on refresh (app-shell keeps the cache fresh).
@@ -77,6 +92,9 @@ export default function HomePage() {
     totalProblems: 0,
     streakDays: 0,
   });
+  const [challenges, setChallenges] = useState<ChallengeCard[]>([]);
+  const [challengeBusyId, setChallengeBusyId] = useState<string | null>(null);
+  const seenChallengeIds = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     let alive = true;
@@ -117,6 +135,136 @@ export default function HomePage() {
       window.clearInterval(progressInterval);
     };
   }, []);
+
+  // Battle challenges: incoming invites to accept/decline, outgoing waiting
+  // to auto-enter. The card list itself is the notification.
+  useEffect(() => {
+    let alive = true;
+
+    const fetchChallenges = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!alive || !user?.id) return;
+      const viewerId = user.id;
+
+      const { data: rows } = await supabase
+        .from("matches")
+        .select("id,status,metadata,created_at")
+        .in("status", ["pending", "active"])
+        .order("created_at", { ascending: false })
+        .limit(20);
+      if (!alive || !rows) return;
+
+      type Row = { id: string; status: string; metadata: unknown; created_at: string };
+      const now = Date.now();
+      const relevant = (rows as Row[]).filter((row) => {
+        if (isChallengeExpired(row.created_at, now)) return false;
+        const meta =
+          row.metadata && typeof row.metadata === "object"
+            ? (row.metadata as Record<string, unknown>)
+            : null;
+        const invite =
+          meta?.friend_invite && typeof meta.friend_invite === "object"
+            ? (meta.friend_invite as Record<string, unknown>)
+            : null;
+        if (!invite) return false;
+        return invite.inviter_id === viewerId || invite.invitee_id === viewerId;
+      });
+
+      // Accepted outgoing challenge -> spawn straight into the arena.
+      for (const row of relevant) {
+        const meta = row.metadata as Record<string, unknown>;
+        const invite = meta.friend_invite as Record<string, unknown>;
+        if (
+          invite.inviter_id === viewerId &&
+          isChallengeLive(row.status, meta.started_at as string | null)
+        ) {
+          router.push(`/match/${row.id}`);
+          return;
+        }
+      }
+
+      const pending = relevant.filter((row) => row.status === "pending");
+      if (pending.length === 0) {
+        if (alive) setChallenges([]);
+        return;
+      }
+
+      const otherIds = Array.from(
+        new Set(
+          pending.map((row) => {
+            const invite = (row.metadata as Record<string, unknown>).friend_invite as Record<string, unknown>;
+            return (invite.inviter_id === viewerId ? invite.invitee_id : invite.inviter_id) as string;
+          }),
+        ),
+      );
+      const { data: userRows } = await supabase.from("users").select("id,username").in("id", otherIds);
+      if (!alive) return;
+      const nameById = new Map(
+        (userRows ?? []).map((u) => [u.id as string, ((u.username as string | null) ?? "Unknown").trim() || "Unknown"]),
+      );
+
+      const cards: ChallengeCard[] = pending.map((row) => {
+        const meta = row.metadata as Record<string, unknown>;
+        const invite = meta.friend_invite as Record<string, unknown>;
+        const incoming = invite.invitee_id === viewerId;
+        const otherUserId = (incoming ? invite.inviter_id : invite.invitee_id) as string;
+        return {
+          id: row.id,
+          mode: typeof invite.mode === "string" ? invite.mode : "unranked",
+          direction: incoming ? "incoming" : "outgoing",
+          otherUserId,
+          otherUsername: nameById.get(otherUserId) ?? "Unknown",
+          createdAt: row.created_at,
+          isNew: incoming && !seenChallengeIds.current.has(row.id),
+        };
+      });
+
+      for (const card of cards) seenChallengeIds.current.add(card.id);
+      setChallenges(cards);
+    };
+
+    void fetchChallenges();
+    const challengeInterval = window.setInterval(fetchChallenges, 5000);
+    return () => {
+      alive = false;
+      window.clearInterval(challengeInterval);
+    };
+  }, [router]);
+
+  const handleAcceptChallenge = async (matchId: string) => {
+    setChallengeBusyId(matchId);
+    try {
+      const res = await fetch("/api/friend-match/accept", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ matchId }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { matchId?: string };
+      if (res.ok && data.matchId) {
+        setChallenges((prev) => prev.filter((c) => c.id !== matchId));
+        router.push(`/match/${data.matchId}`);
+        return;
+      }
+    } catch {
+      // ignore
+    }
+    setChallengeBusyId(null);
+  };
+
+  const handleDeclineChallenge = async (matchId: string) => {
+    setChallengeBusyId(matchId);
+    try {
+      await fetch("/api/friend-match/decline", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ matchId }),
+      });
+    } catch {
+      // ignore
+    }
+    setChallenges((prev) => prev.filter((c) => c.id !== matchId));
+    setChallengeBusyId(null);
+  };
 
   const solvedDenominator = Math.max(progress.totalProblems, 1);
   const solvedPercent = Math.min(100, Math.round((progress.solvedProblems / solvedDenominator) * 100));
@@ -250,6 +398,75 @@ export default function HomePage() {
             )}
           </CardContent>
         </Card>
+
+        {/* Battle challenges */}
+        {challenges.length > 0 && (
+          <Card className="ring-emerald-500/20">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Swords className="size-4 text-emerald-500" />
+                Battle Challenges ({challenges.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-2">
+              {challenges.map((challenge) => (
+                <div
+                  key={challenge.id}
+                  className="flex flex-wrap items-center gap-3 rounded-lg border bg-card px-4 py-3 shadow-sm"
+                >
+                  <Avatar className="size-10">
+                    <AvatarFallback className="bg-accent text-xs font-semibold text-accent-foreground">
+                      {initialsFromName(challenge.otherUsername)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0 flex-1">
+                    <p className="flex flex-wrap items-center gap-2 text-sm font-medium">
+                      {challenge.direction === "incoming" ? (
+                        <>{challenge.otherUsername} challenged you</>
+                      ) : (
+                        <>Challenge sent to {challenge.otherUsername}</>
+                      )}
+                      {challenge.isNew && (
+                        <Badge className="bg-emerald-500 text-[10px] uppercase text-white">New</Badge>
+                      )}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {challenge.mode === "ranked" ? "Ranked 1v1" : "Unranked 1v1"} · waiting for{" "}
+                      {challenge.direction === "incoming" ? "your response" : `${challenge.otherUsername} to accept`}
+                    </p>
+                  </div>
+                  {challenge.direction === "incoming" ? (
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        disabled={challengeBusyId === challenge.id}
+                        onClick={() => void handleAcceptChallenge(challenge.id)}
+                      >
+                        {challengeBusyId === challenge.id ? "Entering…" : "Accept"}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={challengeBusyId === challenge.id}
+                        onClick={() => void handleDeclineChallenge(challenge.id)}
+                      >
+                        Decline
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => void handleDeclineChallenge(challenge.id)}
+                    >
+                      Cancel
+                    </Button>
+                  )}
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Recent results + progress */}
         <div className="grid gap-6 lg:grid-cols-2">

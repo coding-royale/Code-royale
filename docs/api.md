@@ -31,7 +31,9 @@ The status codes have these meanings:
 | POST | `/api/clubs/join` | Join a club |
 | POST | `/api/clubs/leave` | Leave a club |
 | GET | `/api/clubs/list` | List clubs |
-| POST | `/api/friend-match/create` | Create a friend match |
+| POST | `/api/friend-match/create` | Create a friend challenge |
+| POST | `/api/friend-match/accept` | Accept a friend challenge |
+| POST | `/api/friend-match/decline` | Decline a friend challenge |
 | POST | `/api/friend-match/start` | Start a friend match |
 | POST | `/api/friends/manage` | Block or unblock a user |
 | GET | `/api/friends/meta` | Get friend counts |
@@ -271,13 +273,14 @@ Errors: `500`.
 
 ### POST /api/friend-match/create
 
-This route creates an unranked match between two friends.
+This route creates a pending ranked or unranked 1v1 challenge between two friends.
 
 Request body:
 
 ```json
 {
   "friendUserId": "uuid",
+  "mode": "ranked",
   "timeLimitSeconds": 600,
   "language": "python",
   "difficulty": "medium"
@@ -285,6 +288,8 @@ Request body:
 ```
 
 The route requires the `friendUserId` field. It returns `400` when the user invites themselves.
+
+The `mode` field is `ranked` or `unranked` and defaults to `ranked`.
 
 The time limit defaults to 600 seconds. The valid range is 60 to 3600 seconds.
 
@@ -296,7 +301,7 @@ The difficulty has this default logic when the `difficulty` field is not set:
 
 The value `mixed` picks a question from all difficulties.
 
-The route picks a random question and creates a match with mode `unranked`. The metadata stores the question, the time limit, the language, and the friend invite. The `started_at` value stays `null` until a player starts the match.
+The route picks a random question and creates a match with status `pending`. The metadata stores the question, the time limit, the language, and the friend invite. The `started_at` value stays `null` until the invitee accepts. The question is re-picked from both players' average rating on accept.
 
 Success response (200):
 
@@ -307,6 +312,52 @@ Success response (200):
 ```
 
 Errors: `400`, `401`, `500`.
+
+### POST /api/friend-match/accept
+
+This route accepts a pending friend challenge. Only the invitee can accept. It re-picks the question from the pair's average rating (under 300 — `easy`, under 700 — `medium`, else `hard`), flips the match to `active`, and sets `started_at`. Both players then enter `/match/[matchId]`.
+
+Request body:
+
+```json
+{
+  "matchId": "uuid"
+}
+```
+
+Expired challenges (older than 15 minutes) are deleted and return `410`.
+
+Success response (200):
+
+```json
+{
+  "matchId": "uuid"
+}
+```
+
+Errors: `400`, `401`, `403`, `404`, `410`, `500`.
+
+### POST /api/friend-match/decline
+
+This route declines (or cancels) a friend challenge. Either participant can call it. It deletes the match.
+
+Request body:
+
+```json
+{
+  "matchId": "uuid"
+}
+```
+
+Success response (200):
+
+```json
+{
+  "ok": true
+}
+```
+
+Errors: `400`, `401`, `403`, `500`.
 
 ### POST /api/friend-match/start
 
