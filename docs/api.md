@@ -34,6 +34,8 @@ The status codes have these meanings:
 | POST | `/api/friend-match/create` | Create a friend challenge |
 | POST | `/api/friend-match/accept` | Accept a friend challenge |
 | POST | `/api/friend-match/decline` | Decline a friend challenge |
+| GET | `/api/presence/live` | Live in-match presence for one user |
+| GET | `/api/spectate/[matchId]` | Read-only snapshot for spectators |
 | POST | `/api/friend-match/start` | Start a friend match |
 | POST | `/api/friends/manage` | Block or unblock a user |
 | GET | `/api/friends/meta` | Get friend counts |
@@ -358,6 +360,33 @@ Success response (200):
 ```
 
 Errors: `400`, `401`, `403`, `500`.
+
+### GET /api/presence/live
+
+This route reports whether one user is in a live match and whether others may spectate them. Online-ness itself comes from the realtime presence channel on the client.
+
+Query params: `userId`.
+
+Success response (200):
+
+```json
+{
+  "userId": "uuid",
+  "inMatch": true,
+  "matchId": "uuid",
+  "spectateAllowed": true
+}
+```
+
+`inMatch` is true for `active` matches with no winner started within the last 2 hours. `spectateAllowed` reflects the user's Match Spectating setting.
+
+Errors: `400`, `401`, `500`.
+
+### GET /api/spectate/[matchId]
+
+This route returns a read-only snapshot of a live match for spectators: the question, the players with ratings, the timer, and the result once finished. It returns `404` when the match is missing, not live, or any participant disabled spectating. Live code is never exposed — PvP has no live code stream.
+
+Errors: `401`, `404`, `500`.
 
 ### POST /api/friend-match/start
 

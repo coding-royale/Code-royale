@@ -145,7 +145,7 @@ export default function SettingsPage() {
 
       const { data: userRow, error: profileError } = await supabase
         .from("users")
-        .select("username")
+        .select("username,allow_spectate")
         .eq("id", authData.user.id)
         .maybeSingle();
 
@@ -158,6 +158,10 @@ export default function SettingsPage() {
       }
 
       setDisplayName(userRow?.username ?? "");
+      // Server flag wins when present; otherwise keep the local preference.
+      if (typeof (userRow as { allow_spectate?: boolean | null })?.allow_spectate === "boolean") {
+        setSpectateEnabled((userRow as { allow_spectate?: boolean }).allow_spectate as boolean);
+      }
       setLoadingProfile(false);
     };
 
@@ -191,7 +195,7 @@ export default function SettingsPage() {
 
     const { error: updateError } = await supabase
       .from("users")
-      .update({ username: nextName.length ? nextName : null })
+      .update({ username: nextName.length ? nextName : null, allow_spectate: spectateEnabled })
       .eq("id", authData.user.id);
 
     if (updateError) {

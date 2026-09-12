@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Clock, Flag, Loader2, MoreVertical, Settings, Shield, Swords, Trophy, UserMinus, UserPlus } from "lucide-react";
+import { Clock, Eye, Flag, Loader2, MoreVertical, Settings, Shield, Swords, Trophy, UserMinus, UserPlus } from "lucide-react";
 
 import { AppShell } from "../../components/app-shell";
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
@@ -30,6 +30,7 @@ import { Textarea } from "../../components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../components/ui/tooltip";
 import { supabase } from "../../lib/supabase-browser";
 import { isChallengeLive } from "../../lib/friend-challenge";
+import { resolvePresenceDot } from "../../lib/presence";
 import { diceBearUrl } from "@/lib/avatars";
 import { computeRelationship, type ConnectionRow, type Relationship } from "@/lib/friends";
 import { computeAchievements } from "@/lib/achievements";
@@ -115,6 +116,9 @@ function ProfileContent() {
   const [battleError, setBattleError] = useState<string | null>(null);
   const [modePickerOpen, setModePickerOpen] = useState(false);
   const [sentChallengeId, setSentChallengeId] = useState<string | null>(null);
+  const [isOnline, setIsOnline] = useState(false);
+  const [liveMatchId, setLiveMatchId] = useState<string | null>(null);
+  const [spectateAllowed, setSpectateAllowed] = useState(true);
 
   useEffect(() => {
     let mounted = true;
@@ -459,7 +463,56 @@ function ProfileContent() {
     }
   };
 
-  // Sender waits on this page: when the friend accepts, enter the arena.
+  // Live presence for the viewed profile: realtime online flag plus
+  // server-side in-match check. Polls so dots stay fresh.
+  useEffect(() => {
+    if (!resolvedUserId) return;
+    let alive = true;
+    let channel: { unsubscribe?: () => void } | null = null;
+
+    const setup = async () => {
+      const { data: authData } = await supabase.auth.getUser();
+      if (!alive || !authData.user?.id) return;
+
+      const ch = supabase.channel("profile-presence-watch", {
+        config: { presence: { key: authData.user.id } },
+      });
+      channel = ch as unknown as { unsubscribe?: () => void };
+      ch.on("presence", { event: "sync" }, () => {
+        if (!alive) return;
+        const state = ch.presenceState() ?? {};
+        setIsOnline(Object.keys(state).includes(resolvedUserId));
+      });
+      ch.subscribe();
+    };
+
+    const fetchLive = async () => {
+      try {
+        const res = await fetch(`/api/presence/live?userId=${encodeURIComponent(resolvedUserId)}`);
+        if (!alive || !res.ok) return;
+        const data = (await res.json()) as {
+          inMatch?: boolean;
+          matchId?: string | null;
+          spectateAllowed?: boolean;
+        };
+        setLiveMatchId(data.inMatch && data.matchId ? data.matchId : null);
+        setSpectateAllowed(data.spectateAllowed !== false);
+      } catch {
+        // ignore transient errors
+      }
+    };
+
+    void setup();
+    void fetchLive();
+    const interval = window.setInterval(fetchLive, 15000);
+    return () => {
+      alive = false;
+      window.clearInterval(interval);
+      if (channel) void supabase.removeChannel(channel as never);
+    };
+  }, [resolvedUserId]);
+
+  const presenceDot = resolvePresenceDot(isOnline, liveMatchId !== null);
   useEffect(() => {
     if (!sentChallengeId) return;
     let alive = true;
@@ -590,13 +643,23 @@ function ProfileContent() {
             {/* Profile Header */}
             <Card>
               <CardContent className="flex flex-wrap items-start gap-6 p-6">
-                <Avatar className="size-24 text-2xl font-bold">
-                  {profile?.avatarUrl ? (
-                    <AvatarImage src={profile.avatarUrl} alt={displayName} className="rounded-full" />
-                  ) : (
-                    <AvatarFallback>{initials}</AvatarFallback>
+                <div className="relative">
+                  <Avatar className="size-24 text-2xl font-bold">
+                    {profile?.avatarUrl ? (
+                      <AvatarImage src={profile.avatarUrl} alt={displayName} className="rounded-full" />
+                    ) : (
+                      <AvatarFallback>{initials}</AvatarFallback>
+                    )}
+                  </Avatar>
+                  {presenceDot && (
+                    <span
+                      title={presenceDot === "in-match" ? "In a match" : "Online"}
+                      className={`absolute bottom-1 right-1 size-4 rounded-full ring-2 ring-background ${
+                        presenceDot === "in-match" ? "bg-emerald-500" : "bg-sky-500"
+                      }`}
+                    />
                   )}
-                </Avatar>
+                </div>
                 <div className="min-w-0 flex-1">
                   {!isSelf && (
                     <div className="relative z-10 mb-2 flex justify-end">
@@ -757,6 +820,16 @@ function ProfileContent() {
                           <Swords data-icon="inline-start" />
                           {battleBusy ? "Sending..." : sentChallengeId ? "Challenge Sent" : "Send Battle Request"}
                         </Button>
+                        {!isSelf && liveMatchId && spectateAllowed && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => router.push(`/spectate/${liveMatchId}`)}
+                          >
+                            <Eye data-icon="inline-start" />
+                            Spectate
+                          </Button>
+                        )}
                       </div>
                       {battleError && <p className="text-sm text-destructive">{battleError}</p>}
                       {sentChallengeId && (
