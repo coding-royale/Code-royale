@@ -36,6 +36,7 @@ The status codes have these meanings:
 | POST | `/api/friend-match/decline` | Decline a friend challenge |
 | GET | `/api/presence/live` | Live in-match presence for one user |
 | GET | `/api/spectate/[matchId]` | Read-only snapshot for spectators |
+| GET | `/api/match/[matchId]/activity` | Opponent attempt feed for the arena |
 | POST | `/api/friend-match/start` | Start a friend match |
 | POST | `/api/friends/manage` | Block or unblock a user |
 | GET | `/api/friends/meta` | Get friend counts |

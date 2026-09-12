@@ -7,6 +7,7 @@ import { TetrioBattleBackground } from "@/components/battle/tetrio-battle-backgr
 import { MaskedOpponentEditor } from "@/components/battle/masked-opponent-editor";
 import { CodeEditor } from "@/components/code-editor";
 import { buildTemplate, languageLabels, normalizeLanguage } from "@/lib/code-templates";
+import { formatLastActive, formatRatingDelta, type AttemptSummary } from "@/lib/match-activity";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -128,6 +129,12 @@ export function MatchArenaShell({
   const [showQuestion, setShowQuestion] = useState(true);
   const [matchOutcome, setMatchOutcome] = useState<MatchOutcome | null>(null);
   const [showForfeitConfirm, setShowForfeitConfirm] = useState(false);
+  const [opponentActivity, setOpponentActivity] = useState<AttemptSummary>({
+    attempts: 0,
+    bestPassed: 0,
+    bestTotal: 0,
+    lastActiveAt: null,
+  });
   const hasAutoCompletedRef = useRef(false);
 
   const matchId = useMemo(() => {
@@ -203,6 +210,32 @@ export function MatchArenaShell({
     };
   }, [matchId, matchOutcome]);
 
+  // Poll real opponent activity (attempts, best, last active).
+  useEffect(() => {
+    if (!matchId || matchOutcome) return;
+    let alive = true;
+    const fetchActivity = async () => {
+      try {
+        const res = await fetch(`/api/match/${matchId}/activity`);
+        if (!alive || !res.ok) return;
+        const data = (await res.json()) as AttemptSummary;
+        setOpponentActivity({
+          attempts: data.attempts ?? 0,
+          bestPassed: data.bestPassed ?? 0,
+          bestTotal: data.bestTotal ?? 0,
+          lastActiveAt: data.lastActiveAt ?? null,
+        });
+      } catch {
+        // ignore transient errors
+      }
+    };
+    void fetchActivity();
+    const interval = setInterval(fetchActivity, 5000);
+    return () => {
+      alive = false;
+      clearInterval(interval);
+    };
+  }, [matchId, matchOutcome]);
   // Auto-complete on timeout
   useEffect(() => {
     if (timerSeconds > 0 || matchOutcome || hasAutoCompletedRef.current || !matchId) return;
@@ -323,6 +356,7 @@ export function MatchArenaShell({
           language,
           code,
           intent,
+          matchId,
         }),
       });
 
@@ -440,7 +474,9 @@ export function MatchArenaShell({
                 <div className="hidden flex-col sm:flex">
                   <span className="text-sm font-medium">Opponent</span>
                   <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                    solving…
+                    {opponentActivity.attempts === 0
+                      ? "warming up…"
+                      : `${opponentActivity.attempts} tries · best ${opponentActivity.bestPassed}/${opponentActivity.bestTotal} · ${formatLastActive(opponentActivity.lastActiveAt)}`}
                   </span>
                 </div>
               </div>
@@ -574,8 +610,18 @@ export function MatchArenaShell({
                   )}
                 </div>
               ) : (
-                <div className="min-h-0 flex-1">
-                  <MaskedOpponentEditor opponentName="Opponent" />
+                <div className="flex min-h-0 flex-1 flex-col gap-2">
+                  <div className="flex items-center justify-between rounded-lg border bg-card/60 px-3 py-2 text-[10px] uppercase tracking-wider text-muted-foreground">
+                    <span>
+                      {opponentActivity.attempts === 0
+                        ? "Opponent hasn't run code yet"
+                        : `${opponentActivity.attempts} attempts · best ${opponentActivity.bestPassed}/${opponentActivity.bestTotal}`}
+                    </span>
+                    <span>{formatLastActive(opponentActivity.lastActiveAt)}</span>
+                  </div>
+                  <div className="min-h-0 flex-1">
+                    <MaskedOpponentEditor opponentName="Opponent" />
+                  </div>
                 </div>
               )}
             </aside>
@@ -814,7 +860,12 @@ export function MatchArenaShell({
       </Dialog>
 
       {/* Match outcome */}
-      <Dialog open={Boolean(matchOutcome)} onOpenChange={() => {}}>
+      <Dialog
+        open={Boolean(matchOutcome)}
+        onOpenChange={(open) => {
+          if (!open && matchOutcome) router.push(exitHref);
+        }}
+      >
         <DialogContent className="w-full max-w-lg gap-6 p-8 text-center">
           <DialogHeader className="items-center gap-2">
             <DialogTitle
@@ -858,7 +909,9 @@ export function MatchArenaShell({
                 className={`rounded-2xl border px-6 py-4 ${
                   matchOutcome.status === "won"
                     ? "border-emerald-500/30 bg-emerald-500/10"
-                    : "border-red-500/30 bg-red-500/10"
+                    : matchOutcome.status === "draw"
+                      ? "border-border bg-muted/40"
+                      : "border-red-500/30 bg-red-500/10"
                 }`}
               >
                 <p className="text-[10px] uppercase tracking-[0.35em] text-muted-foreground">
@@ -868,20 +921,20 @@ export function MatchArenaShell({
                   className={`mt-1 text-2xl font-bold ${
                     matchOutcome.status === "won"
                       ? "text-emerald-500"
-                      : "text-red-500"
+                      : matchOutcome.status === "draw"
+                        ? "text-muted-foreground"
+                        : "text-red-500"
                   }`}
                 >
-                  {matchOutcome.status === "won"
-                    ? `+${matchOutcome.ratingDelta.winner}`
-                    : matchOutcome.ratingDelta.loser}
+                  {formatRatingDelta(
+                    matchOutcome.status === "won"
+                      ? matchOutcome.ratingDelta.winner
+                      : matchOutcome.status === "draw"
+                        ? 0
+                        : matchOutcome.ratingDelta.loser,
+                  )}
                 </p>
               </div>
-            </div>
-          )}
-
-          {matchOutcome?.status === "draw" && matchMode === "ranked" && (
-            <div className="inline-flex items-center gap-3 self-center rounded-2xl border bg-muted/40 px-6 py-4">
-              <p className="text-sm text-muted-foreground">No rating change</p>
             </div>
           )}
 

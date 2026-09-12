@@ -39,11 +39,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid request payload" }, { status: 400 });
   }
 
-  const { questionId, code, language, intent } = payload as {
+  const { questionId, code, language, intent, matchId } = payload as {
     questionId?: string;
     code?: string;
     language?: string;
     intent?: "run" | "submit";
+    matchId?: string;
   };
 
   if (!questionId || !code || !language) {
@@ -192,6 +193,22 @@ export async function POST(request: Request) {
 
   const { passed, results } = judged;
   const solved = passed && isSubmit;
+
+  // Match activity feed: every run/submit inside a match is logged so the
+  // opponent can see real progress (attempts, best, last active).
+  if (typeof matchId === "string" && matchId.trim()) {
+    try {
+      const passedCount = results.filter((r) => r.passed).length;
+      await supabase.from("match_attempts").insert({
+        match_id: matchId.trim(),
+        user_id: userId,
+        passed: passedCount,
+        total: results.length,
+      });
+    } catch {
+      // ignore tracking failures — never break a submission
+    }
+  }
 
   if (solved) {
     try {
