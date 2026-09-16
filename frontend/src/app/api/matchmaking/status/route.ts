@@ -45,22 +45,45 @@ export async function GET(request: Request) {
   const cutoffIso = resolveStatusCutoff(sinceParam);
 
   // match_players historically used created_at; newer schemas use joined_at.
-  // Select both and filter in code so neither schema 404s or lies.
-  const { data: playerRow, error } = await supabase
-    .from("match_players")
-    .select("match_id, joined_at, created_at")
-    .eq("user_id", userId)
-    .order("joined_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  // NOTE: selecting a column that doesn't exist makes PostgREST return an
+  // error (not null), which previously made status ALWAYS return
+  // { matchId: null }. That is why the match creator teleported instantly
+  // (join returns matchId directly) while the opponent polled status for
+  // 60s and timed out. Try joined_at first, fall back to created_at.
+  let playerRow: { match_id?: string | null; joined_at?: string | null; created_at?: string | null } | null = null;
+  {
+    const { data, error } = await supabase
+      .from("match_players")
+      .select("match_id, joined_at")
+      .eq("user_id", userId)
+      .order("joined_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
-  if (error) {
-    console.error("Failed to check match status", error);
-    return NextResponse.json({ matchId: null }, { status: 200 });
+    if (!error) {
+      playerRow = data as { match_id?: string | null; joined_at?: string | null } | null;
+    } else if (error.message?.includes("joined_at")) {
+      // Legacy schema without joined_at — retry with created_at.
+      const legacy = await supabase
+        .from("match_players")
+        .select("match_id, created_at")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (legacy.error) {
+        console.error("Failed to check match status", legacy.error);
+        return NextResponse.json({ matchId: null }, { status: 200 });
+      }
+      playerRow = legacy.data as { match_id?: string | null; created_at?: string | null } | null;
+    } else {
+      console.error("Failed to check match status", error);
+      return NextResponse.json({ matchId: null }, { status: 200 });
+    }
   }
 
   // Also handle case where match_players is empty but we are still queued — return null so client keeps polling
-  const row = playerRow as { match_id?: string | null; joined_at?: string | null; created_at?: string | null } | null;
+  const row = playerRow;
   const joinedAt = row?.joined_at ?? row?.created_at ?? null;
   if (!row?.match_id || !isFreshMatch(joinedAt, cutoffIso)) {
     return NextResponse.json({ matchId: null }, { status: 200 });
