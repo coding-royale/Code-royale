@@ -9,8 +9,11 @@
  * Build the URL that Supabase sends the user to after a successful OAuth
  * sign-in. It uses NEXT_PUBLIC_SITE_URL when configured. In the browser it
  * falls back to the current origin.
+ *
+ * This points at /auth/callback (PKCE flow) so the server can exchange the
+ * auth code for a session and set cookies, then bounce to `next`.
  */
-export const getOAuthRedirectTo = () => {
+export const getOAuthRedirectTo = (next = "/home") => {
   const configuredSiteUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim();
   const siteOrigin = configuredSiteUrl
     ? configuredSiteUrl.replace(/\/$/, "")
@@ -18,7 +21,9 @@ export const getOAuthRedirectTo = () => {
       ? window.location.origin
       : undefined;
 
-  return siteOrigin ? `${siteOrigin}/home` : undefined;
+  return siteOrigin
+    ? `${siteOrigin}/auth/callback?next=${encodeURIComponent(next)}`
+    : undefined;
 };
 
 /**

@@ -99,16 +99,42 @@ export default function SignupPage() {
       });
 
       if (authError) {
-        setError(authError.message);
+        setError(formatOAuthError(authError.message, "Google"));
         setProcessing(false);
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      setError(
-        message.toLowerCase().includes("failed to fetch")
-          ? "Cannot reach Supabase (network/CORS). Verify NEXT_PUBLIC_SUPABASE_URL is correct/https, and that your Supabase project is reachable."
-          : message,
-      );
+      setError(formatOAuthError(message, "Google"));
+      setProcessing(false);
+    }
+  };
+
+  const handleMicrosoftSignIn = async () => {
+    setProcessing(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      // Supabase uses the `azure` provider for Microsoft (Entra ID).
+      // The `email` scope is required so Supabase gets a valid email address.
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "azure",
+        options: {
+          redirectTo: getOAuthRedirectTo(),
+          scopes: "email",
+        },
+      });
+
+      if (error) {
+        setError(formatOAuthError(error.message, "Microsoft"));
+        setProcessing(false);
+        return;
+      }
+
+      // On success, supabase-js redirects the browser to the provider automatically.
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      setError(formatOAuthError(message, "Microsoft"));
       setProcessing(false);
     }
   };
@@ -268,7 +294,7 @@ export default function SignupPage() {
               <Separator className="flex-1" />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <Button
                 type="button"
                 variant="outline"
@@ -282,6 +308,20 @@ export default function SignupPage() {
                   <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
                 </svg>
                 Google
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleMicrosoftSignIn}
+                disabled={processing}
+              >
+                <svg className="size-5" viewBox="0 0 24 24">
+                  <path fill="#F25022" d="M1 1h10.5v10.5H1z" />
+                  <path fill="#7FBA00" d="M12.5 1H23v10.5H12.5z" />
+                  <path fill="#00A4EF" d="M1 12.5h10.5V23H1z" />
+                  <path fill="#FFB900" d="M12.5 12.5H23V23H12.5z" />
+                </svg>
+                Microsoft
               </Button>
               <Button
                 type="button"
