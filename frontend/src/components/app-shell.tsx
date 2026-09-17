@@ -570,15 +570,28 @@ export function AppShell({ children, showSidebar = true }: AppShellProps) {
             </DropdownMenuContent>
           </DropdownMenu>
 
-          <Link href="/profile" className="shrink-0" aria-label="Profile">
-            <Avatar className="size-8 ring-1 ring-border transition hover:ring-2 hover:ring-ring">
-              {viewerAvatar ? (
-                <AvatarImage src={viewerAvatar} alt={viewerName} />
-              ) : (
-                <AvatarFallback>{initialsFromName(viewerName)}</AvatarFallback>
-              )}
-            </Avatar>
-          </Link>
+          <div className="group relative shrink-0">
+            <Link href="/profile" aria-label="Profile">
+              <Avatar className="size-8 ring-1 ring-border transition hover:ring-2 hover:ring-ring">
+                {viewerAvatar ? (
+                  <AvatarImage src={viewerAvatar} alt={viewerName} />
+                ) : (
+                  <AvatarFallback>{initialsFromName(viewerName)}</AvatarFallback>
+                )}
+              </Avatar>
+            </Link>
+            <div className="invisible absolute right-0 top-full z-50 pt-2 opacity-0 transition-all group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => void handleSignOut()}
+                className="shadow-lg"
+              >
+                <LogOut data-icon="inline-start" />
+                Sign out
+              </Button>
+            </div>
+          </div>
         </div>
       </header>
 
