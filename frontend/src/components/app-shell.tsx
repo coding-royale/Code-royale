@@ -255,7 +255,7 @@ export function AppShell({ children, showSidebar = true }: AppShellProps) {
       const [userRow, statsRow] = await Promise.all([
         supabase
           .from("users")
-          .select("username")
+          .select("username,onboarded")
           .eq("id", data.user.id)
           .maybeSingle(),
         supabase
@@ -266,6 +266,17 @@ export function AppShell({ children, showSidebar = true }: AppShellProps) {
       ]);
 
       if (!mounted) return;
+
+      // New OAuth users must pick a unique username + password first.
+      // Grandfathered accounts have onboarded=true and skip this entirely.
+      const onboarded =
+        (userRow?.data as { onboarded?: boolean | null } | null | undefined)?.onboarded === true;
+      if (!onboarded && !pathname.startsWith("/auth/")) {
+        window.location.replace(
+          `/auth/complete-profile?next=${encodeURIComponent(pathname)}`,
+        );
+        return;
+      }
 
       const fallback = data.user.email?.split("@")[0]?.trim() || "Player";
       const name =
@@ -312,6 +323,9 @@ export function AppShell({ children, showSidebar = true }: AppShellProps) {
       mounted = false;
       window.clearInterval(timer);
     };
+    // Mount-only on purpose: AppShell remounts on every page, so the mount
+    // pathname is the page being guarded.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Global search: peers and problems

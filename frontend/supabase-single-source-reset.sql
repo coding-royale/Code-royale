@@ -40,9 +40,17 @@ create table public.users (
   wins int not null default 0,
   losses int not null default 0,
   team_name text,
+  -- false until a new user completes username+password onboarding.
+  -- All pre-existing accounts are grandfathered as true (see backfill below).
+  onboarded boolean not null default false,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+-- Usernames are unique case-insensitively for all new choices.
+create unique index if not exists users_username_unique_ci
+  on public.users (lower(username))
+  where username is not null and username <> '';
 
 create or replace function public.set_updated_at()
 returns trigger
@@ -65,22 +73,34 @@ language plpgsql
 security definer
 set search_path = ''
 as $$
+declare
+  candidate text;
+  base text;
+  suffix int := 0;
 begin
-  insert into public.users (id, username, rating, wins, losses, team_name)
-  values (
-    new.id,
-    coalesce(
-      new.raw_user_meta_data->>'display_name',
-      new.raw_user_meta_data->>'user_name',
-      new.raw_user_meta_data->>'preferred_username',
-      new.raw_user_meta_data->>'name',
-      split_part(new.email, '@', 1)
-    ),
-    0,
-    0,
-    0,
-    null
-  )
+  candidate := coalesce(
+    new.raw_user_meta_data->>'display_name',
+    new.raw_user_meta_data->>'user_name',
+    new.raw_user_meta_data->>'preferred_username',
+    new.raw_user_meta_data->>'name',
+    split_part(new.email, '@', 1)
+  );
+  -- Keep only allowed username chars: letters, digits, underscore, dot.
+  candidate := regexp_replace(coalesce(candidate, ''), '[^A-Za-z0-9_.]', '', 'g');
+  candidate := regexp_replace(candidate, '^[_.]+', '');
+  candidate := substr(candidate, 1, 20);
+  if candidate is null or length(candidate) < 3 then
+    candidate := 'user_' || substr(replace(new.id::text, '-', ''), 1, 8);
+  end if;
+  base := candidate;
+  -- Deduplicate case-insensitively so the unique index never rejects the trigger.
+  while exists (select 1 from public.users where lower(username) = lower(candidate)) loop
+    suffix := suffix + 1;
+    candidate := substr(base, 1, 20 - length(suffix::text) - 1) || '_' || suffix::text;
+  end loop;
+
+  insert into public.users (id, username, rating, wins, losses, team_name, onboarded)
+  values (new.id, candidate, 0, 0, 0, null, false)
   on conflict (id) do nothing;
 
   return new;
@@ -409,17 +429,22 @@ with check (auth.role() = 'service_role');
 -- ------------------------------------------------------------
 -- 6) Backfill app user profiles for already-registered auth users
 -- ------------------------------------------------------------
-insert into public.users (id, username, rating, wins, losses, team_name)
+insert into public.users (id, username, rating, wins, losses, team_name, onboarded)
 select
   u.id,
   coalesce(u.raw_user_meta_data->>'display_name', split_part(u.email, '@', 1)),
   0,
   0,
   0,
-  null
+  null,
+  true
 from auth.users u
 left join public.users p on p.id = u.id
 where p.id is null;
+
+-- Grandfather every account that already exists: they keep their current
+-- username (even if it would not pass today's format rules) and skip onboarding.
+update public.users set onboarded = true where onboarded is not true;
 
 commit;
 

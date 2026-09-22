@@ -15,6 +15,7 @@ import { RadioGroup, RadioGroupItem } from "../../components/ui/radio-group";
 import { Switch } from "../../components/ui/switch";
 import { Textarea } from "../../components/ui/textarea";
 import { supabase } from "../../lib/supabase-browser";
+import { escapeIlikeLiteral, validateUsername } from "../../lib/username";
 import { getStoredAccent, applyAccent, setStoredAccent, type Accent } from "../../lib/accent";
 import { clearCachedProfile, getFreshCachedProfile, writeCachedProfile, subscribeProfileCache } from "../../lib/user-profile-cache";
 import { clearAvatarCache } from "../../lib/avatars";
@@ -193,13 +194,42 @@ export default function SettingsPage() {
       return;
     }
 
+    // Usernames are unique (case-insensitive): letters, numbers, _ and . only.
+    if (nextName.length > 0) {
+      const formatError = validateUsername(nextName);
+      if (formatError) {
+        setError(formatError);
+        setSaving(false);
+        return;
+      }
+      const { data: clash, error: clashError } = await supabase
+        .from("users")
+        .select("id")
+        .ilike("username", escapeIlikeLiteral(nextName))
+        .limit(1);
+      if (clashError) {
+        setError(clashError.message);
+        setSaving(false);
+        return;
+      }
+      if ((clash ?? []).some((row) => (row as { id: string }).id !== authData.user.id)) {
+        setError("That username is already taken.");
+        setSaving(false);
+        return;
+      }
+    }
+
     const { error: updateError } = await supabase
       .from("users")
       .update({ username: nextName.length ? nextName : null, allow_spectate: spectateEnabled })
       .eq("id", authData.user.id);
 
     if (updateError) {
-      setError(updateError.message);
+      setError(
+        (updateError as { code?: string }).code === "23505"
+          ? "That username is already taken."
+          : updateError.message,
+      );
       setSaving(false);
       return;
     }
@@ -325,15 +355,18 @@ export default function SettingsPage() {
               </div>
 
               <div className="flex flex-col gap-2">
-                <Label htmlFor="display-name">Display Name</Label>
+                <Label htmlFor="display-name">Username</Label>
                 <Input
                   id="display-name"
                   type="text"
-                  placeholder={loadingProfile ? "Loading…" : "Enter your name"}
+                  placeholder={loadingProfile ? "Loading…" : "Enter your username"}
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
                   disabled={loadingProfile || saving}
                 />
+                <p className="text-xs text-muted-foreground">
+                  3–20 characters. Only letters, numbers, _ and . — and it must be unique.
+                </p>
               </div>
 
               <div className="flex flex-col gap-2">

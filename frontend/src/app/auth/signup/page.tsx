@@ -7,6 +7,7 @@ import { ArrowLeftIcon, CheckCircle2Icon, Loader2Icon } from "lucide-react";
 
 import { supabase } from "../../../lib/supabase-browser";
 import { formatOAuthError, getOAuthRedirectTo } from "../../../lib/oauth";
+import { validateUsername } from "../../../lib/username";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -28,12 +29,46 @@ export default function SignupPage() {
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [nameError, setNameError] = useState<string | null>(null);
+  const [checkingName, setCheckingName] = useState(false);
+
+  const checkUsername = async (value: string): Promise<boolean> => {
+    const trimmed = value.trim();
+    const formatError = validateUsername(trimmed);
+    if (formatError) {
+      setNameError(formatError);
+      return false;
+    }
+    setCheckingName(true);
+    try {
+      const res = await fetch(`/api/username/available?username=${encodeURIComponent(trimmed)}`);
+      const json = (await res.json()) as { available?: boolean; error?: string };
+      if (!res.ok || json.available !== true) {
+        setNameError(json.error ?? "That username is already taken.");
+        return false;
+      }
+    } catch {
+      setNameError("Could not check username availability. Try again.");
+      return false;
+    } finally {
+      setCheckingName(false);
+    }
+    setNameError(null);
+    return true;
+  };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setProcessing(true);
     setError(null);
     setSuccess(null);
+
+    // Usernames are unique (case-insensitive) and limited to
+    // letters, numbers, underscore and dot.
+    if (!(await checkUsername(displayName))) {
+      setProcessing(false);
+      return;
+    }
 
     let authData: Awaited<ReturnType<typeof supabase.auth.signUp>>["data"];
     let authError: Awaited<ReturnType<typeof supabase.auth.signUp>>["error"];
@@ -43,7 +78,7 @@ export default function SignupPage() {
         password,
         options: {
           data: {
-            display_name: displayName,
+            display_name: displayName.trim(),
           },
         },
       });
@@ -74,6 +109,28 @@ export default function SignupPage() {
       );
       setProcessing(false);
       return;
+    }
+
+    // Claim the validated username (the auto-profile trigger only creates a
+    // sanitized placeholder with onboarded=false).
+    if (authData.user?.id) {
+      const { error: profileError } = await supabase
+        .from("users")
+        .update({ username: displayName.trim(), onboarded: true })
+        .eq("id", authData.user.id);
+      if (profileError) {
+        // Lost a race for the name after signup — the onboarding page will
+        // force a replacement before the app can be used.
+        if ((profileError as { code?: string }).code === "23505") {
+          setSuccess("Account ready. Picking a username...");
+          setProcessing(false);
+          setTimeout(() => router.push("/auth/complete-profile?next=%2Fhome"), 1200);
+          return;
+        }
+        setError(profileError.message);
+        setProcessing(false);
+        return;
+      }
     }
 
     setSuccess("Account ready. Redirecting to your dashboard...");
@@ -189,14 +246,27 @@ export default function SignupPage() {
           <CardContent className="flex flex-col gap-5">
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
               <div className="flex flex-col gap-2">
-                <Label htmlFor="display-name">Display Name</Label>
+                <Label htmlFor="display-name">Username</Label>
                 <Input
                   id="display-name"
                   required
-                  placeholder="Your username"
+                  placeholder="e.g. code_royale.99"
                   value={displayName}
-                  onChange={(event) => setDisplayName(event.target.value)}
+                  onChange={(event) => {
+                    setDisplayName(event.target.value);
+                    if (nameError) setNameError(null);
+                  }}
+                  onBlur={(event) => {
+                    if (event.target.value.trim()) void checkUsername(event.target.value);
+                  }}
                 />
+                <p className="text-xs text-muted-foreground">
+                  3–20 characters. Only letters, numbers, _ and . — and it must be unique.
+                  {checkingName ? " Checking availability..." : ""}
+                </p>
+                {nameError && (
+                  <p className="text-xs font-medium text-destructive">{nameError}</p>
+                )}
               </div>
 
               <div className="flex flex-col gap-2">
