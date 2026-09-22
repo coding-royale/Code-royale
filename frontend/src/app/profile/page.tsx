@@ -59,9 +59,11 @@ type UserRow = {
 };
 
 function getRankFromRating(rating: number) {
-  if (rating >= 600) return { name: "Gold", color: "text-amber-500" };
-  if (rating >= 400) return { name: "Silver", color: "text-slate-400" };
-  if (rating >= 200) return { name: "Bronze", color: "text-orange-500" };
+  if (rating >= 400) return { name: "Diamond", color: "text-violet-400" };
+  if (rating >= 300) return { name: "Platinum", color: "text-cyan-400" };
+  if (rating >= 200) return { name: "Gold", color: "text-amber-500" };
+  if (rating >= 100) return { name: "Silver", color: "text-slate-400" };
+  if (rating >= 1) return { name: "Bronze", color: "text-orange-500" };
   return { name: "Unranked", color: "text-muted-foreground" };
 }
 

@@ -109,13 +109,19 @@ function resolveMatchType(selection: string) {
 }
 
 function getRankedBandFromRating(rating: number): RankedBand {
-  if (rating < 300) {
+  if (rating < 100) {
     return { league: "Bronze", difficulty: "easy" };
   }
-  if (rating < 700) {
+  if (rating < 200) {
     return { league: "Silver", difficulty: "medium" };
   }
-  return { league: "Gold", difficulty: "hard" };
+  if (rating < 300) {
+    return { league: "Gold", difficulty: "medium" };
+  }
+  if (rating < 400) {
+    return { league: "Platinum", difficulty: "hard" };
+  }
+  return { league: "Diamond", difficulty: "hard" };
 }
 
 const RANKED_MODES: ModeDefinition[] = [

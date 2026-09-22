@@ -39,17 +39,17 @@ const leagueTiers: {
   minTrophies: number;
 }[] = [
   { id: "bronze",   label: "Bronze",   color: "text-amber-700 dark:text-amber-500",   bg: "bg-amber-500/10",   border: "border-amber-700/40",   icon: <Trophy className="size-4" />, minTrophies: 0 },
-  { id: "silver",   label: "Silver",   color: "text-slate-400",   bg: "bg-slate-500/15",   border: "border-slate-400/40",   icon: <Trophy className="size-4" />, minTrophies: 1000 },
-  { id: "gold",     label: "Gold",     color: "text-amber-400",   bg: "bg-amber-500/20",   border: "border-amber-400/40",   icon: <Trophy className="size-4" />, minTrophies: 2500 },
-  { id: "platinum", label: "Platinum", color: "text-cyan-300",    bg: "bg-cyan-500/15",    border: "border-cyan-400/40",    icon: <Trophy className="size-4" />, minTrophies: 5000 },
-  { id: "diamond",  label: "Diamond",  color: "text-violet-300",  bg: "bg-violet-500/15",  border: "border-violet-400/40",  icon: <Trophy className="size-4" />, minTrophies: 10000 },
+  { id: "silver",   label: "Silver",   color: "text-slate-400",   bg: "bg-slate-500/15",   border: "border-slate-400/40",   icon: <Trophy className="size-4" />, minTrophies: 100 },
+  { id: "gold",     label: "Gold",     color: "text-amber-400",   bg: "bg-amber-500/20",   border: "border-amber-400/40",   icon: <Trophy className="size-4" />, minTrophies: 200 },
+  { id: "platinum", label: "Platinum", color: "text-cyan-300",    bg: "bg-cyan-500/15",    border: "border-cyan-400/40",    icon: <Trophy className="size-4" />, minTrophies: 300 },
+  { id: "diamond",  label: "Diamond",  color: "text-violet-300",  bg: "bg-violet-500/15",  border: "border-violet-400/40",  icon: <Trophy className="size-4" />, minTrophies: 400 },
 ];
 
 function getLeague(trophies: number): League {
-  if (trophies >= 10000) return "diamond";
-  if (trophies >= 5000) return "platinum";
-  if (trophies >= 2500) return "gold";
-  if (trophies >= 1000) return "silver";
+  if (trophies >= 400) return "diamond";
+  if (trophies >= 300) return "platinum";
+  if (trophies >= 200) return "gold";
+  if (trophies >= 100) return "silver";
   return "bronze";
 }
 
@@ -111,12 +111,13 @@ export default function LeaderboardPage() {
           }
         }
 
-        // Get all players ranked by rating
+        // Get a wide pool ranked by rating so each league can still show its top 50.
+        // 5 leagues × 50 = 250 minimum; fetch 300 for buffer.
         const { data: allPlayers } = await supabase
           .from("users")
           .select("id,username,rating,wins,losses")
           .order("rating", { ascending: false })
-          .limit(100);
+          .limit(300);
 
         if (alive && allPlayers) {
           const playerIds = (allPlayers as Array<{ id: string }>).map((p) => p.id as string);
@@ -157,15 +158,16 @@ export default function LeaderboardPage() {
   const myLeague = isUnranked ? null : getLeague(myRating);
 
   const sortedPlayers = useMemo(() => {
-    if (selectedLeague === "all") return players;
-    return players.filter((p) => getLeague(p.rating) === selectedLeague);
+    // Cap every view (global + each league) to top 50.
+    if (selectedLeague === "all") return players.slice(0, 50);
+    return players.filter((p) => getLeague(p.rating) === selectedLeague).slice(0, 50);
   }, [players, selectedLeague]);
 
   const myLeaguePlayers = useMemo(() => {
     if (!myLeague) return [];
     return players
       .filter((p) => getLeague(p.rating) === myLeague)
-      .slice(0, 10);
+      .slice(0, 50);
   }, [players, myLeague]);
 
   const myRank = useMemo(() => {
@@ -301,8 +303,8 @@ export default function LeaderboardPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               {selectedLeague === "all"
-                ? "Global Leaderboard"
-                : `${getTierConfig(selectedLeague as League).icon} ${getTierConfig(selectedLeague as League).label} League`}
+                ? "Global Leaderboard (Top 50)"
+                : <>{getTierConfig(selectedLeague as League).icon} {getTierConfig(selectedLeague as League).label} League (Top 50)</>}
             </CardTitle>
           </CardHeader>
 
@@ -401,12 +403,12 @@ export default function LeaderboardPage() {
           </Table>
         </Card>
 
-        {/* Top 10 in Your League */}
+        {/* Top 50 in Your League */}
         {!isUnranked && myLeague && myLeaguePlayers.length > 0 && (
           <Card className="mt-8 shadow-sm">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                {getTierConfig(myLeague).icon} Top 10 in Your League ({getTierConfig(myLeague).label})
+                {getTierConfig(myLeague).icon} Top 50 in Your League ({getTierConfig(myLeague).label})
               </CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col gap-1">
