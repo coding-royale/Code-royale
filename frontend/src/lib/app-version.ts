@@ -27,3 +27,20 @@ export function satisfiesMinimum(version: string, minimum: string): boolean {
   }
   return true;
 }
+
+/** App version injected at build time from package.json. */
+export const APP_VERSION = (process.env.NEXT_PUBLIC_APP_VERSION ?? "").trim() || "0.0.0";
+
+/** Short git commit injected at build time; "unknown" when unavailable. */
+export const APP_COMMIT = (process.env.NEXT_PUBLIC_APP_COMMIT ?? "").trim() || "unknown";
+
+/** Human-readable build label, for example "v1.0.0 · a1b2c3d". */
+export function appVersionLabel(
+  version: string = APP_VERSION,
+  commit: string = APP_COMMIT,
+): string {
+  const cleanVersion = version.trim() || "0.0.0";
+  const cleanCommit = commit.trim();
+  if (!cleanCommit || cleanCommit === "unknown") return `v${cleanVersion}`;
+  return `v${cleanVersion} · ${cleanCommit}`;
+}

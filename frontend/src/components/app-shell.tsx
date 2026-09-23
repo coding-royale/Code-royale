@@ -48,6 +48,9 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
+import { APP_COMMIT, APP_VERSION } from "../lib/app-version";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 
 const sidebarItems = [
   { id: "home", label: "Dashboard", href: "/home", icon: LayoutDashboard },
@@ -688,49 +691,66 @@ export function AppShell({ children, showSidebar = true }: AppShellProps) {
           <div className="min-h-[calc(100vh-3.5rem)]">{children}</div>
 
           <footer className="mt-8 border-t border-border bg-muted/20 px-6 py-6">
-            <div className="mx-auto grid w-full max-w-6xl gap-6 md:grid-cols-2">
-              <section className="flex flex-col gap-2">
-                <h3 className="text-sm font-semibold">Social</h3>
-                <div className="flex flex-wrap gap-2">
-                  {socialButtons.map((item) => {
-                    const Icon = item.icon;
-                    if (item.href) {
+            <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
+              <div className="grid gap-6 md:grid-cols-2">
+                <section className="flex flex-col gap-2">
+                  <h3 className="text-sm font-semibold">Social</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {socialButtons.map((item) => {
+                      const Icon = item.icon;
+                      if (item.href) {
+                        return (
+                          <LinkButton
+                            key={item.id}
+                            variant="outline"
+                            size="sm"
+                            href={item.href}
+                            external
+                          >
+                            <Icon />
+                            {item.label}
+                          </LinkButton>
+                        );
+                      }
                       return (
-                        <LinkButton
-                          key={item.id}
-                          variant="outline"
-                          size="sm"
-                          href={item.href}
-                          external
-                        >
+                        <Button key={item.id} variant="outline" size="sm" disabled>
                           <Icon />
                           {item.label}
-                        </LinkButton>
+                        </Button>
                       );
-                    }
-                    return (
-                      <Button key={item.id} variant="outline" size="sm" disabled>
-                        <Icon />
-                        {item.label}
-                      </Button>
-                    );
-                  })}
-                </div>
-              </section>
+                    })}
+                  </div>
+                </section>
 
-              <section className="flex flex-col gap-2">
-                <h3 className="text-sm font-semibold">Contact</h3>
-                <LinkButton
-                  variant="outline"
-                  size="sm"
-                  className="w-fit"
-                  href="mailto:patarylohitaksha06@gmail.com"
-                  external
-                >
-                  <Mail />
-                  patarylohitaksha06@gmail.com
-                </LinkButton>
-              </section>
+                <section className="flex flex-col gap-2">
+                  <h3 className="text-sm font-semibold">Contact</h3>
+                  <LinkButton
+                    variant="outline"
+                    size="sm"
+                    className="w-fit"
+                    href="mailto:patarylohitaksha06@gmail.com"
+                    external
+                  >
+                    <Mail />
+                    patarylohitaksha06@gmail.com
+                  </LinkButton>
+                </section>
+              </div>
+
+              <Separator />
+
+              <div className="flex flex-col items-center justify-between gap-3 sm:flex-row">
+                <span className="font-heading text-sm font-semibold tracking-tight">Code Royale</span>
+                <span className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <span className="uppercase tracking-widest">Build</span>
+                  <Badge variant="secondary" className="font-mono">
+                    v{APP_VERSION}
+                  </Badge>
+                  <span className="font-mono" title={`Commit ${APP_COMMIT}`}>
+                    {APP_COMMIT}
+                  </span>
+                </span>
+              </div>
             </div>
           </footer>
         </SidebarInset>
