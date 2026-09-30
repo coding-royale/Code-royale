@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase";
 import { createSupabaseServiceClient } from "@/lib/supabase-service";
-import { pickTimedOutWinnerId } from "@/lib/match-room";
+import { MATCH_STATUS_COMPLETED, pickTimedOutWinnerId } from "@/lib/match-room";
 
 type TimeoutPayload = {
   matchId?: string;
@@ -12,6 +12,17 @@ function asRecord(value: unknown): Record<string, unknown> {
     return value as Record<string, unknown>;
   }
   return {};
+}
+
+function getUserIdFromToken(token: string): string | null {
+  try {
+    const payload = token.split(".")[1];
+    const json = Buffer.from(payload, "base64").toString("utf-8");
+    const data = JSON.parse(json);
+    return typeof data.sub === "string" ? data.sub : null;
+  } catch {
+    return null;
+  }
 }
 
 export async function POST(request: Request) {
@@ -27,14 +38,23 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "matchId is required" }, { status: 400 });
   }
 
-  const supabaseAuth = await createSupabaseServerClient();
-  const { data: authData, error: authError } = await supabaseAuth.auth.getUser();
-
-  if (authError || !authData.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  // Accept a Bearer token first (bots and API tests), then fall back to cookies.
+  // The rest of the match API (sync/join/status) already works this way; without
+  // it a duel cannot be resolved by anything other than a browser session.
+  let userId: string | null = null;
+  const authHeader = request.headers.get("authorization");
+  if (authHeader?.startsWith("Bearer ")) {
+    userId = getUserIdFromToken(authHeader.slice(7));
+  }
+  if (!userId) {
+    const supabaseAuth = await createSupabaseServerClient();
+    const { data: authData, error: authError } = await supabaseAuth.auth.getUser();
+    if (!authError && authData.user?.id) userId = authData.user.id;
   }
 
-  const userId = authData.user.id;
+  if (!userId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   let supabase;
   try {
@@ -167,9 +187,12 @@ export async function POST(request: Request) {
     rating_delta: { winner: winnerDelta, loser: loserDelta },
   };
 
+  // Close the match as well as stamping the result. Leaving `status` on
+  // "active" is what let a decided duel linger for days and be handed back to
+  // a player as if it were still running.
   await supabase
     .from("matches")
-    .update({ metadata: nextMetadata })
+    .update({ metadata: nextMetadata, status: MATCH_STATUS_COMPLETED })
     .eq("id", matchId);
 
   return NextResponse.json({

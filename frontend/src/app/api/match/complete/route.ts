@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase";
 import { createSupabaseServiceClient } from "@/lib/supabase-service";
+import { MATCH_STATUS_COMPLETED } from "@/lib/match-room";
 
 type CompletePayload = {
   matchId?: string;
@@ -173,7 +174,7 @@ export async function POST(request: Request) {
 
   const { error: completeError } = await supabase
     .from("matches")
-    .update({ metadata: nextMetadata })
+    .update({ metadata: nextMetadata, status: MATCH_STATUS_COMPLETED })
     .eq("id", matchId);
 
   if (completeError) {

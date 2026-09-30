@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase";
 import { createSupabaseServiceClient } from "@/lib/supabase-service";
-import { MATCH_STATUS_PENDING } from "@/lib/match-room";
+import { MATCH_STATUS_COMPLETED, MATCH_STATUS_PENDING } from "@/lib/match-room";
 
 type ForfeitPayload = {
   matchId?: string;
@@ -173,9 +173,10 @@ export async function POST(request: Request) {
     rating_delta: { winner: winnerDelta, loser: loserDelta },
   };
 
+  // Close the match too — see the timeout route for why status must follow.
   await supabase
     .from("matches")
-    .update({ metadata: nextMetadata })
+    .update({ metadata: nextMetadata, status: MATCH_STATUS_COMPLETED })
     .eq("id", matchId);
 
   return NextResponse.json({
