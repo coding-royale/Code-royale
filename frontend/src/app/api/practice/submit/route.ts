@@ -25,6 +25,17 @@ import { checkSubmitRateLimit } from "@/lib/submit-rate-limit";
 
 const supportedLanguageSet = new Set(SUPPORTED_LANGUAGES);
 
+function getUserIdFromToken(token: string): string | null {
+  try {
+    const payload = token.split(".")[1];
+    const json = Buffer.from(payload, "base64").toString("utf-8");
+    const data = JSON.parse(json);
+    return typeof data.sub === "string" ? data.sub : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function POST(request: Request) {
   let payload: unknown;
 
@@ -64,14 +75,22 @@ export async function POST(request: Request) {
   // Non-anonymous rate limiting needs a real identity. Require auth before any
   // further work (and before any code execution) so anonymous callers cannot
   // consume compute or hide behind a rotating IP.
-  const authSupabase = await createSupabaseServerClient();
-  const { data: authData, error: authError } = await authSupabase.auth.getUser();
-
-  if (authError || !authData.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  // A Bearer token is accepted first so bots and API tests can drive a real
+  // duel end to end; browsers keep using the session cookie.
+  let userId: string | null = null;
+  const authHeader = request.headers.get("authorization");
+  if (authHeader?.startsWith("Bearer ")) {
+    userId = getUserIdFromToken(authHeader.slice(7));
+  }
+  if (!userId) {
+    const authSupabase = await createSupabaseServerClient();
+    const { data: authData, error: authError } = await authSupabase.auth.getUser();
+    if (!authError && authData.user?.id) userId = authData.user.id;
   }
 
-  const userId = authData.user.id;
+  if (!userId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   let supabase;
 
