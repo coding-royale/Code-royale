@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase";
 import { resolveMatchIdFromParams } from "@/lib/matchmaking";
-import { DEFAULT_TIME_LIMIT_SECONDS, sanitizeTimeLimit } from "@/lib/match-room";
+import { DEFAULT_TIME_LIMIT_SECONDS, sanitizeTimeLimit, shouldRedirectOffDecidedMatch } from "@/lib/match-room";
 import { MatchArenaShell } from "./match-arena-shell";
 
 type PageProps = {
@@ -95,6 +95,31 @@ export default async function MatchPage({ params }: PageProps) {
       ? normalizedSelectedLanguage
       : null;
   const initialLanguage = selectedLanguage ?? languages[0] ?? "javascript";
+
+  /*
+   * A decided match is a dead end: there is no duel left to play, and sitting
+   * on its result card is what caused the "ghost victory" — a player parked on
+   * a match decided days earlier kept polling it, so their seat looked live
+   * while the room they had actually been matched into sat empty. Bounce them
+   * somewhere they can act instead of parking them on a corpse.
+   */
+  const matchMetadata = (matchRow.metadata ?? {}) as Record<string, unknown>;
+  const matchStatus = (matchRow as { status?: string | null }).status ?? null;
+  if (
+    shouldRedirectOffDecidedMatch({
+      status: matchStatus,
+      winnerId:
+        typeof matchMetadata.winner_id === "string" && matchMetadata.winner_id
+          ? matchMetadata.winner_id
+          : null,
+      completedAt:
+        typeof matchMetadata.completed_at === "string" && matchMetadata.completed_at
+          ? matchMetadata.completed_at
+          : null,
+    })
+  ) {
+    redirect("/game-modes");
+  }
 
   const rawTestcases = Array.isArray(question.testcases)
     ? (question.testcases as Array<{ id?: string; input?: string; output?: string; stdin?: string; expected_output?: string }>)

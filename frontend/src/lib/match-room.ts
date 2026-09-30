@@ -52,6 +52,8 @@ export const MATCH_COUNTDOWN_MS = 3_000;
  */
 export const MATCH_STATUS_PENDING = "pending";
 export const MATCH_STATUS_ACTIVE = "active";
+export const MATCH_STATUS_COMPLETED = "completed";
+export const MATCH_STATUS_CANCELLED = "cancelled";
 
 export const DEFAULT_TIME_LIMIT_SECONDS = 8 * 60;
 
@@ -295,4 +297,87 @@ export function resolveLobbyReason(input: {
   if (createdMs === null) return "waiting";
   if (input.nowMs - createdMs >= LOBBY_ABANDON_MS) return "abandoned";
   return "waiting";
+}
+
+/*
+ * The "ghost victory" bug, and the two rules that close it.
+ *
+ * Matchmaking seats a player in a brand new match, but nothing stopped that
+ * player from still sitting on an older one that had already been decided. The
+ * stale page kept polling every 1.5s, so that *old* match kept a fresh
+ * `present_at` while the new room sat empty. The player waiting in the new
+ * lobby was told "opponent never showed up", and the other player was looking
+ * at a victory card from a duel that had already been decided days earlier.
+ *
+ * `matches.status` cannot save us here on its own: the forfeit/timeout/complete
+ * routes only ever wrote `metadata.winner_id`, so a decided match was still
+ * sitting in "active". A winner id is therefore treated as authoritative.
+ */
+
+/** A match a player may still be sent into. */
+export function isMatchJoinable(input: {
+  status: string | null | undefined;
+  winnerId?: string | null;
+  completedAt?: string | null;
+}): boolean {
+  if (isMatchDecided(input)) return false;
+  return input.status === MATCH_STATUS_PENDING || input.status === MATCH_STATUS_ACTIVE;
+}
+
+export type MatchMembershipRow = {
+  match_id?: string | null;
+  status?: string | null;
+  winner_id?: string | null;
+};
+
+/**
+ * Has this match already been settled?
+ *
+ * `status` alone cannot answer it: the forfeit/timeout/complete routes write
+ * `metadata.winner_id` and `metadata.completed_at` but historically never moved
+ * `status` off "active", so a duel decided five days ago still looked live.
+ * That is how a player ended up staring at a stale victory card for a match
+ * nobody was playing any more.
+ */
+export function isMatchDecided(input: {
+  status?: string | null;
+  winnerId?: string | null;
+  completedAt?: string | null;
+}): boolean {
+  if (typeof input.winnerId === "string" && input.winnerId) return true;
+  if (typeof input.completedAt === "string" && input.completedAt) return true;
+  return input.status === MATCH_STATUS_COMPLETED || input.status === MATCH_STATUS_CANCELLED;
+}
+
+/**
+ * Should the arena refuse to render and send the player back to the modes list?
+ *
+ * The ghost victory lived here: a browser parked on a match decided days
+ * earlier kept its seat "present" and kept showing a result card for a duel
+ * nobody was playing, while the room it had just been matched into waited for
+ * an opponent that was never going to arrive.
+ */
+export function shouldRedirectOffDecidedMatch(input: {
+  status?: string | null;
+  winnerId?: string | null;
+  completedAt?: string | null;
+}): boolean {
+  return isMatchDecided(input);
+}
+
+/**
+ * The newest match this player can still join, or null.
+ *
+ * Status polling used to take the most recent `match_players` row and trust it,
+ * which meant a long-dead match could outrank a live lobby and send the player
+ * back into a finished duel. Filtering to joinable rows first makes the newest
+ * *playable* match win.
+ */
+export function pickJoinableMatch(rows: MatchMembershipRow[]): string | null {
+  for (const row of rows) {
+    const matchId = typeof row.match_id === "string" ? row.match_id.trim() : "";
+    if (!matchId) continue;
+    if (isMatchJoinable({ status: row.status, winnerId: row.winner_id })) return matchId;
+  }
+  return null;
 }
