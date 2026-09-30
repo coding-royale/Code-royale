@@ -24,6 +24,7 @@ import {
   Zap,
 } from "lucide-react";
 import { AppShell } from "../../components/app-shell";
+import { BrickBreaker } from "../../components/battle/brick-breaker";
 import { supabase } from "../../lib/supabase-browser";
 import { buildMatchUrl, buildStatusUrl, shouldAutoEnterMatch } from "../../lib/matchmaking";
 import { useFriendPresence } from "../../lib/use-friend-presence";
@@ -1242,6 +1243,12 @@ function MatchmakingPanel({ mode, config, onCancel, secondsRemaining }: Matchmak
             <Badge variant="secondary">Language · {config.language}</Badge>
           </div>
         )}
+
+        {/* Queue time is dead time. Give it a game. */}
+        <div className="w-full max-w-md">
+          <BrickBreaker />
+        </div>
+
         <Button variant="outline" onClick={onCancel}>
           Cancel search
         </Button>
