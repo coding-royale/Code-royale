@@ -91,17 +91,24 @@ export async function POST(request: Request) {
   }
   const chosenQ = questions[Math.floor(Math.random() * questions.length)];
 
-  const startedAt = new Date().toISOString();
+  const acceptedAt = new Date().toISOString();
+  /*
+   * Accepting seats the invitee, it does not start the clock. The duel opens
+   * as a room and `started_at` is written once, by whichever side gets both
+   * players in first — previously it was stamped here, so the inviter's timer
+   * was already running before they had even opened the arena. The status
+   * stays "pending" (room open, clock not started) so the room gate can make
+   * the single atomic claim.
+   */
   const { error: updateError } = await supabase
     .from("matches")
     .update({
-      status: "active",
-      started_at: startedAt,
       metadata: {
         ...meta,
         question_id: chosenQ.id,
         question_difficulty: chosenQ.difficulty,
-        started_at: startedAt,
+        started_at: null,
+        accepted_at: acceptedAt,
       },
     })
     .eq("id", matchId);

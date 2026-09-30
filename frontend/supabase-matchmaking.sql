@@ -15,7 +15,11 @@ alter table public.matchmaking_queue
 alter table public.match_players
   add column if not exists joined_at timestamptz not null default now(),
   add column if not exists seat int not null default 0,
-  add column if not exists team int;
+  add column if not exists team int,
+  -- Last time this player's arena was actually open. The room gate uses it to
+  -- hold the clock until both seats are really occupied, so neither player
+  -- starts early because the other one's page was slow.
+  add column if not exists present_at timestamptz;
 
 alter table public.matches
   add column if not exists status text not null default 'active',
@@ -26,6 +30,8 @@ create index if not exists idx_matchmaking_queue_lookup
   on public.matchmaking_queue (mode, match_type, expires_at);
 create index if not exists idx_match_players_user_joined
   on public.match_players (user_id, joined_at desc);
+create index if not exists idx_match_players_room
+  on public.match_players (match_id, present_at desc);
 
 -- Per-attempt feed that powers the live opponent activity panel.
 create table if not exists public.match_attempts (

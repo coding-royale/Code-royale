@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { Eye, Swords, Trophy } from "lucide-react";
+import { Eye, Loader2, Swords, Trophy } from "lucide-react";
 import { TetrioBattleBackground } from "@/components/battle/tetrio-battle-background";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -12,7 +12,7 @@ import { Card, CardContent } from "@/components/ui/card";
 export type SpectateSnapshot = {
   matchId: string;
   mode: string;
-  status: "live" | "finished";
+  status: "waiting" | "live" | "finished";
   question: { title: string; description: string; difficulty: string } | null;
   players: Array<{ id: string; username: string; rating: number; isWinner: boolean }>;
   timeLimitSeconds: number;
@@ -101,7 +101,7 @@ export function SpectateClient({ initial }: { initial: SpectateSnapshot }) {
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-3 rounded-xl border bg-muted/40 px-5 py-2.5">
               <span className="text-[10px] uppercase tracking-[0.35em] text-muted-foreground">
-                {snapshot.status === "live" ? "Left" : "Over"}
+                {snapshot.status === "live" ? "Left" : snapshot.status === "waiting" ? "Starts in" : "Over"}
               </span>
               <span className="font-mono text-2xl font-bold tabular-nums">
                 {snapshot.status === "live" ? formatDuration(secondsLeft) : "—"}
@@ -144,6 +144,16 @@ export function SpectateClient({ initial }: { initial: SpectateSnapshot }) {
               <h2 className="text-2xl font-bold uppercase tracking-wider">Match over</h2>
               <p className="text-sm text-muted-foreground">
                 {snapshot.winnerUsername ? `${snapshot.winnerUsername} takes the duel.` : "Nobody solved it in time."}
+              </p>
+            </CardContent>
+          </Card>
+        ) : snapshot.status === "waiting" ? (
+          <Card>
+            <CardContent className="flex flex-col items-center gap-2 p-8 text-center">
+              <Loader2 className="size-8 animate-spin text-primary" />
+              <h2 className="text-2xl font-bold uppercase tracking-wider">Both players entering</h2>
+              <p className="text-sm text-muted-foreground">
+                The clock starts for both of them at the same moment.
               </p>
             </CardContent>
           </Card>

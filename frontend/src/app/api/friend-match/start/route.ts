@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase";
 import { createSupabaseServiceClient } from "@/lib/supabase-service";
+import { MATCH_COUNTDOWN_MS, MATCH_STATUS_ACTIVE, MATCH_STATUS_PENDING } from "@/lib/match-room";
 
 type StartFriendMatchRequest = {
   matchId?: string;
@@ -50,7 +51,7 @@ export async function POST(request: Request) {
 
   const { data: matchRow, error: matchError } = await supabase
     .from("matches")
-    .select("id,metadata")
+    .select("id,status,metadata,started_at")
     .eq("id", matchId)
     .single();
 
@@ -66,18 +67,56 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, startedAt: currentMetadata.started_at }, { status: 200 });
   }
 
-  const startedAt = new Date().toISOString();
-  const nextMetadata = { ...currentMetadata, started_at: startedAt };
+  // Starting a duel nobody has accepted yet just burns the clock. "pending" is
+  // also the pre-start state for every other match, so the invitation is what
+  // distinguishes the two.
+  const isUnacceptedChallenge =
+    currentMetadata.friend_invite != null && typeof currentMetadata.accepted_at !== "string";
+  if (isUnacceptedChallenge) {
+    return NextResponse.json(
+      { error: "Waiting for your friend to accept the challenge" },
+      { status: 409 },
+    );
+  }
 
-  const { error: updateError } = await supabase
+  /*
+   * Atomic claim on the shared start instant: the UPDATE only matches a row
+   * still in "pending", so if the arena's room gate beat us to it we read
+   * theirs instead of overwriting it with a second, later start.
+   */
+  const startedAt = new Date(Date.now() + MATCH_COUNTDOWN_MS).toISOString();
+  const { data: claimed } = await supabase
     .from("matches")
-    .update({ metadata: nextMetadata })
-    .eq("id", matchId);
+    .update({
+      status: MATCH_STATUS_ACTIVE,
+      started_at: startedAt,
+      metadata: { ...currentMetadata, started_at: startedAt },
+    })
+    .eq("id", matchId)
+    .eq("status", MATCH_STATUS_PENDING)
+    .select("metadata,started_at");
 
-  if (updateError) {
-    console.error("Failed to start match", updateError);
+  if (Array.isArray(claimed) && claimed.length > 0) {
+    return NextResponse.json({ ok: true, startedAt }, { status: 200 });
+  }
+
+  const { data: fresh } = await supabase
+    .from("matches")
+    .select("metadata,started_at,status")
+    .eq("id", matchId)
+    .maybeSingle();
+
+  const freshMetadata =
+    fresh?.metadata && typeof fresh.metadata === "object" ? (fresh.metadata as Record<string, unknown>) : {};
+  const existingStart =
+    typeof freshMetadata.started_at === "string" && freshMetadata.started_at
+      ? freshMetadata.started_at
+      : ((fresh?.started_at as string | null) ?? null);
+
+  if (!existingStart) {
+    console.error("Failed to start match", matchId, fresh?.status);
     return NextResponse.json({ error: "Failed to start match" }, { status: 500 });
   }
 
-  return NextResponse.json({ ok: true, startedAt }, { status: 200 });
+  return NextResponse.json({ ok: true, startedAt: existingStart }, { status: 200 });
 }

@@ -1,42 +1,29 @@
 import { notFound, redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase";
-import { PracticeScaffold } from "@/app/practice/practice-scaffold";
 import { resolveMatchIdFromParams } from "@/lib/matchmaking";
+import { DEFAULT_TIME_LIMIT_SECONDS, sanitizeTimeLimit } from "@/lib/match-room";
 import { MatchArenaShell } from "./match-arena-shell";
 
 type PageProps = {
   params: Promise<{ matchId: string }> | { matchId: string };
 };
 
-function parseTimerFromMetadata(metadata: unknown) {
+function parseMatchMetadata(metadata: unknown) {
   const record = metadata && typeof metadata === "object" ? (metadata as Record<string, unknown>) : null;
-  const questionId = record?.question_id;
-  const timeLimit = record?.time_limit;
-  const startedAt = record?.started_at;
-  const language = record?.language;
-
   return {
-    questionId: typeof questionId === "string" ? questionId : null,
-    timeLimitSeconds: typeof timeLimit === "number" ? timeLimit : Number(timeLimit),
-    startedAt: typeof startedAt === "string" ? startedAt : null,
-    language: typeof language === "string" ? language : null,
+    questionId: typeof record?.question_id === "string" ? record.question_id : null,
+    timeLimit: record?.time_limit,
+    // Null while the room is still filling: the clock has not started yet.
+    startedAt: typeof record?.started_at === "string" && record.started_at ? record.started_at : null,
+    language: typeof record?.language === "string" ? record.language : null,
   };
 }
 
-function computeInitialTimer(startedAt: string | null | undefined, timeLimit: number): number {
-  if (!startedAt) return timeLimit;
-  const startedMs = Date.parse(startedAt);
-  if (!Number.isFinite(startedMs)) return timeLimit;
-  const elapsedSeconds = Math.floor((Date.now() - startedMs) / 1000);
-  return Math.max(timeLimit - elapsedSeconds, 0);
-}
-
-function parseMatchMode(metadata: unknown, mode: string | null): string {
+function parseMatchType(metadata: unknown): string {
   const record = metadata && typeof metadata === "object" ? (metadata as Record<string, unknown>) : null;
-  const metadataMode = record?.match_type ?? record?.mode;
-  if (typeof metadataMode === "string" && metadataMode) return metadataMode;
-  if (typeof mode === "string" && mode) return mode;
-  return "ranked";
+  const type = record?.match_type;
+  if (typeof type === "string" && type) return type;
+  return "1v1";
 }
 
 export default async function MatchPage({ params }: PageProps) {
@@ -77,8 +64,11 @@ export default async function MatchPage({ params }: PageProps) {
     notFound();
   }
 
-  const { questionId, timeLimitSeconds, startedAt, language } = parseTimerFromMetadata(matchRow.metadata);
-  const matchMode = parseMatchMode(matchRow.metadata, matchRow.mode);
+  const { questionId, timeLimit, startedAt, language } = parseMatchMetadata(matchRow.metadata);
+  const matchType = parseMatchType(matchRow.metadata);
+  // `matches.mode` is the ladder, `metadata.match_type` is the shape. They were
+  // previously conflated, which hid the rating change on the result card.
+  const isRanked = (matchRow.mode as string) === "ranked";
 
   if (!questionId) {
     notFound();
@@ -132,31 +122,36 @@ export default async function MatchPage({ params }: PageProps) {
 
   const meta = question.meta && typeof question.meta === "object" ? question.meta : null;
 
-  const timeLimit = Number.isFinite(timeLimitSeconds) && (timeLimitSeconds as number) > 0 ? (timeLimitSeconds as number) : 8 * 60;
-
-  const initialTimer = computeInitialTimer(startedAt, timeLimit);
-
+  /*
+   * Deliberately no app shell here. The arena used to render the full site
+   * header and sidebar, so a stray click on "Practice Arena" or "Clubs" could
+   * walk a player out of a live duel. The arena owns its own chrome and its
+   * only exit is the forfeit button.
+   */
   return (
-    <PracticeScaffold>
-      <MatchArenaShell
-        question={{
-          id: question.id,
-          title: question.title,
-          description: question.description,
-          difficulty: question.difficulty,
-          languages,
-          meta: meta as {
-            timeComplexity?: string | null;
-            spaceComplexity?: string | null;
-            topics?: string[] | null;
-          } | null,
-        }}
-        testcases={testcases}
-        initialTimer={initialTimer}
-        initialLanguage={initialLanguage}
-        exitHref="/game-modes"
-        matchMode={matchMode}
-      />
-    </PracticeScaffold>
+    <MatchArenaShell
+      matchId={matchId}
+      question={{
+        id: question.id,
+        title: question.title,
+        description: question.description,
+        difficulty: question.difficulty,
+        languages,
+        meta: meta as {
+          timeComplexity?: string | null;
+          spaceComplexity?: string | null;
+          topics?: string[] | null;
+        } | null,
+      }}
+      testcases={testcases}
+      startedAt={startedAt}
+      timeLimitSeconds={Number.isFinite(Number(timeLimit)) && Number(timeLimit) > 0
+        ? sanitizeTimeLimit(timeLimit)
+        : DEFAULT_TIME_LIMIT_SECONDS}
+      initialLanguage={initialLanguage}
+      exitHref="/game-modes"
+      matchType={matchType}
+      isRanked={isRanked}
+    />
   );
 }

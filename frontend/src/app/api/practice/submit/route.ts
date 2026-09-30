@@ -82,6 +82,48 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Server configuration error" }, { status: 500 });
   }
 
+  /*
+   * Inside a duel, only a seated player may run code, and only once the shared
+   * clock has actually started. Without this, anyone could log attempts into
+   * somebody else's match and pre-empt the room gate by submitting during the
+   * lobby.
+   */
+  const trimmedMatchId = typeof matchId === "string" ? matchId.trim() : "";
+  let liveMatchId: string | null = null;
+  if (trimmedMatchId) {
+    const { data: membership } = await supabase
+      .from("match_players")
+      .select("match_id")
+      .eq("match_id", trimmedMatchId)
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (!membership) {
+      return NextResponse.json({ error: "Not a participant in this match" }, { status: 403 });
+    }
+
+    const { data: matchRow } = await supabase
+      .from("matches")
+      .select("metadata")
+      .eq("id", trimmedMatchId)
+      .maybeSingle();
+
+    const meta =
+      matchRow?.metadata && typeof matchRow.metadata === "object"
+        ? (matchRow.metadata as Record<string, unknown>)
+        : {};
+    const startedAt = typeof meta.started_at === "string" ? meta.started_at : null;
+    const startedMs = startedAt ? Date.parse(startedAt) : Number.NaN;
+
+    if (!Number.isFinite(startedMs)) {
+      return NextResponse.json({ error: "Match has not started" }, { status: 409 });
+    }
+    if (Date.now() < startedMs) {
+      return NextResponse.json({ error: "Match has not started" }, { status: 409 });
+    }
+    liveMatchId = trimmedMatchId;
+  }
+
   const { data: question, error: questionError } = await supabase
     .from("practice_questions")
     .select("id,languages,testcases,meta")
@@ -196,11 +238,11 @@ export async function POST(request: Request) {
 
   // Match activity feed: every run/submit inside a match is logged so the
   // opponent can see real progress (attempts, best, last active).
-  if (typeof matchId === "string" && matchId.trim()) {
+  if (liveMatchId) {
     try {
       const passedCount = results.filter((r) => r.passed).length;
       await supabase.from("match_attempts").insert({
-        match_id: matchId.trim(),
+        match_id: liveMatchId,
         user_id: userId,
         passed: passedCount,
         total: results.length,

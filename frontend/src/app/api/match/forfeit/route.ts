@@ -1,9 +1,16 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase";
 import { createSupabaseServiceClient } from "@/lib/supabase-service";
+import { MATCH_STATUS_PENDING } from "@/lib/match-room";
 
 type ForfeitPayload = {
   matchId?: string;
+  /**
+   * "left" is sent by the arena's unload beacon when the player navigates
+   * away or closes the tab mid-duel. It is the same forfeit, but the opponent
+   * is told the reason instead of just seeing the points move.
+   */
+  reason?: "left" | "surrender";
 };
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -70,6 +77,17 @@ export async function POST(request: Request) {
 
   if (typeof existingWinner === "string" && existingWinner) {
     return NextResponse.json({ ok: true, winnerId: existingWinner, alreadyCompleted: true }, { status: 200 });
+  }
+
+  // A room that never started has nothing to forfeit — drop it instead so it
+  // does not linger as a lobby for the next queue attempt.
+  if (typeof metadata.started_at !== "string" || !metadata.started_at) {
+    await supabase
+      .from("matches")
+      .delete()
+      .eq("id", matchId)
+      .eq("status", MATCH_STATUS_PENDING);
+    return NextResponse.json({ ok: true, abandoned: true }, { status: 200 });
   }
 
   const { data: players, error: playersError } = await supabase
@@ -151,6 +169,7 @@ export async function POST(request: Request) {
     loser_id: userId,
     completed_at: new Date().toISOString(),
     forfeit: true,
+    left: payload.reason === "left",
     rating_delta: { winner: winnerDelta, loser: loserDelta },
   };
 

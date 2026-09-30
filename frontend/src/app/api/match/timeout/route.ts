@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase";
 import { createSupabaseServiceClient } from "@/lib/supabase-service";
+import { pickTimedOutWinnerId } from "@/lib/match-room";
 
 type TimeoutPayload = {
   matchId?: string;
@@ -33,6 +34,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const userId = authData.user.id;
+
   let supabase;
   try {
     supabase = createSupabaseServiceClient();
@@ -58,6 +61,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, winnerId: existingWinner, alreadyCompleted: true }, { status: 200 });
   }
 
+  // A match that never started has no clock to run out.
+  if (typeof metadata.started_at !== "string" || !metadata.started_at) {
+    return NextResponse.json({ error: "Match has not started" }, { status: 409 });
+  }
+
   const { data: players, error: playersError } = await supabase
     .from("match_players")
     .select("user_id")
@@ -69,27 +77,45 @@ export async function POST(request: Request) {
 
   const playerIds = Array.from(new Set(players.map((row) => row.user_id as string)));
 
+  // Only a seated player can finalise the duel.
+  if (!playerIds.includes(userId)) {
+    return NextResponse.json({ error: "Not a participant" }, { status: 403 });
+  }
+
   const mode = matchRow.mode === "unranked" ? "unranked" : "ranked";
 
-  // Check practice_submissions to see if anyone solved it
+  /*
+   * Who solved it *during this duel*.
+   *
+   * The old query asked for any passing submission ever recorded for the
+   * question, with no time bound — so a player who had solved it in the
+   * practice arena weeks earlier, or who simply walked out of the arena, was
+   * handed a free win. Bounding the submissions at the shared start instant
+   * makes a win mean "submitted a passing solution here, now".
+   */
   const { data: submissions } = await supabase
     .from("practice_submissions")
-    .select("user_id,question_id,passed")
+    .select("user_id,created_at")
     .eq("question_id", metadata.question_id)
     .in("user_id", playerIds)
-    .eq("passed", true);
+    .gte("created_at", metadata.started_at as string);
 
-  const solvedByPlayer = new Set((submissions ?? []).map((s) => s.user_id as string));
+  const timedOutWinnerId = pickTimedOutWinnerId({
+    playerIds,
+    submissions: (submissions ?? []).map((row) => ({
+      user_id: row.user_id as string,
+      created_at: row.created_at as string,
+    })),
+    startedAt: metadata.started_at,
+  });
 
-  let winnerId: string | null = null;
-  let loserId: string | null = null;
-
-  if (solvedByPlayer.size === 1) {
-    // One player solved it — they win
-    winnerId = playerIds.find((id) => solvedByPlayer.has(id)) ?? null;
-    loserId = playerIds.find((id) => !solvedByPlayer.has(id)) ?? null;
-  }
-  // If both or neither solved, it's a draw — no rating change
+  // Exactly one clean sweep inside the duel wins it. Both or neither: a draw,
+  // and no rating moves.
+  const winnerId: string | null = timedOutWinnerId;
+  const loserId: string | null =
+    timedOutWinnerId !== null
+      ? playerIds.find((id) => id !== timedOutWinnerId) ?? null
+      : null;
 
   let winnerDelta = 0;
   let loserDelta = 0;

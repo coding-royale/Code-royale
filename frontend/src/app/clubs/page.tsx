@@ -557,7 +557,7 @@ export default function ClubsPage() {
           </div>
 
           <Dialog open={showInviteModal} onOpenChange={setShowInviteModal}>
-            <DialogContent className="w-full max-w-xl gap-5 p-6">
+            <DialogContent className="w-full gap-5 p-6 sm:max-w-xl">
               <DialogHeader className="flex-row items-center justify-between">
                 <DialogTitle>Invite Friends</DialogTitle>
               </DialogHeader>
@@ -789,7 +789,7 @@ export default function ClubsPage() {
 
       {/* ── Create Club Modal ───────────────────────────── */}
       <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
-        <DialogContent className="w-full max-w-lg gap-5 p-6">
+        <DialogContent className="w-full gap-5 p-6 sm:max-w-lg">
           <DialogHeader className="flex-row items-center justify-between">
             <DialogTitle>Create a New Club</DialogTitle>
           </DialogHeader>

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase";
 import { createSupabaseServiceClient } from "@/lib/supabase-service";
 import { isLiveMatchRow } from "@/lib/presence";
+import { MATCH_STATUS_PENDING } from "@/lib/match-room";
 
 type RouteParams = Promise<{ matchId: string }> | { matchId: string };
 
@@ -67,6 +68,10 @@ export async function getSpectateSnapshot(matchId: string) {
     { status: matchRow.status as string, metadata: meta, started_at: matchRow.started_at as string | null },
     Date.now(),
   );
+  // A match that is still filling its room has no clock yet. Reporting it as
+  // finished shows a frozen result; reporting it live would run a countdown
+  // from the room's creation time, which is not when the duel starts.
+  const waiting = !live && (matchRow.status as string | null) === MATCH_STATUS_PENDING;
 
   const playerList = (userRows ?? []).map((u) => ({
     id: u.id as string,
@@ -87,7 +92,7 @@ export async function getSpectateSnapshot(matchId: string) {
   return {
     matchId: matchRow.id as string,
     mode: (matchRow.mode as string) ?? "ranked",
-    status: live ? ("live" as const) : ("finished" as const),
+    status: live ? ("live" as const) : waiting ? ("waiting" as const) : ("finished" as const),
     question,
     players: playerList,
     timeLimitSeconds: timeLimit,

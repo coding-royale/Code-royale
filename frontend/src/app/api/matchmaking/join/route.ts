@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase";
 import { createSupabaseServiceClient } from "@/lib/supabase-service";
 import { JOIN_SEARCH_TIMEOUT_MS } from "@/lib/matchmaking";
+import { MATCH_STATUS_PENDING } from "@/lib/match-room";
 
 export const maxDuration = 60;
 
@@ -274,15 +275,22 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "PvP questions not seeded" }, { status: 500 });
     }
     const chosenQ = availableQuestions[Math.floor(Math.random() * availableQuestions.length)];
-    const startedAt = new Date().toISOString();
 
+    /*
+     * The match opens as a room, not a running clock: `pending` means "seated
+     * but not started". Both players are inserted here, but `started_at` is
+     * deliberately left unset — the arena's sync endpoint writes it exactly
+     * once, after both players are actually in the room. Previously the
+     * creator got the instant `join` happened and the opponent only found out
+     * on the next status poll, so the two clocks differed by however long that
+     * poll took to notice.
+     */
     const { data: matchRow, error: matchError } = await supabase
       .from("matches")
       .insert({
         mode,
-        status: "active",
+        status: MATCH_STATUS_PENDING,
         created_by: userId,
-        started_at: startedAt,
         metadata: {
           question_id: chosenQ.id,
           question_difficulty: chosenQ.difficulty,
@@ -290,7 +298,7 @@ export async function POST(request: Request) {
           language,
           match_type: matchType,
           trophy_multiplier: timeLimitSeconds >= 60 * 60 ? 1.5 : 1,
-          started_at: startedAt,
+          started_at: null,
           mode,
         },
       })

@@ -689,74 +689,88 @@ export function BotBattleArenaClient({
         </div>
       </div>
 
+      {/* Result card. The `sm:` prefix matters: the base dialog caps at
+          `sm:max-w-sm`, and an unprefixed `max-w-lg` does not override it, so
+          the card used to stay 24rem wide and spill its contents. */}
       <Dialog open={isMatchOver} onOpenChange={() => {}}>
-        <DialogContent className="w-full max-w-lg gap-6 p-8 text-center">
-          <DialogHeader className="items-center gap-2">
-            <DialogTitle className={`text-3xl font-bold uppercase tracking-wider ${
-              matchResult === "won"
-                ? "text-emerald-600 dark:text-emerald-400"
-                : matchResult === "bot_won"
-                  ? "text-red-600 dark:text-red-400"
-                  : "text-amber-600 dark:text-amber-400"
-            }`}>
-              {matchResult === "won" ? (
-                <span className="flex flex-col items-center gap-2">
-                  <Trophy className="size-16 text-emerald-500" />
-                  Victory!
-                </span>
-              ) : matchResult === "bot_won" ? (
-                <span className="flex flex-col items-center gap-2">
-                  <Bot className="size-16 text-red-500" />
-                  Bot Wins
-                </span>
-              ) : (
-                <span className="flex flex-col items-center gap-2">
-                  <Zap className="size-16 text-amber-500" />
-                  Draw
-                </span>
-              )}
-            </DialogTitle>
-            <DialogDescription className="text-sm">
-              {matchResult === "won"
-                ? "You solved the problem before the bot! Excellent work."
-                : matchResult === "bot_won"
-                  ? `The ${botName} solved the problem first. Try a lower difficulty or practice more.`
-                  : "You solved it, but the bot finished first too."}
-            </DialogDescription>
-          </DialogHeader>
-
-          {pointsAwarded !== null && (
-            <div className="inline-flex items-center gap-3 self-center rounded-2xl border border-amber-500/30 bg-amber-500/10 px-8 py-4">
-              <Trophy className="size-8 text-amber-500" />
-              <div>
-                <p className="text-[10px] uppercase tracking-[0.35em] text-amber-500/80">Points Earned</p>
-                <p className="text-3xl font-bold text-amber-600 dark:text-amber-400">{pointsAwarded}</p>
-              </div>
-            </div>
-          )}
-
-          <div className="flex justify-center gap-4">
-            <Button
-              type="button"
-              onClick={handlePlayAgain}
-              className="px-8 py-3 text-sm font-semibold uppercase tracking-[0.35em]"
+        <DialogContent
+          showCloseButton={false}
+          className="flex max-h-[calc(100dvh-1.5rem)] w-full max-w-[calc(100vw-1.5rem)] flex-col gap-0 overflow-y-auto p-0 text-center sm:max-w-md"
+        >
+          <div className="flex flex-col items-center gap-4 p-6 sm:p-7">
+            <span
+              className={`flex size-16 items-center justify-center rounded-full ${
+                matchResult === "won"
+                  ? "bg-emerald-500/10"
+                  : matchResult === "bot_won"
+                    ? "bg-red-500/10"
+                    : "bg-amber-500/10"
+              }`}
             >
-              Play Again
-            </Button>
+              {matchResult === "won" ? (
+                <Trophy className="size-8 text-emerald-500" />
+              ) : matchResult === "bot_won" ? (
+                <Bot className="size-8 text-red-500" />
+              ) : (
+                <Zap className="size-8 text-amber-500" />
+              )}
+            </span>
+
+            <DialogHeader className="items-center gap-2">
+              <DialogTitle
+                className={`font-heading text-2xl font-bold uppercase tracking-wider ${
+                  matchResult === "won"
+                    ? "text-emerald-600 dark:text-emerald-400"
+                    : matchResult === "bot_won"
+                      ? "text-red-600 dark:text-red-400"
+                      : "text-amber-600 dark:text-amber-400"
+                }`}
+              >
+                {matchResult === "won" ? "Victory!" : matchResult === "bot_won" ? "Bot Wins" : "Draw"}
+              </DialogTitle>
+              <DialogDescription className="max-w-[22rem] leading-relaxed">
+                {matchResult === "won"
+                  ? `You solved the problem before the ${botName}. Excellent work.`
+                  : matchResult === "bot_won"
+                    ? `The ${botName} solved the problem first. Try a lower difficulty or practice more.`
+                    : "You solved it, but the bot finished first too."}
+              </DialogDescription>
+            </DialogHeader>
+
+            {pointsAwarded !== null && (
+              <div className="flex w-full flex-col items-center gap-1 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3">
+                <span className="text-[10px] uppercase tracking-[0.35em] text-amber-500/80">
+                  Points earned
+                </span>
+                <span className="font-mono text-3xl font-bold text-amber-600 dark:text-amber-400">
+                  {pointsAwarded}
+                </span>
+              </div>
+            )}
+          </div>
+
+          <div className="flex flex-col-reverse gap-2 border-t bg-muted/40 p-4 sm:flex-row sm:justify-center">
             <Button
               type="button"
               variant="outline"
               onClick={() => router.push("/game-modes")}
-              className="px-8 py-3 text-sm font-semibold uppercase tracking-[0.35em]"
+              className="w-full text-xs font-semibold uppercase tracking-[0.2em] sm:w-auto"
             >
               Back to Modes
+            </Button>
+            <Button
+              type="button"
+              onClick={handlePlayAgain}
+              className="w-full text-xs font-semibold uppercase tracking-[0.2em] sm:w-auto"
+            >
+              Play Again
             </Button>
           </div>
         </DialogContent>
       </Dialog>
 
       <Dialog open={showForfeitConfirm} onOpenChange={setShowForfeitConfirm}>
-        <DialogContent className="w-full max-w-md gap-5 p-8">
+        <DialogContent className="w-full gap-5 p-6 sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="text-2xl font-bold uppercase tracking-wider text-destructive">
               Forfeit Match?
@@ -765,7 +779,7 @@ export function BotBattleArenaClient({
               You will lose this bot battle. Are you sure you want to forfeit?
             </DialogDescription>
           </DialogHeader>
-          <div className="flex justify-end gap-3">
+          <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
             <Button
               type="button"
               variant="outline"

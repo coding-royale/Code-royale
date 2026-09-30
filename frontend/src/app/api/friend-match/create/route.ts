@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase";
 import { createSupabaseServiceClient } from "@/lib/supabase-service";
 import { parseChallengeMode } from "@/lib/friend-challenge";
+import { MATCH_STATUS_PENDING } from "@/lib/match-room";
 
 type CreateFriendMatchRequest = {
   friendUserId?: string;
@@ -91,14 +92,15 @@ export async function POST(request: Request) {
 
   const chosen = availableQuestions[Math.floor(Math.random() * availableQuestions.length)];
 
-  // Create match as a pending challenge. status is NOT NULL on prod and has
-  // no default, so it must be set explicitly (missing it = "Failed to
-  // create match"). The question is re-picked from both ratings on accept.
+  // Create match as a pending challenge: seats are reserved, clock not
+  // started. status is NOT NULL on prod and has no default, so it must be set
+  // explicitly (missing it = "Failed to create match"). The question is
+  // re-picked from both ratings on accept.
   const { data: matchRow, error: matchError } = await supabase
     .from("matches")
     .insert({
       mode,
-      status: "pending",
+      status: MATCH_STATUS_PENDING,
       created_by: userId,
       metadata: {
         question_id: chosen.id,

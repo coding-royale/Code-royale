@@ -967,7 +967,7 @@ function ProfileContent() {
 
         {/* Battle mode picker */}
         <Dialog open={modePickerOpen} onOpenChange={setModePickerOpen}>
-          <DialogContent className="w-full max-w-md gap-5 p-6">
+          <DialogContent className="w-full gap-5 p-6 sm:max-w-md">
             <DialogHeader>
               <DialogTitle>Challenge to a duel</DialogTitle>
               <DialogDescription>
@@ -1002,7 +1002,7 @@ function ProfileContent() {
 
         {/* Report Modal */}
         <Dialog open={reportModalOpen} onOpenChange={setReportModalOpen}>
-          <DialogContent className="w-full max-w-lg gap-5 p-6">
+          <DialogContent className="w-full gap-5 p-6 sm:max-w-lg">
             {!reportSubmitted ? (
               <>
                 <DialogHeader>
