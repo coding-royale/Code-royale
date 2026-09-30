@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase";
 import { createSupabaseServiceClient } from "@/lib/supabase-service";
 import { JOIN_SEARCH_TIMEOUT_MS } from "@/lib/matchmaking";
-import { MATCH_STATUS_PENDING } from "@/lib/match-room";
+import { MATCH_STATUS_PENDING, pickJoinableMatch } from "@/lib/match-room";
 
 export const maxDuration = 60;
 
@@ -110,6 +110,41 @@ export async function POST(request: Request) {
   // Cleanup expired entries (2 min TTL + safety)
   await supabase.from("matchmaking_queue").delete().lt("expires_at", new Date().toISOString());
 
+  /*
+   * Never seat somebody who is already in a live match.
+   *
+   * This is the other half of the "ghost victory". A player whose previous duel
+   * had been decided days earlier could still have that arena open, so the new
+   * match seated them while their browser sat on the old one. The new room then
+   * waited for a seat that was never going to be filled, and the stale page kept
+   * showing a result from a match that was already over. If the player already
+   * holds a playable match, send them back to it rather than duplicating them.
+   */
+  const { data: existingMemberships } = await supabase
+    .from("match_players")
+    .select("match_id, matches!inner(id, status, metadata)")
+    .eq("user_id", userId)
+    .order("joined_at", { ascending: false })
+    .limit(5);
+
+  const existingMatchId = pickJoinableMatch(
+    ((existingMemberships ?? []) as unknown as Array<{
+      match_id?: string | null;
+      // PostgREST returns an embedded to-one relation as a one-element array.
+      matches?: { id: string; status: string | null; metadata: unknown }[] | null;
+    }>).map((row) => {
+      const match = Array.isArray(row.matches) ? row.matches[0] : row.matches;
+      const metadata = (match?.metadata ?? {}) as Record<string, unknown>;
+      const winnerId =
+        typeof metadata.winner_id === "string" && metadata.winner_id ? metadata.winner_id : null;
+      return { match_id: row.match_id, status: match?.status ?? null, winner_id: winnerId };
+    }),
+  );
+
+  if (existingMatchId) {
+    return NextResponse.json({ matchId: existingMatchId }, { status: 200 });
+  }
+
   // Ensure single queue entry per user (remove stale self)
   await supabase.from("matchmaking_queue").delete().eq("user_id", userId);
 
@@ -199,17 +234,41 @@ export async function POST(request: Request) {
       .eq("user_id", userId)
       .maybeSingle();
     if (!selfStill) {
-      // We were already matched by someone else — status poll will find it
-      // Check match_players for new match
-      const { data: existing } = await supabase
+      /*
+       * Someone else claimed the pair while we were polling, so our queue row
+       * is gone. The match we were just put into is waiting — hand it back.
+       *
+       * This lookup used to take the newest `match_players` row with no
+       * freshness and no joinability filter, which is the "ghost victory" in
+       * its purest form: a player whose last duel was decided days earlier had
+       * that corpse as their newest row, so joining sent them straight back
+       * into a finished match while the room they were actually matched into
+       * sat empty waiting for them. Only a match created during THIS search
+       * and still playable may be returned.
+       */
+      const { data: recent } = await supabase
         .from("match_players")
-        .select("match_id")
+        .select("match_id, joined_at, matches!inner(id, status, metadata)")
         .eq("user_id", userId)
+        .gte("joined_at", queuedAt)
         .order("joined_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (existing?.match_id) {
-        return NextResponse.json({ matchId: existing.match_id }, { status: 200 });
+        .limit(5);
+
+      const matchIdFromThisSearch = pickJoinableMatch(
+        ((recent ?? []) as unknown as Array<{
+          match_id?: string | null;
+          matches?: { id: string; status: string | null; metadata: unknown }[] | null;
+        }>).map((row) => {
+          const match = Array.isArray(row.matches) ? row.matches[0] : row.matches;
+          const metadata = (match?.metadata ?? {}) as Record<string, unknown>;
+          const winnerId =
+            typeof metadata.winner_id === "string" && metadata.winner_id ? metadata.winner_id : null;
+          return { match_id: row.match_id, status: match?.status ?? null, winner_id: winnerId };
+        }),
+      );
+
+      if (matchIdFromThisSearch) {
+        return NextResponse.json({ matchId: matchIdFromThisSearch }, { status: 200 });
       }
       await sleep(pollIntervalMs);
       continue;

@@ -286,6 +286,20 @@ export function MatchArenaShell({
     router.push(exitHref);
   }, [leaveRoom, router, exitHref]);
 
+  /*
+   * A room that timed out empty releases itself.
+   *
+   * The "opponent never showed up" card used to sit there holding the seat
+   * until the player clicked through, so the dead lobby stayed in the table and
+   * could be handed back by a later status poll. Releasing it the moment it is
+   * known to be abandoned keeps a corpse out of the next queue.
+   */
+  const abandoned = room.lobbyReason === "abandoned";
+  useEffect(() => {
+    if (!abandoned) return;
+    void leaveRoom();
+  }, [abandoned, leaveRoom]);
+
   const handleSubmit = useCallback(
     async (intent: SubmissionIntent) => {
       if (!canPlay) return;
@@ -452,7 +466,7 @@ export function MatchArenaShell({
         questionTitle={question.title}
         opponentName={opponentName}
         opponentPresent={room.playersPresent >= 2}
-        abandoned={room.lobbyReason === "abandoned"}
+        abandoned={abandoned}
         connected={connected}
         leaving={leaving}
         onAbandon={abandonRoom}
