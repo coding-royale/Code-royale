@@ -49,11 +49,13 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { APP_COMMIT, APP_VERSION } from "../lib/app-version";
+import { resolveAvatarUrl } from "../lib/resolve-avatar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 
 const sidebarItems = [
   { id: "home", label: "Dashboard", href: "/home", icon: LayoutDashboard },
+  { id: "profile", label: "Profile", href: "/profile", icon: User },
   { id: "practice", label: "Practice", href: "/practice", icon: Code2 },
   { id: "game-modes", label: "Game Modes", href: "/game-modes", icon: Gamepad2 },
   { id: "leaderboard", label: "Leaderboard", href: "/leaderboard", icon: Trophy },
@@ -285,14 +287,13 @@ export function AppShell({ children, showSidebar = true }: AppShellProps) {
       const name =
         (typeof userRow?.data?.username === "string" && userRow.data.username.trim()) || fallback;
 
-      // Priority: OAuth provider picture, then the profile picture on file.
-      const metadataAvatar =
-        (data.user.user_metadata?.avatar_url as string | undefined) ??
-        (data.user.user_metadata?.picture as string | undefined) ??
-        null;
-      const storedAvatar =
-        (typeof statsRow?.data?.avatar_url === "string" && statsRow.data.avatar_url) || null;
-      const avatarUrl = metadataAvatar ?? storedAvatar;
+      // Priority: the photo the player uploaded, then the OAuth provider seed.
+      const avatarUrl = resolveAvatarUrl({
+        stored: statsRow?.data?.avatar_url as string | null | undefined,
+        provider:
+          (data.user.user_metadata?.avatar_url as string | undefined) ??
+          (data.user.user_metadata?.picture as string | undefined),
+      });
 
       writeCachedProfile({
         userId: data.user.id,

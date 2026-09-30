@@ -32,6 +32,7 @@ import { supabase } from "../../lib/supabase-browser";
 import { isChallengeLive } from "../../lib/friend-challenge";
 import { resolvePresenceDot } from "../../lib/presence";
 import { diceBearUrl } from "@/lib/avatars";
+import { resolveAvatarUrl } from "@/lib/resolve-avatar";
 import { computeRelationship, type ConnectionRow, type Relationship } from "@/lib/friends";
 import { computeAchievements } from "@/lib/achievements";
 
@@ -268,22 +269,21 @@ function ProfileContent() {
             }];
           });
 
-        // Avatar priority (matches the app shell): the viewer's OAuth provider
-        // picture (only when viewing your own profile), then the uploaded
-        // profile picture, then a deterministic DiceBear fallback so a profile
-        // always shows a picture rather than bare initials.
-        const storedAvatar =
-          (typeof statsRow?.avatar_url === "string" && statsRow.avatar_url) || null;
+        // Avatar priority: the photo the player uploaded always wins, then the
+        // OAuth provider picture (self only — we only ever hold the viewer's
+        // metadata), then a deterministic DiceBear so a profile always shows a
+        // picture rather than bare initials.
         const isViewingSelf = Boolean(authData.user?.id && idToLoad === authData.user.id);
-        const metadataAvatar =
-          (authData.user?.user_metadata?.avatar_url as string | undefined) ??
-          (authData.user?.user_metadata?.picture as string | undefined) ??
-          null;
         const avatarUrl =
-          (isViewingSelf ? metadataAvatar : null) ??
-          storedAvatar ??
+          resolveAvatarUrl({
+            stored: statsRow?.avatar_url as string | null | undefined,
+            provider: isViewingSelf
+              ? ((authData.user?.user_metadata?.avatar_url as string | undefined) ??
+                (authData.user?.user_metadata?.picture as string | undefined))
+              : null,
+          }) ??
           diceBearUrl(((userRow?.username as string | null) ?? "Player").trim() || "Player", idToLoad);
-        
+
         setProfile({
           ...userRow as UserRow,
           avatarUrl,
