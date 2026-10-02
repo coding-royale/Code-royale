@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase";
 import { createSupabaseServiceClient } from "@/lib/supabase-service";
-import { MATCH_STATUS_COMPLETED } from "@/lib/match-room";
+import { MATCH_STATUS_COMPLETED, sanitizeTimeLimit } from "@/lib/match-room";
+import { resolveRequestUserId } from "@/lib/resolve-request-user";
 
 type CompletePayload = {
   matchId?: string;
@@ -27,14 +28,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "matchId is required" }, { status: 400 });
   }
 
-  const supabaseAuth = await createSupabaseServerClient();
-  const { data: authData, error: authError } = await supabaseAuth.auth.getUser();
-
-  if (authError || !authData.user?.id) {
+  // Verified bearer token first (bots, API tests), then the session cookie.
+  const userId = await resolveRequestUserId(request);
+  if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-
-  const userId = authData.user.id;
 
   let supabase;
   try {
@@ -72,6 +70,33 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, winnerId: existingWinner, alreadyCompleted: true }, { status: 200 });
   }
 
+  /*
+   * A win must be earned, not asserted.
+   *
+   * This route used to take the caller's word for it: any seated player could
+   * POST it and be crowned winner, with no check that the duel had started, that
+   * the clock was still running, or that they had ever passed a test. A bot
+   * could win a ranked match from the lobby before writing a line of code.
+   *
+   * So the claim is verified against the same evidence the timeout path trusts:
+   * a passing submission for this match's question, recorded at or after the
+   * shared start instant and before it ran out.
+   */
+  const startedAt =
+    typeof metadata.started_at === "string" && metadata.started_at ? metadata.started_at : null;
+  const startedMs = startedAt ? Date.parse(startedAt) : Number.NaN;
+
+  if (!Number.isFinite(startedMs)) {
+    return NextResponse.json({ error: "Match has not started" }, { status: 409 });
+  }
+
+  const timeLimitSeconds = sanitizeTimeLimit(metadata.time_limit);
+  if (Date.now() >= startedMs + timeLimitSeconds * 1000) {
+    // The clock is the server's to call: let the timeout route settle it, so a
+    // late submit can never beat a player who finished on time.
+    return NextResponse.json({ error: "Match time has expired" }, { status: 409 });
+  }
+
   const { data: players, error: playersError } = await supabase
     .from("match_players")
     .select("user_id")
@@ -86,6 +111,23 @@ export async function POST(request: Request) {
 
   if (!opponentId) {
     return NextResponse.json({ error: "Opponent not found" }, { status: 500 });
+  }
+
+  // Only a passing submission, made inside this duel, earns the win.
+  const { data: proofs } = await supabase
+    .from("practice_submissions")
+    .select("id")
+    .eq("question_id", metadata.question_id as string)
+    .eq("user_id", userId)
+    .eq("passed", true)
+    .gte("created_at", startedAt as string)
+    .limit(1);
+
+  if (!proofs || proofs.length === 0) {
+    return NextResponse.json(
+      { error: "No passing submission in this match" },
+      { status: 409 },
+    );
   }
 
   const mode = matchRow.mode === "unranked" ? "unranked" : "ranked";

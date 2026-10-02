@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase";
 import { createSupabaseServiceClient } from "@/lib/supabase-service";
 import { MATCH_STATUS_COMPLETED, pickTimedOutWinnerId } from "@/lib/match-room";
+import { resolveRequestUserId } from "@/lib/resolve-request-user";
 
 type TimeoutPayload = {
   matchId?: string;
@@ -12,17 +13,6 @@ function asRecord(value: unknown): Record<string, unknown> {
     return value as Record<string, unknown>;
   }
   return {};
-}
-
-function getUserIdFromToken(token: string): string | null {
-  try {
-    const payload = token.split(".")[1];
-    const json = Buffer.from(payload, "base64").toString("utf-8");
-    const data = JSON.parse(json);
-    return typeof data.sub === "string" ? data.sub : null;
-  } catch {
-    return null;
-  }
 }
 
 export async function POST(request: Request) {
@@ -38,20 +28,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "matchId is required" }, { status: 400 });
   }
 
-  // Accept a Bearer token first (bots and API tests), then fall back to cookies.
-  // The rest of the match API (sync/join/status) already works this way; without
-  // it a duel cannot be resolved by anything other than a browser session.
-  let userId: string | null = null;
-  const authHeader = request.headers.get("authorization");
-  if (authHeader?.startsWith("Bearer ")) {
-    userId = getUserIdFromToken(authHeader.slice(7));
-  }
-  if (!userId) {
-    const supabaseAuth = await createSupabaseServerClient();
-    const { data: authData, error: authError } = await supabaseAuth.auth.getUser();
-    if (!authError && authData.user?.id) userId = authData.user.id;
-  }
-
+  // Verified bearer token first (bots, API tests), then the session cookie.
+  const userId = await resolveRequestUserId(request);
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

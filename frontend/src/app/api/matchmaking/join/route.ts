@@ -3,6 +3,7 @@ import { createSupabaseServerClient } from "@/lib/supabase";
 import { createSupabaseServiceClient } from "@/lib/supabase-service";
 import { JOIN_SEARCH_TIMEOUT_MS } from "@/lib/matchmaking";
 import { MATCH_STATUS_PENDING, pickJoinableMatch } from "@/lib/match-room";
+import { resolveRequestUserId } from "@/lib/resolve-request-user";
 
 export const maxDuration = 60;
 
@@ -45,17 +46,6 @@ function resolveRankedDifficultyFromRating(rating: number) {
   return "hard";
 }
 
-function getUserIdFromToken(token: string): string | null {
-  try {
-    const payload = token.split(".")[1];
-    const json = Buffer.from(payload, "base64").toString("utf-8");
-    const data = JSON.parse(json);
-    return typeof data.sub === "string" ? data.sub : null;
-  } catch {
-    return null;
-  }
-}
-
 export async function POST(request: Request) {
   let payload: JoinRequest;
 
@@ -70,18 +60,8 @@ export async function POST(request: Request) {
   const language = sanitizeLanguage(payload.language);
   const matchType = sanitizeMatchType(payload.matchType);
 
-  // Auth: try Bearer token first (for API tests), then cookies (for browser)
-  let userId: string | null = null;
-  const authHeader = request.headers.get("authorization");
-  if (authHeader?.startsWith("Bearer ")) {
-    const token = authHeader.slice(7);
-    userId = getUserIdFromToken(token);
-  }
-  if (!userId) {
-    const supabaseAuth = await createSupabaseServerClient();
-    const { data: authData, error: authError } = await supabaseAuth.auth.getUser();
-    if (!authError && authData.user?.id) userId = authData.user.id;
-  }
+  // Auth: verified bearer token first (API tests/bots), then the cookie.
+  const userId = await resolveRequestUserId(request);
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

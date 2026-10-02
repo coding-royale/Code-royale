@@ -1,28 +1,9 @@
 import { NextResponse } from "next/server";
-import { createSupabaseServerClient } from "@/lib/supabase";
 import { createSupabaseServiceClient } from "@/lib/supabase-service";
-
-function getUserIdFromToken(token: string): string | null {
-  try {
-    const payload = token.split(".")[1];
-    const json = Buffer.from(payload, "base64").toString("utf-8");
-    const data = JSON.parse(json);
-    return typeof data.sub === "string" ? data.sub : null;
-  } catch { return null; }
-}
+import { resolveRequestUserId } from "@/lib/resolve-request-user";
 
 export async function POST(request: Request) {
-  let userId: string | null = null;
-  const authHeader = request.headers.get("authorization");
-  if (authHeader?.startsWith("Bearer ")) {
-    const token = authHeader.slice(7);
-    userId = getUserIdFromToken(token);
-  }
-  if (!userId) {
-    const supabaseAuth = await createSupabaseServerClient();
-    const { data: authData, error: authError } = await supabaseAuth.auth.getUser();
-    if (!authError && authData.user?.id) userId = authData.user.id;
-  }
+  const userId = await resolveRequestUserId(request);
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase";
 import { createSupabaseServiceClient } from "@/lib/supabase-service";
+import { resolveRequestUserId } from "@/lib/resolve-request-user";
 import { formatLastActive } from "@/lib/match-activity";
 import {
   LOBBY_ABANDON_MS,
@@ -47,26 +48,8 @@ function asRecord(value: unknown): Record<string, unknown> {
   return {};
 }
 
-function getUserIdFromToken(token: string): string | null {
-  try {
-    const payload = token.split(".")[1];
-    const json = Buffer.from(payload, "base64").toString("utf-8");
-    const data = JSON.parse(json);
-    return typeof data.sub === "string" ? data.sub : null;
-  } catch {
-    return null;
-  }
-}
-
 async function resolveCaller(request: Request) {
-  const authHeader = request.headers.get("authorization");
-  if (authHeader?.startsWith("Bearer ")) {
-    const fromToken = getUserIdFromToken(authHeader.slice(7));
-    if (fromToken) return fromToken;
-  }
-  const supabaseAuth = await createSupabaseServerClient();
-  const { data } = await supabaseAuth.auth.getUser();
-  return data.user?.id ?? null;
+  return resolveRequestUserId(request);
 }
 
 type PlayerSnapshot = {
@@ -183,13 +166,19 @@ export async function POST(request: Request, { params }: { params: RouteParams }
   }
 
   /*
-   * The room gate. Two independent conditions can open the room, and
-   * `matches.status` is the atomic claim either way: the UPDATE only matches a
-   * row still sitting in "pending", so exactly one of the two players ever
-   * writes a start instant and both then read that same value.
+   * The room gate.
    *
-   * The start is written a few seconds in the future so both clients render the
-   * same 3-2-1 countdown instead of one player beginning mid-thought.
+   * The clock may only be started from what the SERVER has observed: a seat
+   * stamped `present_at` by this very route. It used to also accept
+   * `body.presentUserIds` — a list the caller sends in its own request body.
+   * That let either player start the duel alone by posting both uuids, turning
+   * their opponent's page-load time into lost clock, which is the exact unfair
+   * start this gate was written to prevent. Client presence is now used only
+   * for display; it can never open the room.
+   *
+   * `matches.status` is the atomic claim: the UPDATE only matches a row still
+   * in "pending", so exactly one of the two players ever writes a start instant
+   * and both then read that same value.
    */
   let startedAt = storedStart;
   const room = countPresentPlayers({ presentAtByUser, playerIds, nowMs: serverNowMs });
@@ -199,17 +188,8 @@ export async function POST(request: Request, { params }: { params: RouteParams }
     const isUnacceptedChallenge =
       metadata.friend_invite != null && typeof metadata.accepted_at !== "string";
 
-    // Realtime presence, when it is connected, is the fastest signal that both
-    // tabs are really open. It is an accelerator, never a requirement.
-    const seenInRoom = new Set(
-      Array.isArray(body.presentUserIds)
-        ? body.presentUserIds.filter((id): id is string => typeof id === "string")
-        : [],
-    );
-    const everyoneVisible = playerIds.length > 1 && playerIds.every((id) => seenInRoom.has(id));
-
     // Without the presence column (schema predates the migration) fall back to
-    // what the client reports, and finally to a timer so the queue cannot jam.
+    // a timer so the queue cannot jam forever.
     const createdMs = parseIsoMs(matchRow.created_at as string | null);
     const legacyTimer =
       !presenceColumnUsable &&
@@ -217,7 +197,7 @@ export async function POST(request: Request, { params }: { params: RouteParams }
       createdMs !== null &&
       serverNowMs - createdMs >= LOBBY_FALLBACK_MS;
 
-    if (!isUnacceptedChallenge && (room.everyoneHere || everyoneVisible || legacyTimer)) {
+    if (!isUnacceptedChallenge && (room.everyoneHere || legacyTimer)) {
       const startIso = new Date(serverNowMs + MATCH_COUNTDOWN_MS).toISOString();
       const { data: claimed } = await supabase
         .from("matches")
@@ -306,15 +286,22 @@ export async function POST(request: Request, { params }: { params: RouteParams }
     };
   });
 
+  /*
+   * Display only.
+   *
+   * This used to be `Math.max(room.present, <client-reported count>)`, which let
+   * a caller inflate the number and, worse, suppress their own
+   * `abandoned` cleanup. The seat stamps are server-observed, so they are the
+   * only trustworthy signal; the realtime list is still shown as a hint but can
+   * never raise the count above what the server actually saw.
+   */
   const presentSet = new Set(
     Array.isArray(body.presentUserIds)
       ? body.presentUserIds.filter((id): id is string => typeof id === "string")
       : [],
   );
-  // Report the better of the two signals: the server-side seat stamps, or what
-  // realtime saw, so the waiting screen is honest either way.
   const playersPresent = presenceColumnUsable
-    ? Math.max(room.present, playerIds.filter((id) => presentSet.has(id)).length)
+    ? room.present
     : playerIds.filter((id) => presentSet.has(id)).length;
 
   const lobbyReason =
