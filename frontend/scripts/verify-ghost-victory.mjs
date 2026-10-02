@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Regression harness for the "ghost victory" bug.
  *
  * Reproduces the exact production sequence that handed one player a victory
@@ -6,7 +6,7 @@
  * never fill:
  *
  *   1. botB is seated in an OLD match that is already decided (winner set,
- *      status still "active" — exactly what the resolution routes used to
+ *      status still "active" â€” exactly what the resolution routes used to
  *      leave behind).
  *   2. botA queues for real matchmaking and gets paired into a NEW match,
  *      which seats BOTH bots.
@@ -88,7 +88,7 @@ const alpha = await tokenFor(ALPHA);
 const bravo = await tokenFor(BRAVO);
 
 /* ------------------------------------------------------------------ *
- * Step 1 — recreate the stale room: a decided match still marked active.
+ * Step 1 â€” recreate the stale room: a decided match still marked active.
  * ------------------------------------------------------------------ */
 const { data: oldQuestion } = await admin
   .from("practice_questions")
@@ -129,7 +129,7 @@ await admin.from("match_players").insert([
 console.log(`\nseeded decided-but-active match ${oldMatch.id}\n`);
 
 /* ------------------------------------------------------------------ *
- * Step 2 — bravo re-queues for real matchmaking.
+ * Step 2 â€” bravo re-queues for real matchmaking.
  *
  * Before the fix this seated bravo in a brand new match even though its
  * browser was still on the decided one.
@@ -161,7 +161,7 @@ check(
 );
 
 /* ------------------------------------------------------------------ *
- * Step 3 — the real pairing: alpha queues, both get matched.
+ * Step 3 â€” the real pairing: alpha queues, both get matched.
  * ------------------------------------------------------------------ */
 const alphaJoin = await api("/api/matchmaking/join", alpha.token, {
   method: "POST",
@@ -183,7 +183,7 @@ const { data: newSeats } = await admin
 check("both bots are seated in the fresh match", newSeats?.length ?? 0, 2);
 
 /* ------------------------------------------------------------------ *
- * Step 4 — the assertion that actually failed in production.
+ * Step 4 â€” the assertion that actually failed in production.
  *
  * bravo's status poll used to return its OLDEST-looking row: the decided
  * match, which sent it back into a finished duel.
@@ -198,27 +198,32 @@ check(
 check("bravo is never pointed at the decided match", bravoStatus.json.matchId === oldMatch.id, false);
 
 /* ------------------------------------------------------------------ *
- * Step 5 — the lobby gate still works: both present means it opens.
+ * Step 5 â€” the lobby gate still works: both present means it opens.
  * ------------------------------------------------------------------ */
-const seatSync = await api(`/api/match/${newMatchId}/sync`, alpha.token, {
+await api(`/api/match/${newMatchId}/sync`, alpha.token, {
   method: "POST",
-  body: JSON.stringify({ presentUserIds: [alpha.id, bravo.id], presenceLive: true }),
+  body: JSON.stringify({ presenceLive: true }),
+});
+await new Promise((r) => setTimeout(r, 1600));
+const seatSync = await api(`/api/match/${newMatchId}/sync`, bravo.token, {
+  method: "POST",
+  body: JSON.stringify({ presenceLive: true }),
 });
 check("both seats present opens the room", seatSync.json.phase !== "lobby", true);
 check("a start instant was written", typeof seatSync.json.startedAt === "string", true);
 
 /* ------------------------------------------------------------------ *
- * Step 6 — the decided match must not be treated as joinable.
+ * Step 6 â€” the decided match must not be treated as joinable.
  * ------------------------------------------------------------------ */
 const oldSync = await api(`/api/match/${oldMatch.id}/sync`, bravo.token, {
   method: "POST",
-  body: JSON.stringify({ presentUserIds: [alpha.id, bravo.id], presenceLive: true }),
+  body: JSON.stringify({ presenceLive: true }),
 });
 check("the decided match reports phase=over", oldSync.json.phase, "over");
 check("the decided match still reports its old winner", oldSync.json.winnerId, bravo.id);
 
 /* ------------------------------------------------------------------ *
- * Step 7b — THE STALE TAB.
+ * Step 7b â€” THE STALE TAB.
  *
  * This is the actual production sequence, straight out of the row timestamps:
  *
@@ -256,13 +261,13 @@ check(
 console.log(`      (redirect target: ${staleLocation || "<none>"})`);
 
 /* ------------------------------------------------------------------ *
- * Step 7 — THE ACTUAL PRODUCTION PATH.
+ * Step 7 â€” THE ACTUAL PRODUCTION PATH.
  *
  * The losing side of the pairing is not the one that created the match, so
  * their own `join` call is still polling when the creator claims the pair and
  * deletes both queue rows. That call then falls into its "someone else claimed
  * us" branch, which used to reply with the newest `match_players` row it could
- * find — the five-day-old decided match — sending that player back into a
+ * find â€” the five-day-old decided match â€” sending that player back into a
  * finished duel while the fresh room waited for them.
  *
  * Drive it directly: bravo has a decided match, gets a queue row, the row is
@@ -333,7 +338,7 @@ if (answered === claimedId) {
     .eq("match_id", claimedId);
   const arrive = await api(`/api/match/${claimedId}/sync`, bravo.token, {
     method: "POST",
-    body: JSON.stringify({ presentUserIds: seats?.map((s) => s.user_id) ?? [], presenceLive: true }),
+    body: JSON.stringify({ presenceLive: true }),
   });
   check("the recovered match actually opens the room", arrive.json.phase !== "lobby", true);
 }
@@ -344,7 +349,7 @@ await admin.from("matches").delete().eq("id", claimedId);
 await admin.from("matchmaking_queue").delete().eq("user_id", bravo.id);
 
 /* ------------------------------------------------------------------ *
- * Step 8 — timeout now closes the match instead of leaving it "active".
+ * Step 8 â€” timeout now closes the match instead of leaving it "active".
  * ------------------------------------------------------------------ */
 const short = await admin
   .from("matches")

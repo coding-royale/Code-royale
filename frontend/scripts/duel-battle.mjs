@@ -1,9 +1,9 @@
-/**
+﻿/**
  * End-to-end duel test: two bots queue, get matched, enter the room, actually
  * WRITE AND SUBMIT CODE, and the match resolves to a real winner.
  *
  * This is the test that matters. The ghost-victory harness proved nobody got
- * handed a stale result card; this one proves the whole loop still works —
+ * handed a stale result card; this one proves the whole loop still works â€”
  * matchmaking pairs real players, the shared clock starts, code really runs
  * through the judge, and the player who solved it wins the rating.
  *
@@ -240,14 +240,14 @@ console.log("\n=== two bots queue for a real duel ===\n");
  * GOBOXD_AUTH_TOKEN). Rather than fish a production secret off a machine, the
  * harness runs against a local stub judge that implements the same POST /run
  * contract and really executes the submitted JavaScript. Every Code Royale step
- * — matchmaking, the room gate, the shared clock, submission recording, the
- * result — is therefore exercised for real. Start the server with
+ * â€” matchmaking, the room gate, the shared clock, submission recording, the
+ * result â€” is therefore exercised for real. Start the server with
  * GOBOXD_API_URL pointed at the stub; see the run instructions in the header.
  */
 if (process.env.JUDGE === "real") {
   note("using the live goboxd judge (GOBOXD_AUTH_TOKEN must be set)");
 } else {
-  note("using the local stub judge — the server must be started with GOBOXD_API_URL=http://127.0.0.1:3999");
+  note("using the local stub judge â€” the server must be started with GOBOXD_API_URL=http://127.0.0.1:3999");
 }
 
 /* Both queue for real, exactly like two players clicking "Find a Match". */
@@ -300,19 +300,31 @@ check("both bots are seated", seats?.length, 2);
 
 const seatIds = (seats ?? []).map((s) => s.user_id);
 
-/* Both bots walk into the room: this is what starts the shared clock. */
+/*
+ * Both bots walk into the room: this is what starts the shared clock.
+ *
+ * No `presentUserIds` â€” the gate ignores it now because it is caller-supplied.
+ * Each seat simply polls like a real client, and then alpha polls once more so
+ * it reads back the shared start instant bravo's arrival wrote.
+ */
 const seatA = await api(`/api/match/${matchId}/sync`, alpha.token, {
   method: "POST",
-  body: JSON.stringify({ presentUserIds: seatIds, presenceLive: true }),
+  body: JSON.stringify({ presenceLive: true }),
 });
 const seatB = await api(`/api/match/${matchId}/sync`, bravo.token, {
   method: "POST",
-  body: JSON.stringify({ presentUserIds: seatIds, presenceLive: true }),
+  body: JSON.stringify({ presenceLive: true }),
+});
+await sleep(1600);
+const seatAAfter = await api(`/api/match/${matchId}/sync`, alpha.token, {
+  method: "POST",
+  body: JSON.stringify({ presenceLive: true }),
 });
 check("the room opened once both seats arrived", seatB.json.phase !== "lobby", true);
 check("a shared start instant was written", typeof seatB.json.startedAt, "string");
-check("both clients read the SAME start instant", seatA.json.startedAt, seatB.json.startedAt);
-check("both clients see the same countdown", seatA.json.countdownSeconds, seatB.json.countdownSeconds);
+check("both clients read the SAME start instant", seatAAfter.json.startedAt, seatB.json.startedAt);
+check("both clients see the same countdown", seatAAfter.json.countdownSeconds, seatB.json.countdownSeconds);
+check("the first poll saw an empty room, which is the point", seatA.json.phase, "lobby");
 note(`started at ${seatB.json.startedAt}, phase ${seatB.json.phase}`);
 
 // Judge refuses code until the shared clock actually begins.
@@ -413,5 +425,5 @@ await admin.from("matchmaking_queue").delete().eq("user_id", bravo.id);
 await admin.from("practice_submissions").delete().eq("user_id", alpha.id);
 await admin.from("practice_submissions").delete().eq("user_id", bravo.id);
 
-console.log(failures === 0 ? "\nall checks passed — the bots really fought" : `\n${failures} check(s) failed`);
+console.log(failures === 0 ? "\nall checks passed â€” the bots really fought" : `\n${failures} check(s) failed`);
 process.exit(failures === 0 ? 0 : 1);
