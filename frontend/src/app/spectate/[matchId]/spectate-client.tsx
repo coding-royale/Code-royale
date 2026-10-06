@@ -73,7 +73,9 @@ export function SpectateClient({ initial }: { initial: SpectateSnapshot }) {
     return Math.max(snapshot.timeLimitSeconds - elapsed, 0);
   }, [snapshot.startedAt, snapshot.timeLimitSeconds, nowTick]);
 
-  const [left, right] = [snapshot.players[0], snapshot.players[1]];
+  // A spectator only ever sees the friend they came to watch; the opponent
+  // is never disclosed, so this is normally one card rather than a pair.
+  const shown = snapshot.players;
 
   return (
     <div className="relative min-h-screen overflow-hidden">
@@ -115,25 +117,15 @@ export function SpectateClient({ initial }: { initial: SpectateSnapshot }) {
 
         <Card>
           <CardContent className="flex items-center justify-center gap-6 p-6 sm:gap-10">
-            {left && (
-              <div className="flex flex-col items-center gap-2 text-center">
-                <Avatar className={`size-14 border-2 text-lg font-bold ${left.isWinner ? "border-emerald-500/60" : ""}`}>
-                  <AvatarFallback>{initials(left.username)}</AvatarFallback>
+            {shown.map((player) => (
+              <div key={player.id} className="flex flex-col items-center gap-2 text-center">
+                <Avatar className={`size-14 border-2 text-lg font-bold ${player.isWinner ? "border-emerald-500/60" : ""}`}>
+                  <AvatarFallback>{initials(player.username)}</AvatarFallback>
                 </Avatar>
-                <p className="text-sm font-semibold">{left.username}</p>
-                <p className="font-mono text-xs text-muted-foreground">{left.rating} rating</p>
+                <p className="text-sm font-semibold">{player.username}</p>
+                <p className="font-mono text-xs text-muted-foreground">{player.rating} rating</p>
               </div>
-            )}
-            <span className="text-2xl font-black uppercase text-primary">VS</span>
-            {right && (
-              <div className="flex flex-col items-center gap-2 text-center">
-                <Avatar className={`size-14 border-2 text-lg font-bold ${right.isWinner ? "border-emerald-500/60" : ""}`}>
-                  <AvatarFallback>{initials(right.username)}</AvatarFallback>
-                </Avatar>
-                <p className="text-sm font-semibold">{right.username}</p>
-                <p className="font-mono text-xs text-muted-foreground">{right.rating} rating</p>
-              </div>
-            )}
+            ))}
           </CardContent>
         </Card>
 
@@ -161,7 +153,7 @@ export function SpectateClient({ initial }: { initial: SpectateSnapshot }) {
           <Card>
             <CardContent className="flex items-center gap-3 p-6 text-sm text-muted-foreground">
               <Swords className="size-5 shrink-0 text-primary" />
-              Live now — both players are solving. You will see the result here the moment someone submits.
+              Live now — your friend is solving. You will see the result the moment they submit.
             </CardContent>
           </Card>
         )}

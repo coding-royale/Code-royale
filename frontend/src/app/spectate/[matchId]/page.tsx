@@ -22,7 +22,10 @@ export default async function SpectatePage({ params }: PageProps) {
 
   let snapshot;
   try {
-    snapshot = await getSpectateSnapshot(matchId as string);
+    // Spectating is friend-only, so the viewer's id is part of the query: the
+    // snapshot is built from their friends in this match, and 404s for anyone
+    // with no connection to it.
+    snapshot = await getSpectateSnapshot(matchId as string, authData.user.id);
   } catch (error) {
     console.error("Spectate page error", error);
     notFound();
