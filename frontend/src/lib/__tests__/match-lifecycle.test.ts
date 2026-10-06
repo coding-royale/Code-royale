@@ -35,7 +35,33 @@ describe("isMatchJoinable", () => {
   });
 
   test("a running match is joinable", () => {
-    expect(isMatchJoinable({ status: MATCH_STATUS_ACTIVE, winnerId: null })).toBe(true);
+    // Joinability is judged against the match's own clock, so a live duel must
+    // supply its start instant. See match-reentry.test.ts for the expired case.
+    const nowMs = Date.parse("2026-09-30T12:00:00.000Z");
+    expect(
+      isMatchJoinable({
+        status: MATCH_STATUS_ACTIVE,
+        winnerId: null,
+        startedAt: "2026-09-30T11:59:30.000Z",
+        timeLimitSeconds: 300,
+        nowMs,
+      }),
+    ).toBe(true);
+  });
+
+  test("an active match with no start instant is not joinable", () => {
+    expect(isMatchJoinable({ status: MATCH_STATUS_ACTIVE, winnerId: null })).toBe(false);
+  });
+
+  test("a lobby filling right now is joinable", () => {
+    const nowMs = Date.parse("2026-09-30T12:00:00.000Z");
+    expect(
+      isMatchJoinable({
+        status: MATCH_STATUS_PENDING,
+        createdAt: "2026-09-30T11:59:55.000Z",
+        nowMs,
+      }),
+    ).toBe(true);
   });
 
   test("a decided match is not joinable even while still marked active", () => {

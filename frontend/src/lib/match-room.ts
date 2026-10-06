@@ -314,20 +314,69 @@ export function resolveLobbyReason(input: {
  * sitting in "active". A winner id is therefore treated as authoritative.
  */
 
-/** A match a player may still be sent into. */
+/**
+ * How long a lobby may sit empty before it stops being worth joining.
+ *
+ * Comfortably above LOBBY_ABANDON_MS so a legitimate opponent who is slow to
+ * load still finds the room open, but far below "forever", so a lobby that
+ * nobody ever came back to cannot be handed out weeks later.
+ */
+export const LOBBY_REUSABLE_MS = 10 * 60 * 1000;
+
+/**
+ * A match a player may still be sent into.
+ *
+ * Decided is not the same as over. A duel whose clock ran out long ago can
+ * still carry no winner — nobody solved it, or it was abandoned — and such a
+ * row is exactly what the join route used to hand back, dumping the player
+ * into a match from weeks earlier instead of queueing them. The clock is
+ * therefore checked as well as the winner field.
+ */
 export function isMatchJoinable(input: {
   status: string | null | undefined;
   winnerId?: string | null;
   completedAt?: string | null;
+  /** Shared start instant, once the room has opened. */
+  startedAt?: string | null;
+  createdAt?: string | null;
+  timeLimitSeconds?: number | null;
+  nowMs?: number;
 }): boolean {
   if (isMatchDecided(input)) return false;
-  return input.status === MATCH_STATUS_PENDING || input.status === MATCH_STATUS_ACTIVE;
+
+  const nowMs = input.nowMs ?? Date.now();
+
+  if (input.status === MATCH_STATUS_PENDING) {
+    // A room still filling is only reusable while it is plausibly still
+    // filling. One that has been open for hours was abandoned in everything but
+    // name.
+    if (input.startedAt) return false;
+    const createdMs = parseIsoMs(input.createdAt);
+    if (createdMs === null) return true;
+    return nowMs - createdMs <= LOBBY_REUSABLE_MS;
+  }
+
+  if (input.status !== MATCH_STATUS_ACTIVE) return false;
+
+  const startedMs = parseIsoMs(input.startedAt);
+  if (startedMs === null) return false;
+  const limit =
+    typeof input.timeLimitSeconds === "number" && input.timeLimitSeconds > 0
+      ? input.timeLimitSeconds
+      : DEFAULT_TIME_LIMIT_SECONDS;
+  // Still inside its own clock, give or take the countdown lead-in.
+  return nowMs < startedMs + (limit + MATCH_COUNTDOWN_MS / 1000) * 1000;
 }
 
 export type MatchMembershipRow = {
   match_id?: string | null;
   status?: string | null;
   winner_id?: string | null;
+  completed_at?: string | null;
+  /** Shared start instant from metadata. */
+  started_at?: string | null;
+  created_at?: string | null;
+  time_limit_seconds?: number | null;
 };
 
 /**
@@ -372,12 +421,28 @@ export function shouldRedirectOffDecidedMatch(input: {
  * which meant a long-dead match could outrank a live lobby and send the player
  * back into a finished duel. Filtering to joinable rows first makes the newest
  * *playable* match win.
+ *
+ * Rows must carry the clock (`started_at`, `created_at`, `time_limit_seconds`)
+ * or nothing is ever joinable — the join route passes them, and this is what
+ * stops a match from weeks ago being handed back instead of queueing.
  */
-export function pickJoinableMatch(rows: MatchMembershipRow[]): string | null {
+export function pickJoinableMatch(rows: MatchMembershipRow[], nowMs: number = Date.now()): string | null {
   for (const row of rows) {
     const matchId = typeof row.match_id === "string" ? row.match_id.trim() : "";
     if (!matchId) continue;
-    if (isMatchJoinable({ status: row.status, winnerId: row.winner_id })) return matchId;
+    if (
+      isMatchJoinable({
+        status: row.status,
+        winnerId: row.winner_id,
+        completedAt: row.completed_at,
+        startedAt: row.started_at,
+        createdAt: row.created_at,
+        timeLimitSeconds: row.time_limit_seconds,
+        nowMs,
+      })
+    ) {
+      return matchId;
+    }
   }
   return null;
 }

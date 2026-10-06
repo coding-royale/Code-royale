@@ -107,17 +107,52 @@ export async function POST(request: Request) {
     .order("joined_at", { ascending: false })
     .limit(5);
 
+  /*
+   * Never seat somebody who is already in a match that is still running.
+   *
+   * This guard originally asked only "is my existing match decided?", which a
+   * duel from weeks ago with no winner happily answered "no" to. Pressing "Find
+   * a Match" therefore skipped the queue entirely and dropped the player into
+   * that corpse: the opponent was whoever they had played a month ago, the
+   * clock was already at 00:00 because it had expired back then, and the
+   * timeout settled it as a draw without anybody forfeiting.
+   *
+   * `pickJoinableMatch` now requires the match's own clock, so anything whose
+   * time has run out — or a lobby that has been open far too long — is ignored
+   * and the player queues for a real opponent instead.
+   */
   const existingMatchId = pickJoinableMatch(
     ((existingMemberships ?? []) as unknown as Array<{
       match_id?: string | null;
       // PostgREST returns an embedded to-one relation as a one-element array.
-      matches?: { id: string; status: string | null; metadata: unknown }[] | null;
+      matches?: {
+        id: string;
+        status: string | null;
+        metadata: unknown;
+        created_at?: string | null;
+      }[] | null;
     }>).map((row) => {
       const match = Array.isArray(row.matches) ? row.matches[0] : row.matches;
       const metadata = (match?.metadata ?? {}) as Record<string, unknown>;
       const winnerId =
         typeof metadata.winner_id === "string" && metadata.winner_id ? metadata.winner_id : null;
-      return { match_id: row.match_id, status: match?.status ?? null, winner_id: winnerId };
+      const completedAt =
+        typeof metadata.completed_at === "string" && metadata.completed_at
+          ? metadata.completed_at
+          : null;
+      return {
+        match_id: row.match_id,
+        status: match?.status ?? null,
+        winner_id: winnerId,
+        completed_at: completedAt,
+        started_at:
+          typeof metadata.started_at === "string" && metadata.started_at
+            ? metadata.started_at
+            : null,
+        created_at: match?.created_at ?? null,
+        time_limit_seconds:
+          typeof metadata.time_limit === "number" ? metadata.time_limit : null,
+      };
     }),
   );
 
@@ -228,7 +263,7 @@ export async function POST(request: Request) {
        */
       const { data: recent } = await supabase
         .from("match_players")
-        .select("match_id, joined_at, matches!inner(id, status, metadata)")
+        .select("match_id, joined_at, matches!inner(id, status, metadata, created_at)")
         .eq("user_id", userId)
         .gte("joined_at", queuedAt)
         .order("joined_at", { ascending: false })
@@ -237,13 +272,29 @@ export async function POST(request: Request) {
       const matchIdFromThisSearch = pickJoinableMatch(
         ((recent ?? []) as unknown as Array<{
           match_id?: string | null;
-          matches?: { id: string; status: string | null; metadata: unknown }[] | null;
+          matches?: {
+            id: string;
+            status: string | null;
+            metadata: unknown;
+            created_at?: string | null;
+          }[] | null;
         }>).map((row) => {
           const match = Array.isArray(row.matches) ? row.matches[0] : row.matches;
           const metadata = (match?.metadata ?? {}) as Record<string, unknown>;
           const winnerId =
             typeof metadata.winner_id === "string" && metadata.winner_id ? metadata.winner_id : null;
-          return { match_id: row.match_id, status: match?.status ?? null, winner_id: winnerId };
+          return {
+            match_id: row.match_id,
+            status: match?.status ?? null,
+            winner_id: winnerId,
+            started_at:
+              typeof metadata.started_at === "string" && metadata.started_at
+                ? metadata.started_at
+                : null,
+            created_at: match?.created_at ?? null,
+            time_limit_seconds:
+              typeof metadata.time_limit === "number" ? metadata.time_limit : null,
+          };
         }),
       );
 

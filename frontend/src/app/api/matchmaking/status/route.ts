@@ -37,12 +37,18 @@ export async function GET(request: Request) {
     joined_at?: string | null;
     created_at?: string | null;
     // PostgREST returns an embedded to-one relation as a one-element array.
-    matches?: { id: string; status: string | null; metadata: unknown }[] | null;
+    matches?: {
+    id: string;
+    status: string | null;
+    metadata: unknown;
+    created_at?: string | null;
+  }[] | null;
   };
 
   const selectColumns =
-    "match_id, joined_at, matches!inner(id, status, metadata)";
-  const legacyColumns = "match_id, created_at, matches!inner(id, status, metadata)";
+    "match_id, joined_at, matches!inner(id, status, metadata, created_at)";
+  const legacyColumns =
+    "match_id, created_at, matches!inner(id, status, metadata, created_at)";
 
   let rows: MembershipRow[] = [];
   {
@@ -88,13 +94,30 @@ export async function GET(request: Request) {
    * live lobby, and got sent back into a finished duel while the real room sat
    * empty. A recorded `winner_id` beats `status` because the resolution routes
    * write the winner without ever moving `status` off "active".
+   *
+   * The clock matters as much as the winner field: a duel whose time ran out
+   * days ago has no winner and is still "active", and handing it back is how a
+   * player ends up staring at 00:00 in a match from weeks back.
    */
   const joinable = rows.filter((row) => {
     const match = Array.isArray(row.matches) ? row.matches[0] : row.matches;
     const metadata = (match?.metadata ?? {}) as Record<string, unknown>;
     const winnerId =
       typeof metadata.winner_id === "string" && metadata.winner_id ? metadata.winner_id : null;
-    return isMatchJoinable({ status: match?.status ?? null, winnerId });
+    const completedAt =
+      typeof metadata.completed_at === "string" && metadata.completed_at
+        ? metadata.completed_at
+        : null;
+    const startedAt =
+      typeof metadata.started_at === "string" && metadata.started_at ? metadata.started_at : null;
+    return isMatchJoinable({
+      status: match?.status ?? null,
+      winnerId,
+      completedAt,
+      startedAt,
+      createdAt: match?.created_at ?? null,
+      timeLimitSeconds: typeof metadata.time_limit === "number" ? metadata.time_limit : null,
+    });
   });
 
   if (joinable.length === 0) {
