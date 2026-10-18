@@ -22,6 +22,8 @@ export type MatchPlayerState = {
   lastActiveAt: string | null;
   lastActiveLabel: string;
   solved: boolean;
+  /** Newest-first run feed, so progress is legible rather than inferred. */
+  recent?: Array<{ passed: number; total: number; passedAll: boolean }>;
 };
 
 export type MatchRoomState = {

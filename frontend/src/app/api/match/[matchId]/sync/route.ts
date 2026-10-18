@@ -18,7 +18,7 @@ import {
   sanitizeTimeLimit,
   type MatchPhase,
 } from "@/lib/match-room";
-import { summarizeAttempts } from "@/lib/match-activity";
+import { recentAttemptFeed, summarizeAttempts } from "@/lib/match-activity";
 
 export const dynamic = "force-dynamic";
 
@@ -59,8 +59,24 @@ type PlayerSnapshot = {
   bestPassed: number;
   bestTotal: number;
   lastActiveAt: string | null;
+  /** Newest-first run feed driving the live progress bar. */
+  recent: Array<{ passed: number; total: number; passedAll: boolean }>;
   solved: boolean;
 };
+
+/** How many recent runs ride along in each sync payload. */
+const RECENT_ATTEMPT_FEED = 8;
+
+/**
+ * Per-player attempt window.
+ *
+ * Bounds the payload for a player who clicks Run constantly. It is deliberately
+ * per player: with one shared limit, a spammer could push their opponent's
+ * history off the end, which made the opponent's progress bar depend on how
+ * fast the other one was clicking. Truncating only the spammer's own history is
+ * the acceptable half of that trade.
+ */
+export const ATTEMPTS_PER_PLAYER = 100;
 
 /**
  * One poll drives the whole arena: the shared clock, the room gate, the
@@ -238,14 +254,36 @@ export async function POST(request: Request, { params }: { params: RouteParams }
   const timeLimitSeconds = sanitizeTimeLimit(metadata.time_limit);
   const phase: MatchPhase = resolveMatchPhase({ startedAt, winnerId, nowMs: serverNowMs });
 
-  // Progress feed: attempts, best pass count and last activity per player.
-  const { data: attemptRows } = await supabase
-    .from("match_attempts")
-    .select("user_id,passed,total,created_at")
-    .eq("match_id", matchId)
-    .in("user_id", playerIds)
-    .order("created_at", { ascending: false })
-    .limit(200);
+  /*
+   * Progress feed.
+   *
+   * Each player's runs are fetched with their OWN window. The single shared
+   * `limit(200)` this replaced meant one player could flood the table and push
+   * their opponent's history off the end, so the opponent's bar would freeze or
+   * reset depending on how fast the other one was clicking Run — and the two
+   * clients could genuinely disagree about the same opponent.
+   */
+  const attemptsByPlayer = new Map<string, Array<{ passed: number; total: number; created_at: string }>>();
+
+  await Promise.all(
+    playerIds.map(async (id) => {
+      const { data: rows } = await supabase
+        .from("match_attempts")
+        .select("passed,total,created_at")
+        .eq("match_id", matchId)
+        .eq("user_id", id)
+        .order("created_at", { ascending: false })
+        .limit(ATTEMPTS_PER_PLAYER);
+      attemptsByPlayer.set(
+        id,
+        (rows ?? []).map((row) => ({
+          passed: row.passed as number,
+          total: row.total as number,
+          created_at: row.created_at as string,
+        })),
+      );
+    }),
+  );
 
   const { data: userRows } = await supabase
     .from("users")
@@ -261,14 +299,8 @@ export async function POST(request: Request, { params }: { params: RouteParams }
   }
 
   const players: PlayerSnapshot[] = playerIds.map((id) => {
-    const mine = (attemptRows ?? []).filter((row) => row.user_id === id);
-    const summary = summarizeAttempts(
-      mine.map((row) => ({
-        passed: row.passed as number,
-        total: row.total as number,
-        created_at: row.created_at as string,
-      })),
-    );
+    const mine = attemptsByPlayer.get(id) ?? [];
+    const summary = summarizeAttempts(mine);
     return {
       userId: id,
       rating: ratingById.get(id) ?? 0,
@@ -276,11 +308,14 @@ export async function POST(request: Request, { params }: { params: RouteParams }
       bestPassed: summary.bestPassed,
       bestTotal: summary.bestTotal,
       lastActiveAt: summary.lastActiveAt,
+      // The last few runs, so the arena can show real movement instead of a
+      // decorative animation.
+      recent: recentAttemptFeed(mine, RECENT_ATTEMPT_FEED),
       solved: pickSolvedPlayerIds(
         mine.map((row) => ({
-          user_id: row.user_id as string,
-          passed: row.passed as number,
-          total: row.total as number,
+          user_id: id,
+          passed: row.passed,
+          total: row.total,
         })),
       ).has(id),
     };

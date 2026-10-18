@@ -7,6 +7,8 @@ import {
   AlertTriangle,
   BookOpen,
   Check,
+  ChevronsLeft,
+  ChevronsRight,
   Clock,
   Eye,
   Loader2,
@@ -15,11 +17,15 @@ import {
   X,
 } from "lucide-react";
 import { TetrioBattleBackground } from "@/components/battle/tetrio-battle-background";
-import { MaskedOpponentEditor } from "@/components/battle/masked-opponent-editor";
 import { BrickBreaker } from "@/components/battle/brick-breaker";
 import { CodeEditor } from "@/components/code-editor";
 import { buildTemplate, languageLabels, normalizeLanguage } from "@/lib/code-templates";
-import { formatRatingDelta } from "@/lib/match-activity";
+import {
+  computeProgress,
+  describeOpponentProgress,
+  formatRatingDelta,
+  latestAttemptLabel,
+} from "@/lib/match-activity";
 import {
   describeOpponentActivity,
   formatClock,
@@ -156,6 +162,66 @@ export function MatchArenaShell({
   const [sidePanel, setSidePanel] = useState<"problem" | "opponent">("problem");
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [leaving, setLeaving] = useState(false);
+
+  /*
+   * Resizable side panel.
+   *
+   * The question is either a quick glance or the whole problem, and neither
+   * fixed width suits both. Width is drag-resized and persisted per browser so
+   * a player who pulls it wide for a long problem gets it back next time.
+   */
+  const PANEL_KEY = "cr_arena_panel_width";
+  const PANEL_MIN = 200;
+  const PANEL_MAX = 620;
+  const [panelWidth, setPanelWidth] = useState<number | null>(null);
+  const [panelCollapsed, setPanelCollapsed] = useState(false);
+
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(PANEL_KEY);
+      if (!raw) return;
+      const parsed = Number.parseInt(raw, 10);
+      if (Number.isFinite(parsed)) {
+        setPanelWidth(Math.min(Math.max(parsed, PANEL_MIN), PANEL_MAX));
+      }
+    } catch {
+      // ignore storage errors; the default width is fine
+    }
+  }, []);
+
+  const effectivePanelWidth = panelCollapsed
+    ? 0
+    : panelWidth ?? PANEL_MIN * 1.5;
+
+  const startPanelResize = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      event.preventDefault();
+      const startX = event.clientX;
+      const startWidth = effectivePanelWidth;
+      let latest = startWidth;
+
+      const onMove = (move: PointerEvent) => {
+        latest = Math.min(
+          Math.max(startWidth + (move.clientX - startX), PANEL_MIN),
+          PANEL_MAX,
+        );
+        setPanelCollapsed(false);
+        setPanelWidth(latest);
+      };
+      const onUp = () => {
+        window.removeEventListener("pointermove", onMove);
+        window.removeEventListener("pointerup", onUp);
+        try {
+          window.localStorage.setItem(PANEL_KEY, String(latest));
+        } catch {
+          // ignore storage errors
+        }
+      };
+      window.addEventListener("pointermove", onMove);
+      window.addEventListener("pointerup", onUp);
+    },
+    [effectivePanelWidth],
+  );
 
   const timeoutHandledRef = useRef(false);
   const forfeitSentRef = useRef(false);
@@ -576,12 +642,25 @@ export function MatchArenaShell({
         )}
 
         <aside
-          className={`pointer-events-auto flex w-[19rem] shrink-0 flex-col border-r bg-muted/20 backdrop-blur-sm ${
+          className={`pointer-events-auto flex shrink-0 flex-col border-r bg-muted/20 backdrop-blur-sm ${
             drawerOpen
               ? "fixed inset-y-0 left-0 z-40"
               : "pointer-events-none fixed inset-y-0 left-0 z-40 -translate-x-full"
           } lg:pointer-events-auto lg:static lg:z-auto lg:translate-x-0`}
+          style={{
+            width: effectivePanelWidth || undefined,
+            minWidth: effectivePanelWidth ? undefined : "19rem",
+          }}
         >
+          {/* Drag handle: the question is either a glance or the whole problem. */}
+          <div
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Resize panel"
+            onPointerDown={startPanelResize}
+            className="absolute inset-y-0 -right-1 z-10 hidden w-2 cursor-col-resize items-center justify-center hover:bg-primary/20 lg:flex"
+          />
+
           <div className="flex items-center gap-1 border-b p-2">
             <PanelTab active={sidePanel === "problem"} onClick={() => setSidePanel("problem")}>
               <BookOpen className="size-3" />
@@ -600,6 +679,18 @@ export function MatchArenaShell({
               className="ml-auto lg:hidden"
             >
               <X className="size-4" />
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              hidden={!drawerOpen}
+              onClick={() => setPanelCollapsed((prev) => !prev)}
+              aria-label={panelCollapsed ? "Show side panel" : "Hide side panel"}
+              title={panelCollapsed ? "Show side panel" : "Hide side panel"}
+              className="hidden lg:inline-flex"
+            >
+              {panelCollapsed ? <ChevronsLeft className="size-4" /> : <ChevronsRight className="size-4" />}
             </Button>
           </div>
 
@@ -688,8 +779,13 @@ export function MatchArenaShell({
                 line={opponentLine}
                 rating={opponent?.rating ?? 0}
               />
-              <div className="min-h-0 flex-1">
-                <MaskedOpponentEditor opponentName={opponentName} />
+              <div className="min-h-0 flex-1 overflow-y-auto">
+                <OpponentProgress
+                  summary={theirSummary}
+                  recent={opponent?.recent}
+                  lastActiveLabel={opponent?.lastActiveLabel ?? "no attempts yet"}
+                  solved={Boolean(opponent?.solved)}
+                />
               </div>
             </div>
           )}
@@ -959,8 +1055,13 @@ export function MatchArenaShell({
               Last activity {describeOpponentActivity(theirSummary)}
             </p>
 
-            <div className="mt-4 h-56">
-              <MaskedOpponentEditor opponentName={opponentName} />
+            <div className="mt-4">
+              <OpponentProgress
+                summary={theirSummary}
+                recent={opponent?.recent}
+                lastActiveLabel={opponent?.lastActiveLabel ?? "no attempts yet"}
+                solved={Boolean(opponent?.solved)}
+              />
             </div>
           </div>
         </DialogContent>
@@ -1024,6 +1125,93 @@ function StatTile({
       >
         {value}
       </p>
+    </div>
+  );
+}
+
+/**
+ * Real opponent progress.
+ *
+ * This replaces the masked editor the opponent tab used to show. That component
+ * animated a hardcoded `SNIPPET_POOL` on a timer in PvP — it had no connection
+ * to what the other player was doing, so it looked live while being pure
+ * decoration, and reported progress nobody could trust.
+ *
+ * Everything here is derived from `match_attempts`, which the submit route
+ * records on every Run and Submit, so the numbers are the opponent's actual
+ * test results as they arrive.
+ */
+function OpponentProgress({
+  summary,
+  recent,
+  lastActiveLabel,
+  solved,
+}: {
+  summary: { attempts: number; bestPassed: number; bestTotal: number; lastActiveAt: string | null };
+  recent?: Array<{ passed: number; total: number; passedAll: boolean }>;
+  lastActiveLabel: string;
+  solved: boolean;
+}) {
+  const progress = computeProgress(summary);
+  const state = resolveOpponentState({ ...summary, solved });
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="rounded-lg border bg-card/60 p-3">
+        <div className="flex items-baseline justify-between gap-2">
+          <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+            {opponentStateLabels[state]}
+          </span>
+          <span className="font-mono text-sm font-bold tabular-nums">
+            {solved ? "SOLVED" : latestAttemptLabel(summary.bestPassed, summary.bestTotal)}
+          </span>
+        </div>
+
+        <div
+          className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-muted"
+          role="progressbar"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={Math.round(progress.fraction * 100)}
+          aria-label={`Opponent progress: ${progress.label}`}
+        >
+          <div
+            className={`h-full rounded-full transition-[width] duration-500 ${
+              solved ? "bg-emerald-500" : "bg-primary"
+            }`}
+            style={{ width: `${Math.max(progress.fraction * 100, 2)}%` }}
+          />
+        </div>
+
+        <p className="mt-2 text-[11px] text-muted-foreground">
+          {summary.attempts === 0
+            ? "Has not run anything yet"
+            : `${describeOpponentProgress(summary)} · ${lastActiveLabel}`}
+        </p>
+      </div>
+
+      {recent && recent.length > 0 && (
+        <div>
+          <p className="mb-1.5 text-[10px] uppercase tracking-wider text-muted-foreground">
+            Their runs
+          </p>
+          <ul className="flex flex-col gap-1">
+            {recent.map((run, i) => (
+              <li
+                key={`${run.passed}-${run.total}-${i}`}
+                className="flex items-center justify-between rounded border bg-card/40 px-2 py-1 font-mono text-[11px] tabular-nums"
+              >
+                <span className="text-muted-foreground">
+                  run {Math.max(recent.length - i, 1)}
+                </span>
+                <span className={run.passedAll ? "text-emerald-500" : "text-foreground"}>
+                  {run.passed}/{run.total}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }
