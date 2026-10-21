@@ -100,3 +100,19 @@ begin
   return jsonb_build_object('allowed', true, 'remaining', v_remaining, 'reset_after', 0);
 end;
 $$;
+
+-- Lock the function down to the service role.
+--
+-- Postgres grants EXECUTE to PUBLIC by default on every new function. This
+-- function is SECURITY DEFINER and takes an arbitrary `p_user_id`, so leaving
+-- the default made it callable by anonymous visitors through
+-- `POST /rest/v1/rpc/bump_submit_rate` with the public anon key. Anyone could
+-- inflate another player's counter and lock them out of submitting during a
+-- duel. The table itself is already protected (RLS on, no policies), so this
+-- is the only way in.
+--
+-- Must be repeated for any future SECURITY DEFINER function added after this.
+revoke all on function public.bump_submit_rate(uuid, int, int) from public;
+revoke all on function public.bump_submit_rate(uuid, int, int) from anon;
+revoke all on function public.bump_submit_rate(uuid, int, int) from authenticated;
+grant execute on function public.bump_submit_rate(uuid, int, int) to service_role;
