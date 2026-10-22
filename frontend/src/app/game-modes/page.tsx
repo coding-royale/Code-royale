@@ -26,7 +26,7 @@ import {
 import { AppShell } from "../../components/app-shell";
 import { BrickBreaker } from "../../components/battle/brick-breaker";
 import { supabase } from "../../lib/supabase-browser";
-import { buildMatchUrl, buildStatusUrl, shouldAutoEnterMatch } from "../../lib/matchmaking";
+import { buildMatchUrl, shouldAutoEnterMatch } from "../../lib/matchmaking";
 import { useFriendPresence } from "../../lib/use-friend-presence";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -346,7 +346,6 @@ export default function GameModesPage() {
   const [selectedMode, setSelectedMode] = useState<ModeDefinition | null>(null);
   const [configSelection, setConfigSelection] = useState<ModeConfigSelection | null>(null);
   const [matchId, setMatchId] = useState<string | null>(null);
-  const [queueSince, setQueueSince] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [pollRef, setPollRef] = useState<ReturnType<typeof setInterval> | null>(null);
   const [searchSecondsRemaining, setSearchSecondsRemaining] = useState(60);
@@ -443,7 +442,6 @@ export default function GameModesPage() {
       setPollRef(null);
     }
     setMatchId(null);
-    setQueueSince(null);
     setConfigSelection(null);
     setSelectedMode(null);
     setErrorMessage(null);
@@ -582,8 +580,6 @@ export default function GameModesPage() {
 
     setErrorMessage(null);
     setMatchId(null);
-    const queueStartIso = new Date().toISOString();
-    setQueueSince(queueStartIso);
     setSearchSecondsRemaining(60);
 
     let matchType = resolveMatchType(selection?.players ?? "1v1");
@@ -654,26 +650,20 @@ export default function GameModesPage() {
       | { status: "queued"; queuedAt?: string }
       | { error: string };
 
-    if ("queuedAt" in joinData && joinData.queuedAt) {
-      setQueueSince(joinData.queuedAt);
-    }
-    // Capture locally: state updates are async and the interval closure
-    // would otherwise keep the stale (null) value.
-    const sinceForPoll =
-      "queuedAt" in joinData && joinData.queuedAt
-        ? joinData.queuedAt
-        : (queueSince ?? queueStartIso);
-
     if ("matchId" in joinData && joinData.matchId) {
       setMatchId(joinData.matchId);
       setState("match_found");
       return;
     }
 
-    // Poll for up to 1 minute; if nobody joins, fail gracefully.
+    /*
+     * Still waiting. This loop is only transport: every poll asks the server
+     * "am I matched yet?", and the server runs a pairing pass on each call.
+     * The pairing decision itself is never made here.
+     */
     const started = Date.now();
     const timeoutMs = 60_000;
-    const intervalMs = 1_500;
+    const intervalMs = 1_000;
 
     const interval = setInterval(async () => {
       if (Date.now() - started > timeoutMs) {
@@ -689,7 +679,7 @@ export default function GameModesPage() {
       }
 
       try {
-        const res = await fetch(buildStatusUrl("/api/matchmaking/status", sinceForPoll), { 
+        const res = await fetch("/api/matchmaking/status", {
           method: "GET",
           headers: session?.access_token
             ? { Authorization: `Bearer ${session.access_token}` }

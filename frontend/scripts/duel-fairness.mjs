@@ -6,15 +6,19 @@
  *
  * Two things broke in production and neither is caught by "a match happened":
  *
- *   1. The creator of a match gets its id back from /join instantly, while the
- *      opponent only learns it ~1.5s later on a status poll. So the creator's
- *      page (Monaco, question, testcases) can finish loading a long time before
- *      the opponent even knows a match exists. If the clock started on the
- *      creator's arrival, that gap is free time for one player.
+ *   1. The player who triggers the pairing gets its id back from /join
+ *      instantly, while the other only learns it on its next status poll. So
+ *      the first player's page (Monaco, question, testcases) can finish loading
+ *      a long time before the opponent even knows a match exists. If the clock
+ *      started on the first arrival, that gap is free time for one player.
  *
- *   2. `match_players.seat` puts the creator at seat 0 every single time. Any
- *      bias toward the earlier seat would only ever show in one direction, so
- *      testing "alpha always wins" cannot find it.
+ *   2. One seat could be handed an advantage every single time. Any bias toward
+ *      the earlier seat would only ever show in one direction, so testing
+ *      "alpha always wins" cannot find it.
+ *
+ * Seat 0 is now assigned by queue age rather than by whoever won the network
+ * race, but the fairness invariant is unchanged: both seats must play the same
+ * duel under the same clock.
  *
  * So:
  *   SCENARIO A  both bots poll the room at the same instant
@@ -105,8 +109,8 @@ async function reset() {
 }
 
 /**
- * Queue `first` (who will create the match), then `second`, and return the id.
- * The creator must enqueue first so it is the one who pairs and creates.
+ * Queue `first`, then `second`, and return the match id.
+ * Seats are assigned by queue age, so `first` always takes seat 0.
  */
 async function pairUp(first, second) {
   const firstJoin = await api("/api/matchmaking/join", first.token, {
@@ -205,9 +209,8 @@ await reset();
 /* ================================================================== *
  * SCENARIO B â€” the creator arrives several seconds before the opponent.
  *
- * This is the real production shape: /join returns the id to the creator
- * immediately, and the opponent only finds it on a status poll ~1.5s later,
- * so the creator's arena is ready well before the opponent's exists.
+ * This is the real production shape: one player's arena is ready and waiting
+ * while the opponent's page is still loading.
  * ================================================================== */
 console.log("\n--- B: the creator arrives first and waits ---");
 await reset();
@@ -258,18 +261,14 @@ let scenarioB = null;
 /* ================================================================== *
  * SCENARIO C / D â€” both seats win, in turn.
  *
- * Seat 0 is whoever's /join call FOUND an opponent, and the join route writes
- * `playerIds = [userId, ...opponentIds]` with `seat: idx`. The first player into
- * the queue polls for JOIN_SEARCH_TIMEOUT_MS and finds nobody, so it is always
- * the SECOND joiner that creates the match and takes seat 0.
- *
- * So `pairUp(alpha, bravo)` puts BRAVO on seat 0. Any bias toward the earlier
- * seat could only ever show in one direction, so we run the duel twice: once
- * with seat 0 solving, once with seat 1 solving. If the solver wins both times
- * and the ELO swing matches, seat 0 has no advantage.
+ * Seat 0 goes to whoever has been in the queue longest, and both seats run the
+ * same arena code, so any bias toward one seat could only show in one
+ * direction. We run the duel twice: once with seat 0 solving, once with seat 1
+ * solving. If the solver wins both times and the ELO swing matches, seat 0 has
+ * no advantage.
  * ================================================================== */
 /**
- * Walk both bots into the room the way a real client does: poll every 1.5s
+ * Walk both bots into the room the way a real client does: poll every second
  * until the gate opens.
  *
  * One poll from each side is NOT enough, and that is the point. A poll reads
@@ -349,21 +348,21 @@ async function playOut({ matchId, solver, loser, label }) {
   return { delta, solverSeat: seatOf(solver.id) };
 }
 
-console.log("\n--- C: seat 0 (the match creator) solves and wins ---");
+console.log("\n--- C: seat 0 (the earlier joiner) solves and wins ---");
 await reset();
 let seatZeroWin;
 {
-  // Bravo joins second, so bravo is seat 0.
+  // Alpha enqueues first, so alpha takes seat 0.
   const matchId = await pairUp(alpha, bravo);
   check("C: paired", Boolean(matchId), true);
   if (!matchId) process.exit(1);
 
 
-  seatZeroWin = await playOut({ matchId, solver: bravo, loser: alpha, label: "C" });
+  seatZeroWin = await playOut({ matchId, solver: alpha, loser: bravo, label: "C" });
   check("C: the solver really was seat 0", seatZeroWin.solverSeat, 0);
 }
 
-console.log("\n--- D: seat 1 (the earlier joiner) solves and wins ---");
+console.log("\n--- D: seat 1 (the later joiner) solves and wins ---");
 await reset();
 let seatOneWin;
 {
@@ -371,7 +370,7 @@ let seatOneWin;
   check("D: paired", Boolean(matchId), true);
   if (!matchId) process.exit(1);
 
-  seatOneWin = await playOut({ matchId, solver: alpha, loser: bravo, label: "D" });
+  seatOneWin = await playOut({ matchId, solver: bravo, loser: alpha, label: "D" });
   check("D: the solver really was seat 1", seatOneWin.solverSeat, 1);
 }
 
