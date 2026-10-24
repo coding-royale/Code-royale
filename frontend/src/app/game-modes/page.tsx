@@ -660,12 +660,22 @@ export default function GameModesPage() {
      * Still waiting. This loop is only transport: every poll asks the server
      * "am I matched yet?", and the server runs a pairing pass on each call.
      * The pairing decision itself is never made here.
+     *
+     * Poll immediately, then twice a second. The immediate call matters: when
+     * both players press Start together, one of them can enqueue a few
+     * milliseconds after the other has already paired. That player's /join
+     * comes back "queued" even though the room exists by the time the response
+     * lands. Waiting a full interval before asking would turn a ~50ms race into
+     * a second of "searching".
      */
     const started = Date.now();
     const timeoutMs = 60_000;
-    const intervalMs = 1_000;
+    const intervalMs = 500;
+    let inFlight = false;
 
-    const interval = setInterval(async () => {
+    const poll = async () => {
+      if (inFlight) return;
+
       if (Date.now() - started > timeoutMs) {
         clearInterval(interval);
         setPollRef(null);
@@ -678,6 +688,7 @@ export default function GameModesPage() {
         return;
       }
 
+      inFlight = true;
       try {
         const res = await fetch("/api/matchmaking/status", {
           method: "GET",
@@ -695,10 +706,14 @@ export default function GameModesPage() {
         }
       } catch {
         // ignore transient network errors
+      } finally {
+        inFlight = false;
       }
-    }, intervalMs);
+    };
 
+    const interval = setInterval(poll, intervalMs);
     setPollRef(interval);
+    void poll();
   };
 
   const handleRankedClick = (mode: ModeDefinition) => {

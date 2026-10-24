@@ -88,51 +88,55 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Server configuration error" }, { status: 500 });
   }
 
-  // Rating drives ELO-nearest pairing.
+  /*
+   * Rating drives ELO-nearest pairing; the membership check stops us seating
+   * somebody who is already in a live match. They are independent reads, so run
+   * them together rather than paying two sequential round trips on a button
+   * press.
+   */
   let myRating = 0;
+  let existingMemberships: Array<{
+    match_id?: string | null;
+    matches?: {
+      id: string;
+      status: string | null;
+      metadata: unknown;
+      created_at?: string | null;
+    }[] | null;
+  }> = [];
+
   try {
-    const { data: userRow } = await supabase
-      .from("users")
-      .select("rating")
-      .eq("id", userId)
-      .maybeSingle();
-    if (typeof userRow?.rating === "number") myRating = userRow.rating;
-  } catch {
-    // fallback 0
+    const [ratingResult, membershipResult] = await Promise.all([
+      supabase.from("users").select("rating").eq("id", userId).maybeSingle(),
+      /*
+       * Never seat somebody who is already in a live match.
+       *
+       * This is the other half of the "ghost victory". A player whose previous
+       * duel had been decided days earlier could still have that arena open, so
+       * the new match seated them while their browser sat on the old one. The
+       * new room then waited for a seat that was never going to be filled, and
+       * the stale page kept showing a result from a match that was already over.
+       *
+       * `pickJoinableMatch` requires the match's own clock, so anything whose
+       * time has run out — or a lobby that has been open far too long — is
+       * ignored and the player queues for a real opponent instead.
+       */
+      supabase
+        .from("match_players")
+        .select("match_id, matches!inner(id, status, metadata, created_at)")
+        .eq("user_id", userId)
+        .order("joined_at", { ascending: false })
+        .limit(5),
+    ]);
+
+    if (typeof ratingResult.data?.rating === "number") myRating = ratingResult.data.rating;
+    existingMemberships = (membershipResult.data ?? []) as unknown as typeof existingMemberships;
+  } catch (error) {
+    console.error("Failed to load join context", error);
   }
 
-  /*
-   * Never seat somebody who is already in a live match.
-   *
-   * This is the other half of the "ghost victory". A player whose previous duel
-   * had been decided days earlier could still have that arena open, so the new
-   * match seated them while their browser sat on the old one. The new room then
-   * waited for a seat that was never going to be filled, and the stale page kept
-   * showing a result from a match that was already over. If the player already
-   * holds a playable match, send them back to it rather than duplicating them.
-   *
-   * `pickJoinableMatch` requires the match's own clock, so anything whose time
-   * has run out — or a lobby that has been open far too long — is ignored and
-   * the player queues for a real opponent instead.
-   */
-  const { data: existingMemberships } = await supabase
-    .from("match_players")
-    .select("match_id, matches!inner(id, status, metadata, created_at)")
-    .eq("user_id", userId)
-    .order("joined_at", { ascending: false })
-    .limit(5);
-
   const existingMatchId = pickJoinableMatch(
-    ((existingMemberships ?? []) as unknown as Array<{
-      match_id?: string | null;
-      // PostgREST returns an embedded to-one relation as a one-element array.
-      matches?: {
-        id: string;
-        status: string | null;
-        metadata: unknown;
-        created_at?: string | null;
-      }[] | null;
-    }>).map((row) => {
+    existingMemberships.map((row) => {
       const match = Array.isArray(row.matches) ? row.matches[0] : row.matches;
       const metadata = (match?.metadata ?? {}) as Record<string, unknown>;
       const winnerId =

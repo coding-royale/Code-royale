@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServiceClient } from "@/lib/supabase-service";
-import { isFreshMatch, resolveStatusCutoff } from "@/lib/matchmaking";
-import { isMatchJoinable } from "@/lib/match-room";
 import { resolveRequestUserId } from "@/lib/resolve-request-user";
 
 /*
@@ -9,15 +7,20 @@ import { resolveRequestUserId } from "@/lib/resolve-request-user";
  *
  * The old version only READ: it looked for a match_players row and returned it.
  * Pairing lived entirely inside `/api/matchmaking/join`'s 8-second request
- * loop, so if two players' join windows missed each other — one joined at t=0
- * and timed out at t=8, the other joined at t=9 — nothing ever paired them
- * again. Both sat in the queue, both polled this route every 1.5s for 60s, and
- * both gave up while perfectly matchable. That is the bug where matchmaking
- * "doesn't connect both players at the same time".
+ * loop, so if two players' join windows missed each other, nothing ever paired
+ * them again. Both sat queued, both polled for 60s, and both gave up while
+ * perfectly matchable.
  *
- * Every poll now runs `matchmaking_pair`, which is atomic and idempotent. So a
- * player who is already waiting gets paired the moment an opponent appears,
- * regardless of which side's request arrives first.
+ * One call does both jobs now. `matchmaking_pair`:
+ *
+ *   - returns the live room if this player is already seated (it checks the
+ *     same joinability rule as match-room.ts: decided, completed, lobby older
+ *     than 10 minutes, or clock expired all mean "not your room any more")
+ *   - otherwise runs a pairing pass and returns the room it just created, or
+ *     "waiting"
+ *
+ * That replaces three round trips (membership query, optional match existence
+ * query, pairing RPC) with one, which is what makes a 500ms poll affordable.
  */
 export async function GET(request: Request) {
   const userId = await resolveRequestUserId(request);
@@ -33,127 +36,17 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Server configuration error" }, { status: 500 });
   }
 
-  // Only matches created after this queue attempt started count. Without
-  // `since`, a player who played 2 minutes ago instantly sees that OLD match
-  // as "match found".
-  const sinceParam = new URL(request.url).searchParams.get("since");
-  const cutoffIso = resolveStatusCutoff(sinceParam);
-
-  // match_players historically used created_at; newer schemas use joined_at.
-  // NOTE: selecting a column that doesn't exist makes PostgREST return an
-  // error (not null), which previously made status ALWAYS return
-  // { matchId: null }. Try joined_at first, fall back to created_at.
-  type MembershipRow = {
-    match_id: string | null;
-    joined_at?: string | null;
-    created_at?: string | null;
-    // PostgREST returns an embedded to-one relation as a one-element array.
-    matches?: {
-      id: string;
-      status: string | null;
-      metadata: unknown;
-      created_at?: string | null;
-    }[] | null;
-  };
-
-  const selectColumns =
-    "match_id, joined_at, matches!inner(id, status, metadata, created_at)";
-  const legacyColumns =
-    "match_id, created_at, matches!inner(id, status, metadata, created_at)";
-
-  let rows: MembershipRow[] = [];
-  {
-    const { data, error } = await supabase
-      .from("match_players")
-      .select(selectColumns)
-      .eq("user_id", userId)
-      .order("joined_at", { ascending: false })
-      .limit(5);
-
-    if (!error) {
-      rows = (data ?? []) as unknown as MembershipRow[];
-    } else if (error.message?.includes("joined_at")) {
-      // Legacy schema without joined_at — retry with created_at.
-      const legacy = await supabase
-        .from("match_players")
-        .select(legacyColumns)
-        .eq("user_id", userId)
-        .order("created_at", { ascending: false })
-        .limit(5);
-      if (legacy.error) {
-        console.error("Failed to check match status", legacy.error);
-      } else {
-        rows = (legacy.data ?? []) as unknown as MembershipRow[];
-      }
-    } else {
-      console.error("Failed to check match status", error);
-    }
-  }
-
-  /*
-   * Only a match that is still playable may be handed back.
-   *
-   * A recorded `winner_id` beats `status` because the resolution routes write
-   * the winner without ever moving `status` off "active". The clock matters as
-   * much as the winner field: a duel whose time ran out days ago has no winner
-   * and is still "active", and handing it back is how a player ends up staring
-   * at 00:00 in a match from weeks back.
-   */
-  const joinable = rows.filter((row) => {
-    const match = Array.isArray(row.matches) ? row.matches[0] : row.matches;
-    const metadata = (match?.metadata ?? {}) as Record<string, unknown>;
-    const winnerId =
-      typeof metadata.winner_id === "string" && metadata.winner_id ? metadata.winner_id : null;
-    const completedAt =
-      typeof metadata.completed_at === "string" && metadata.completed_at
-        ? metadata.completed_at
-        : null;
-    const startedAt =
-      typeof metadata.started_at === "string" && metadata.started_at ? metadata.started_at : null;
-    return isMatchJoinable({
-      status: match?.status ?? null,
-      winnerId,
-      completedAt,
-      startedAt,
-      createdAt: match?.created_at ?? null,
-      timeLimitSeconds: typeof metadata.time_limit === "number" ? metadata.time_limit : null,
-    });
-  });
-
-  // Rows arrive newest first, so the first playable one is the freshest.
-  for (const row of joinable) {
-    const joinedAt = row.joined_at ?? row.created_at ?? null;
-    if (!row.match_id || !isFreshMatch(joinedAt, cutoffIso)) continue;
-
-    // Verify match still exists (select only columns guaranteed by the base
-    // schema — `status` does not exist on fresh resets and would error).
-    const { data: matchRow } = await supabase
-      .from("matches")
-      .select("id")
-      .eq("id", row.match_id)
-      .maybeSingle();
-
-    if (matchRow) {
-      return NextResponse.json({ matchId: row.match_id }, { status: 200 });
-    }
-  }
-
-  /*
-   * Nothing seated us yet. Run a pairing pass: if we are queued and an opponent
-   * is available, this is where the two players actually get joined. Returns
-   * "not_queued" for a player who is neither queued nor seated, which is the
-   * normal idle case.
-   */
-  const { data: pairResult, error: pairError } = await supabase.rpc("matchmaking_pair", {
+  const { data, error } = await supabase.rpc("matchmaking_pair", {
     p_user_id: userId,
   });
 
-  if (pairError) {
-    console.error("Pairing failed during status poll", pairError);
+  if (error) {
+    // A transient failure must not end the search: the client keeps polling.
+    console.error("Failed to check match status", error);
     return NextResponse.json({ matchId: null }, { status: 200 });
   }
 
-  const result = (pairResult ?? {}) as { status?: string; matchId?: string };
+  const result = (data ?? {}) as { status?: string; matchId?: string };
   if (result.status === "matched" && result.matchId) {
     return NextResponse.json({ matchId: result.matchId }, { status: 200 });
   }
